@@ -1,0 +1,531 @@
+openapi: 3.0.1
+info:
+  title: service-name
+  description: basic template for map colonies service
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+paths:
+  /layers:
+    post:
+      operationId: createLayer
+      tags:
+        - layers
+      summary: start a process of creating new layer from raw data
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/schemas-IngestionParams'
+                - $ref: '#/components/schemas/IngestionParams'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+        '409':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+        '500':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+  /tasks/{jobId}/{taskId}/completed:
+    post:
+      operationId: completeTask
+      tags:
+        - tasks
+      summary: update overseer on completion of tiling task
+      parameters:
+        - in: path
+          name: jobId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: job id
+        - in: path
+          name: taskId
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: task id
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+        '404':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+        '500':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+  /toc:
+    post:
+      operationId: getToc
+      tags:
+        - toc
+      summary: gets a toc file representing the given layer
+      requestBody:
+        description: A json object containing operation and toc source type
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                productId:
+                  type: string
+                productVersion:
+                  type: string
+                operation:
+                  $ref: '#/components/schemas/operation'
+                productType:
+                  $ref: '#/components/schemas/productType'
+              required:
+                - productId
+                - productVersion
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tocResponse'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/tocResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+        '404':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+        '500':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+components:
+  schemas:
+    errorMessage:
+      type: object
+      properties:
+        'message:':
+          type: string
+        stacktrace:
+          type: string
+      required:
+        - message
+    IngestionParams:
+      type: object
+      properties:
+        metadata:
+          type: object
+          properties:
+            productType:
+              $ref: '#/components/schemas/productType'
+    tocResponse:
+      type: object
+      properties:
+        operation:
+          $ref: '#/components/schemas/operation'
+        productType:
+          $ref: '#/components/schemas/productType'
+        metadata:
+          oneOf:
+            - $ref: '#/components/schemas/updateLayerMetadata'
+            - type: object
+              properties:
+                productId:
+                  type: string
+                productVersion:
+                  type: string
+    operation:
+      type: string
+      enum:
+        - ADD
+        - UPDATE
+        - REMOVE
+    productType:
+      type: string
+      enum:
+        - Orthophoto
+        - OrthophotoHistory
+        - RasterMap
+        - RasterAid
+        - RasterVector
+      description: valid product types for ingestion
+    GeometryBase:
+      type: object
+      description: GeoJSon geometry
+      required:
+        - type
+      externalDocs:
+        url: http://geojson.org/geojson-spec.html#geometry-objects
+      properties:
+        type:
+          type: string
+          enum:
+            - Point
+            - LineString
+            - Polygon
+            - MultiPoint
+            - MultiLineString
+            - MultiPolygon
+          description: the geometry type
+    Point2D:
+      type: array
+      maxItems: 2
+      minItems: 2
+      items:
+        type: number
+    Point:
+      type: object
+      description: GeoJSon geometry
+      externalDocs:
+        url: http://geojson.org/geojson-spec.html#id2
+      allOf:
+        - $ref: '#/components/schemas/GeometryBase'
+        - properties:
+            coordinates:
+              $ref: '#/components/schemas/Point2D'
+    LineString:
+      type: object
+      description: GeoJSon geometry
+      externalDocs:
+        url: http://geojson.org/geojson-spec.html#id3
+      allOf:
+        - $ref: '#/components/schemas/GeometryBase'
+        - properties:
+            coordinates:
+              type: array
+              items:
+                $ref: '#/components/schemas/Point2D'
+    Polygon:
+      type: object
+      description: GeoJSon geometry
+      externalDocs:
+        url: http://geojson.org/geojson-spec.html#id4
+      allOf:
+        - $ref: '#/components/schemas/GeometryBase'
+        - properties:
+            coordinates:
+              type: array
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Point2D'
+    MultiPoint:
+      type: object
+      description: GeoJSon geometry
+      externalDocs:
+        url: http://geojson.org/geojson-spec.html#id5
+      allOf:
+        - $ref: '#/components/schemas/GeometryBase'
+        - properties:
+            coordinates:
+              type: array
+              items:
+                $ref: '#/components/schemas/Point2D'
+    MultiLineString:
+      type: object
+      description: GeoJSon geometry
+      externalDocs:
+        url: http://geojson.org/geojson-spec.html#id6
+      allOf:
+        - $ref: '#/components/schemas/GeometryBase'
+        - properties:
+            coordinates:
+              type: array
+              items:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Point2D'
+    MultiPolygon:
+      type: object
+      description: GeoJSon geometry
+      externalDocs:
+        url: http://geojson.org/geojson-spec.html#id6
+      allOf:
+        - $ref: '#/components/schemas/GeometryBase'
+        - properties:
+            coordinates:
+              type: array
+              items:
+                type: array
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Point2D'
+    Geometry:
+      description: GeoJSon geometry
+      discriminator:
+        propertyName: type
+      type: object
+      anyOf:
+        - $ref: '#/components/schemas/Point'
+        - $ref: '#/components/schemas/LineString'
+        - $ref: '#/components/schemas/Polygon'
+        - $ref: '#/components/schemas/MultiPoint'
+        - $ref: '#/components/schemas/MultiLineString'
+        - $ref: '#/components/schemas/MultiPolygon'
+    GeometryCollection:
+      type: object
+      description: GeoJSon geometry collection
+      required:
+        - type
+        - geometries
+      externalDocs:
+        url: http://geojson.org/geojson-spec.html#geometrycollection
+      properties:
+        type:
+          type: string
+          enum:
+            - GeometryCollection
+          description: custom properties
+        geometries:
+          type: array
+          items:
+            $ref: '#/components/schemas/GeometryBase'
+    BBox:
+      type: array
+      minItems: 4
+      items:
+        type: number
+    Feature:
+      required:
+        - type
+        - properties
+        - geometry
+      properties:
+        type:
+          type: string
+          enum:
+            - Feature
+        properties:
+          type: object
+          nullable: true
+        geometry:
+          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/GeometryCollection'
+            - $ref: '#/components/schemas/Geometry'
+        bbox:
+          $ref: '#/components/schemas/BBox'
+    FeatureCollection:
+      type: object
+      description: GeoJson Feature collection
+      required:
+        - type
+        - features
+      properties:
+        type:
+          type: string
+          enum:
+            - FeatureCollection
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+        bbox:
+          $ref: '#/components/schemas/BBox'
+    updateLayerMetadata:
+      type: object
+      description: layer meta data
+      properties:
+        type:
+          type: string
+          description: Layer type raster / 3d / dem
+          enum:
+            - RECORD_RASTER
+            - RECORD_3D
+        classification:
+          type: string
+          description: Permitted roles
+        productId:
+          type: string
+          description: Layer's external identifier
+        productName:
+          type: string
+          description: Layer's external name
+        productVersion:
+          type: string
+          pattern: ^[1-9]\d{0,2}(\.(0|[1-9]\d?))?$
+          description: layer's version
+        productType:
+          type: string
+          enum:
+            - Orthophoto
+            - OrthophotoHistory
+            - OrthophotoBest
+            - RasterMap
+            - RasterMapBest
+            - RasterAid
+            - RasterAidBest
+            - RasterVector
+            - RasterVectorBest
+            - VectorBest
+            - DTM
+            - DSM
+            - QuantizedMesh
+            - 3DPhotoRealistic
+            - PointCloud
+          description: layer's type might be derived from the first letter
+        productSubType:
+          type: string
+          description: Layer's sub type
+        description:
+          type: string
+          description: layer's description
+        srsId:
+          type: string
+          description: geo system id
+        srsName:
+          type: string
+          description: geo system name
+        producerName:
+          type: string
+          description: creator name default IDFMU
+        creationDate:
+          type: string
+          description: Creation date
+          format: date-time
+        ingestionDate:
+          type: string
+          description: Ingestion date
+          format: date-time
+        updateDate:
+          type: string
+          description: Update date
+          format: date-time
+        sourceDateStart:
+          type: string
+          description: Oldest imaging date
+          format: date-time
+        sourceDateEnd:
+          type: string
+          description: Latest imaging date
+          format: date-time
+        maxResolutionDeg:
+          type: number
+          minimum: 9.e-8
+          maximum: 0.072
+          format: double
+          description: max resolution of layer in degrees/pixel
+        maxResolutionMeter:
+          type: number
+          minimum: 0.01
+          maximum: 8000
+          format: double
+          description: max (rounded) resolution of layer in meters/pixel
+        minHorizontalAccuracyCE90:
+          type: number
+          minimum: 0.01
+          maximum: 4000
+          format: double
+          description: minimum Horizontal Accuracy
+        sensors:
+          type: array
+          items:
+            type: string
+          description: Layer sensors list
+        region:
+          type: array
+          items:
+            type: string
+          description: regions included in the layer
+        rms:
+          type: number
+        scale:
+          type: integer
+          minimum: 0
+          maximum: 100000000
+        footprint:
+          $ref: '#/components/schemas/Geometry'
+        layerPolygonParts:
+          $ref: '#/components/schemas/FeatureCollection'
+        rawProductData:
+          $ref: '#/components/schemas/FeatureCollection'
+        productBoundingBox:
+          type: string
+          pattern: >-
+            ^-?(0|[1-9]\d*)(\.\d*)?,-?(0|[1-9]\d*)(\.\d*)?,-?(0|[1-9]\d*)(\.\d*)?,-?(0|[1-9]\d*)(\.\d*)?$
+    insertLayerMetadata:
+      type: object
+      required:
+        - productId
+        - productName
+        - productVersion
+        - productType
+        - updateDate
+        - maxResolutionDeg
+        - minHorizontalAccuracyCE90
+        - sensors
+        - footprint
+        - type
+        - sourceDateStart
+        - sourceDateEnd
+        - classification
+      allOf:
+        - $ref: '#/components/schemas/updateLayerMetadata'
+    schemas-IngestionParams:
+      type: object
+      description: ingestion parameters
+      required:
+        - metadata
+        - originDirectory
+        - fileNames
+      properties:
+        metadata:
+          $ref: '#/components/schemas/insertLayerMetadata'
+        originDirectory:
+          type: string
+          description: layer source directory
+        fileNames:
+          type: array
+          description: layer sources
+          items:
+            type: string
+            pattern: >-
+              ^.+(\.([Tt][Ii][Ff][Ff]?|[Gg][Pp][Kk][Gg]|[Jj][Pp][2Cc]|[Jj]2[Kk]|[Ee][Cc][Ww]))$
