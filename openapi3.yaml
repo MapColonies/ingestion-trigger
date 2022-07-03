@@ -46,53 +46,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/errorMessage'
-  /tasks/{jobId}/{taskId}/completed:
-    post:
-      operationId: completeTask
-      tags:
-        - tasks
-      summary: update overseer on completion of tiling task
-      parameters:
-        - in: path
-          name: jobId
-          schema:
-            type: string
-            format: uuid
-          required: true
-          description: job id
-        - in: path
-          name: taskId
-          schema:
-            type: string
-            format: uuid
-          required: true
-          description: task id
-      responses:
-        200:
-          description: OK
-          content:
-            text/plain:
-              schema:
-                type: string
-                example: OK
-        400:
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorMessage'
-        404:
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorMessage'
-        500:
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorMessage'
   /toc:
     post:
       operationId: getToc

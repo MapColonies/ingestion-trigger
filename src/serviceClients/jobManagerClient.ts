@@ -4,9 +4,7 @@ import { Logger } from '@map-colonies/js-logger';
 import { IngestionParams, ProductType } from '@map-colonies/mc-model-types';
 import { SERVICES } from '../common/constants';
 import { OperationStatus } from '../common/enums';
-import { ICompletedTasks } from '../tasks/interfaces';
-import { ITaskParameters } from '../layers/interfaces';
-import { HttpClient, IHttpRetryConfig, parseConfig } from './clientsBase/httpClient';
+import { HttpClient, IHttpRetryConfig } from '@map-colonies/mc-utils';
 
 interface ICreateTaskBody {
   description?: string;
@@ -79,15 +77,8 @@ const jobType = config.get<string>('jobType');
 const taskType = config.get<string>('taskType');
 @injectable()
 export class JobManagerClient extends HttpClient {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   public constructor(@inject(SERVICES.LOGGER) protected readonly logger: Logger, @inject(SERVICES.CONFIG) config: IConfig) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const retryConfig = parseConfig(config.get<IHttpRetryConfig>('httpRetry'));
-    super(logger, retryConfig);
-    this.targetService = 'DiscreteIngestionDB'; //name of target for logs
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    this.axiosOptions.baseURL = config.get<string>('storageServiceURL');
+    super(logger, config.get<string>('storageServiceURL'), 'DiscreteIngestionDB', config.get<IHttpRetryConfig>('httpRetry'));
   }
 
   public async createLayerJob(data: IngestionParams, layerRelativePath: string): Promise<string> {
@@ -103,10 +94,12 @@ export class JobManagerClient extends HttpClient {
       producerName: data.metadata.producerName,
       productName: data.metadata.productName,
       productType: data.metadata.productType,
-      tasks: [{
-        parameters: data,
-        type: taskType,
-      }],
+      tasks: [
+        {
+          parameters: data,
+          type: taskType,
+        },
+      ],
     };
     const res = await this.post<ICreateJobResponse>(createLayerTasksUrl, createJobRequest);
     return res.id;
@@ -120,7 +113,6 @@ export class JobManagerClient extends HttpClient {
     };
     await this.post(createTasksUrl, req);
   }
-
 
   public async updateJobStatus(jobId: string, status: OperationStatus, reason?: string, catalogId?: string): Promise<void> {
     const updateTaskUrl = `/jobs/${jobId}`;

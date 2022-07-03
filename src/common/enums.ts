@@ -4,6 +4,8 @@ export enum OperationStatus {
     IN_PROGRESS = 'In-Progress',
     COMPLETED = 'Completed',
     FAILED = 'Failed',
+    EXPIRED = 'Expired',
+    ABORTED = 'Aborted',
   }
   
   export enum MapServerCacheType {

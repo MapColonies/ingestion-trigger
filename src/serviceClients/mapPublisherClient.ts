@@ -4,19 +4,12 @@ import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
 import { NotFoundError } from '@map-colonies/error-types';
 import { IPublishMapLayerRequest } from '../layers/interfaces';
-import { HttpClient, IHttpRetryConfig, parseConfig } from './clientsBase/httpClient';
+import { HttpClient, IHttpRetryConfig } from '@map-colonies/mc-utils';
 
 @injectable()
 export class MapPublisherClient extends HttpClient {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   public constructor(@inject(SERVICES.LOGGER) protected readonly logger: Logger, @inject(SERVICES.CONFIG) config: IConfig) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const retryConfig = parseConfig(config.get<IHttpRetryConfig>('httpRetry'));
-    super(logger, retryConfig);
-    this.targetService = 'LayerPublisher'; //name of target for logs
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    this.axiosOptions.baseURL = config.get<string>('mapPublishingServiceURL');
+    super(logger, config.get<string>('mapPublishingServiceURL'), 'mapLayerPublisher' ,config.get<IHttpRetryConfig>('httpRetry'));
   }
 
   public async publishLayer(publishReq: IPublishMapLayerRequest): Promise<IPublishMapLayerRequest> {

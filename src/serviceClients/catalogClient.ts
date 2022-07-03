@@ -5,8 +5,7 @@ import { IRasterCatalogUpsertRequestBody, LayerMetadata } from '@map-colonies/mc
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
 import { FindRecordResponse, IConfig } from '../common/interfaces';
-import { HttpClient, IHttpRetryConfig, parseConfig } from './clientsBase/httpClient';
-
+import { HttpClient, IHttpRetryConfig } from '@map-colonies/mc-utils';
 interface ICreateRecordResponse {
   id: string;
   taskIds: string[];
@@ -14,13 +13,8 @@ interface ICreateRecordResponse {
 
 @injectable()
 export class CatalogClient extends HttpClient {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   public constructor(@inject(SERVICES.LOGGER) protected readonly logger: Logger, @inject(SERVICES.CONFIG) config: IConfig) {
-    const retryConfig = parseConfig(config.get<IHttpRetryConfig>('httpRetry'));
-    super(logger, retryConfig);
-    this.targetService = 'Catalog'; //name of target for logs
-    this.axiosOptions.baseURL = config.get<string>('catalogPublishingServiceURL');
+    super(logger, config.get<string>('catalogPublishingServiceURL'), 'Catalog', config.get<IHttpRetryConfig>('httpRetry'));
   }
 
   public async exists(productId: string, productVersion?: string, productType?: string): Promise<boolean> {
