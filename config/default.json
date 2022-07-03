@@ -33,9 +33,7 @@
   "storageServiceURL": "http://localhost:8081",
   "syncServiceURL": "http://localhost:8082",
   "mapPublishingServiceURL": "http://localhost:8083",
-  "publicMapServerURL": "http://localhost:8084",
   "catalogPublishingServiceURL": "http://localhost:8085",
-  "mapServerUrl": "http://localhost:8086",
   "tiling": {
     "zoomGroups": "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23"
   },

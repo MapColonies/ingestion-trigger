@@ -17,6 +17,7 @@ export class LayersController {
       await this.manager.createLayer(req.body);
       return res.sendStatus(httpStatus.OK);
     } catch (err) {
+      console.log(err);
       next(err);
     }
   };

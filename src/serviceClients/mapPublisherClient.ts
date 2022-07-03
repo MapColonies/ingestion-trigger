@@ -2,7 +2,7 @@ import { Logger } from '@map-colonies/js-logger';
 import { IConfig } from 'config';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
-import { NotFoundError } from '../common/exceptions/http/notFoundError';
+import { NotFoundError } from '@map-colonies/error-types';
 import { IPublishMapLayerRequest } from '../layers/interfaces';
 import { HttpClient, IHttpRetryConfig, parseConfig } from './clientsBase/httpClient';
 

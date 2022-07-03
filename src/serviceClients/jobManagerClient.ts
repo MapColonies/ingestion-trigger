@@ -10,7 +10,7 @@ import { HttpClient, IHttpRetryConfig, parseConfig } from './clientsBase/httpCli
 
 interface ICreateTaskBody {
   description?: string;
-  parameters: ITaskParameters;
+  parameters: IngestionParams;
   reason?: string;
   type?: string;
   status?: OperationStatus;
@@ -90,7 +90,7 @@ export class JobManagerClient extends HttpClient {
     this.axiosOptions.baseURL = config.get<string>('storageServiceURL');
   }
 
-  public async createLayerJob(data: IngestionParams, layerRelativePath: string, taskParams?: ITaskParameters[]): Promise<string> {
+  public async createLayerJob(data: IngestionParams, layerRelativePath: string): Promise<string> {
     const resourceId = data.metadata.productId as string;
     const version = data.metadata.productVersion as string;
     const createLayerTasksUrl = `/jobs`;
@@ -103,43 +103,24 @@ export class JobManagerClient extends HttpClient {
       producerName: data.metadata.producerName,
       productName: data.metadata.productName,
       productType: data.metadata.productType,
-      tasks: taskParams?.map((params) => {
-        return {
-          type: taskType,
-          parameters: params,
-        };
-      }),
+      tasks: [{
+        parameters: data,
+        type: taskType,
+      }],
     };
-
     const res = await this.post<ICreateJobResponse>(createLayerTasksUrl, createJobRequest);
     return res.id;
   }
 
-  public async createTasks(jobId: string, taskParams: ITaskParameters[]): Promise<void> {
+  public async createTask(jobId: string, taskParams: IngestionParams): Promise<void> {
     const createTasksUrl = `/jobs/${jobId}/tasks`;
-    const req = taskParams.map((params) => {
-      return {
-        type: taskType,
-        parameters: params,
-      };
-    });
+    const req = {
+      type: taskType,
+      parameters: taskParams,
+    };
     await this.post(createTasksUrl, req);
   }
 
-  public async getCompletedZoomLevels(jobId: string): Promise<ICompletedTasks> {
-    const getJobUrl = `/jobs/${jobId}`;
-    const query = {
-      shouldReturnTasks: false,
-    };
-    const res = await this.get<IGetJobResponse>(getJobUrl, query);
-    return {
-      status: res.status as OperationStatus,
-      completed: res.completedTasks + res.failedTasks + res.expiredTasks == res.taskCount,
-      successful: res.completedTasks === res.taskCount,
-      metadata: (res.parameters as unknown as IngestionParams).metadata,
-      relativePath: (res.parameters as unknown as { layerRelativePath: string }).layerRelativePath,
-    };
-  }
 
   public async updateJobStatus(jobId: string, status: OperationStatus, reason?: string, catalogId?: string): Promise<void> {
     const updateTaskUrl = `/jobs/${jobId}`;

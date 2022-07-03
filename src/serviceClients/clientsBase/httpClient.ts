@@ -9,11 +9,8 @@ import { inject } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import axiosRetry, { exponentialDelay, IAxiosRetryConfig } from 'axios-retry';
 import { SERVICES } from '../../common/constants';
-import { BadRequestError } from '../../common/exceptions/http/badRequestError';
-import { HttpError } from '../../common/exceptions/http/httpError';
-import { InternalServerError } from '../../common/exceptions/http/internalServerError';
-import { NotFoundError } from '../../common/exceptions/http/notFoundError';
-import { ConflictError } from '../../common/exceptions/http/conflictError';
+import { ConflictError, NotFoundError, BadRequestError, InternalServerError } from '@map-colonies/error-types';
+import { HttpError } from '@map-colonies/error-express-handler';
 
 export abstract class HttpClient {
   protected targetService = '';

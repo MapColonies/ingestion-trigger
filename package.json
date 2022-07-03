@@ -1,7 +1,7 @@
 {
-  "name": "service-name",
+  "name": "ingestion-trigger",
   "version": "1.0.0",
-  "description": "This is template for map colonies typescript service",
+  "description": "this is an trigger service for ingestion workflow",
   "main": "./src/index.ts",
   "scripts": {
     "test:unit": "jest --config=./tests/configurations/unit/jest.config.js",
@@ -56,6 +56,7 @@
     "@opentelemetry/api-metrics": "0.23.0",
     "@opentelemetry/instrumentation-express": "0.23.0",
     "@opentelemetry/instrumentation-http": "0.23.0",
+    "aws-sdk": "^2.1158.0",
     "compression": "^1.7.4",
     "config": "^3.3.6",
     "express": "^4.17.1",
