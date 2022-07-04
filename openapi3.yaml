@@ -6,82 +6,146 @@ info:
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
-
 paths:
-  /anotherResource:
-    get:
-      operationId: getAnotherResource
-      tags:
-        - anotherResource
-      summary: gets the resource
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/anotherResource'
-  /resourceName:
-    get:
-      operationId: getResourceName
-      tags:
-        - resourceName
-      summary: gets the resource
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/resource'
+  /layers:
     post:
-      operationId: createResource
+      operationId: createLayer
       tags:
-        - resourceName
-      summary: creates a new record of type resource
+        - layers
+      summary: start a process of creating new layer from raw data
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: './Schema/discreteIngestion/ingestionParams.yaml#/components/schemas/IngestionParams'
+                - $ref: '#/components/schemas/IngestionParams'
       responses:
-        201:
-          description: created
+        200:
+          description: OK
           content:
-            application/json:
+            text/plain:
               schema:
-                $ref: '#/components/schemas/resource'
+                type: string
+                example: OK
         400:
-          description: Bad Request
+          description: Invalid request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/error'
+                $ref: '#/components/schemas/errorMessage'
+        409:
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+        500:
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+  /toc:
+    post:
+      operationId: getToc
+      tags:
+        - toc
+      summary: gets a toc file representing the given layer
+      requestBody:
+        description: A json object containing operation and toc source type
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                productId:
+                  type: string
+                productVersion:
+                  type: string
+                operation:
+                  $ref: '#/components/schemas/operation'
+                productType:
+                  $ref: '#/components/schemas/productType'
+              required:
+                - productId
+                - productVersion
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tocResponse'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/tocResponse'
+        400:
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+        404:
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+        500:
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
 components:
   schemas:
-    error:
+    errorMessage:
       type: object
+      properties:
+        message::
+          type: string
+        stacktrace:
+          type: string
       required:
         - message
-      properties:
-        message:
-          type: string
-    resource:
+    IngestionParams:
       type: object
-      required:
-        - id
-        - name
-        - description
       properties:
-        id:
-          type: number
-          format: int64
-        name:
-          type: string
-        description:
-          type: string
-    anotherResource:
+        metadata:
+          type: object
+          properties:
+            productType:
+              $ref: '#/components/schemas/productType'
+    tocResponse:
       type: object
-      required:
-        - kind
-        - isAlive
       properties:
-        kind:
-          type: string
-        isAlive:
-          type: boolean
+        operation:
+          $ref: '#/components/schemas/operation'
+        productType:
+          $ref: '#/components/schemas/productType'
+        metadata:
+          oneOf:
+            - $ref: './Schema/updateLayerMetadata.yaml#/components/schemas/updateLayerMetadata'
+            - type: object
+              properties:
+                productId:
+                  type: string
+                productVersion:
+                  type: string
+    operation:
+      type: string
+      enum:
+        - ADD
+        - UPDATE
+        - REMOVE
+    productType:
+      type: string
+      enum:
+        - Orthophoto
+        - OrthophotoHistory
+        - RasterMap
+        - RasterAid
+        - RasterVector
+      description: valid product types for ingestion
