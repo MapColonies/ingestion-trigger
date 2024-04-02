@@ -1,86 +1,185 @@
 openapi: 3.0.1
 info:
-  title: service-name
+  title: ingestion-trigger
   description: basic template for map colonies service
   version: 1.0.0
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
 paths:
-  /anotherResource:
-    get:
-      operationId: getAnotherResource
-      tags:
-        - anotherResource
-      summary: gets the resource
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/anotherResource'
-  /resourceName:
-    get:
-      operationId: getResourceName
-      tags:
-        - resourceName
-      summary: gets the resource
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/resource'
+  /ingestion:
     post:
-      operationId: createResource
+      operationId: newIngestion
       tags:
-        - resourceName
-      summary: creates a new record of type resource
+        - ingestion
+      summary: start a process of creating new layer from raw data
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                ./Schema/ingestionTrigger/rasterLayer.yaml#/components/schemas/NewRasterLayer
+            examples:
+              NewRasterLayerExample:
+                $ref: >-
+                  ./Schema/ingestionTrigger/rasterLayerExample.yaml#/components/examples/NewRasterLayerExample
       responses:
-        201:
-          description: created
+        '200':
+          description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/resource'
-        400:
-          description: Bad Request
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/successMessage
+        '400':
+          description: Invalid request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/error'
-components:
-  schemas:
-    error:
-      type: object
-      required:
-        - message
-      properties:
-        message:
-          type: string
-    resource:
-      type: object
-      required:
-        - id
-        - name
-        - description
-      properties:
-        id:
-          type: number
-          format: int64
-        name:
-          type: string
-        description:
-          type: string
-    anotherResource:
-      type: object
-      required:
-        - kind
-        - isAlive
-      properties:
-        kind:
-          type: string
-        isAlive:
-          type: boolean
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '409':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+    put:
+      operationId: updateLayer
+      tags:
+        - ingestion
+      summary: start a process of creating update to exists layer from raw data
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                ./Schema/ingestionTrigger/rasterLayer.yaml#/components/schemas/UpdateRasterLayer
+            examples:
+              UpdateRasterLayerExample:
+                $ref: >-
+                  ./Schema/ingestionTrigger/rasterLayerExample.yaml#/components/examples/UpdateRasterLayerExample
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/successMessage
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '409':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '500':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+  /ingestion/validateSources:
+    post:
+      operationId: validateSources
+      tags:
+        - ingestion
+      summary: checks that all provided files have valid raw data
+      requestBody:
+        description: A json object containing array of files and origin source path
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: >-
+                ./Schema/ingestionTrigger/inputFiles/rasterLayerInputFiles.yaml#/components/schemas/InputFiles
+            example:
+              inputFiles:
+                originDirectory: string
+                fileNames:
+                  - example.tif
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/filesInfoResponse
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+  /ingestion/sourcesInfo:
+    post:
+      operationId: getGdalInfo
+      tags:
+        - ingestion
+      summary: returns the GDAL info for the provided source files
+      requestBody:
+        description: A json object containing array of files and origin source path
+        required: true
+        content:
+          application/json:
+            schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/inputFiles/rasterLayerInputFiles.yaml#/components/schemas/InputFiles
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/filesInfoResponse
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '404':
+          description: Files not found
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+              
+
+

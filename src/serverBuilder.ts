@@ -7,11 +7,13 @@ import { middleware as OpenApiMiddleware } from 'express-openapi-validator';
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import httpLogger from '@map-colonies/express-access-log-middleware';
+import getStorageExplorerMiddleware from '@map-colonies/storage-explorer-middleware';
 import { defaultMetricsMiddleware, getTraceContexHeaderMiddleware } from '@map-colonies/telemetry';
 import { SERVICES } from './common/constants';
 import { IConfig } from './common/interfaces';
 import { RESOURCE_NAME_ROUTER_SYMBOL } from './resourceName/routes/resourceNameRouter';
 import { ANOTHER_RESOURCE_ROUTER_SYMBOL } from './anotherResource/routes/anotherResourceRouter';
+import { makeInsensitive } from './utils/stringCapitalizationPermutations';
 
 @injectable()
 export class ServerBuilder {
@@ -63,9 +65,29 @@ export class ServerBuilder {
     const ignorePathRegex = new RegExp(`^${this.config.get<string>('openapiConfig.basePath')}/.*`, 'i');
     const apiSpecPath = this.config.get<string>('openapiConfig.filePath');
     this.serverInstance.use(OpenApiMiddleware({ apiSpec: apiSpecPath, validateRequests: true, ignorePaths: ignorePathRegex }));
+    this.filePickerHandlerMiddleware();
   }
 
   private registerPostRoutesMiddleware(): void {
     this.serverInstance.use(getErrorHandlerMiddleware());
+  }
+
+  private filePickerHandlerMiddleware(): void {
+    const physicalDirPath = this.config.get<string>('layerSourceDir');
+    const displayNameDir = this.config.get<string>('displayNameDir');
+    const mountDirs = [
+      {
+        physical: physicalDirPath,
+        displayName: displayNameDir,
+        includeFilesExt: this.getFileExtensions(),
+      },
+    ];
+    this.serverInstance.use(getStorageExplorerMiddleware(mountDirs, this.logger as unknown as Record<string, unknown>));
+  }
+
+  private getFileExtensions(): string[] {
+    const rawExtensions = this.config.get<string[]>('validFileExtensions');
+    const extensions = rawExtensions.map((ext) => ext.trim());
+    return makeInsensitive(...extensions);
   }
 }
