@@ -149,8 +149,8 @@ paths:
         content:
           application/json:
             schema:
-                $ref: >-
-                  ./Schema/ingestionTrigger/inputFiles/rasterLayerInputFiles.yaml#/components/schemas/InputFiles
+              $ref: >-
+                ./Schema/ingestionTrigger/inputFiles/rasterLayerInputFiles.yaml#/components/schemas/InputFiles
       responses:
         '200':
           description: OK
@@ -180,6 +180,3 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
-              
-
-
