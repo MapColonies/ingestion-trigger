@@ -73,8 +73,8 @@ export class ServerBuilder {
   }
 
   private filePickerHandlerMiddleware(): void {
-    const physicalDirPath = this.config.get<string>('layerSourceDir');
-    const displayNameDir = this.config.get<string>('displayNameDir');
+    const physicalDirPath = this.config.get<string>('storageExplorer.layerSourceDir');
+    const displayNameDir = this.config.get<string>('storageExplorer.displayNameDir');
     const mountDirs = [
       {
         physical: physicalDirPath,
@@ -86,7 +86,7 @@ export class ServerBuilder {
   }
 
   private getFileExtensions(): string[] {
-    const rawExtensions = this.config.get<string[]>('validFileExtensions');
+    const rawExtensions = this.config.get<string[]>('storageExplorer.validFileExtensions');
     const extensions = rawExtensions.map((ext) => ext.trim());
     return makeInsensitive(...extensions);
   }

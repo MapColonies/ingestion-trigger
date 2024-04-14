@@ -1,7 +1,9 @@
 openapi: 3.0.1
 info:
   title: ingestion-trigger
-  description: basic template for map colonies service
+  description: >-
+    Service that designed to validate and handle the ingestion of new layers
+    from raw data and update existing layers
   version: 1.0.0
   license:
     name: MIT
@@ -101,14 +103,14 @@ paths:
               inputFiles:
                 originDirectory: string
                 fileNames:
-                  - example.tif
+                  - example.gpkg
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/filesInfoResponse'
+                $ref: '#/components/schemas/validateSourcesResponse'
         '400':
           description: Invalid request
           content:
@@ -140,7 +142,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/filesInfoResponse'
+                $ref: '#/components/schemas/sourcesInfoResponse'
         '400':
           description: Invalid request
           content:
@@ -331,20 +333,20 @@ components:
           format: date-time
         resolutionDegree:
           type: number
-          minimum: 9.e-8
-          maximum: 0.072
+          minimum: 1.67638e-7
+          maximum: 0.703125
           format: double
           description: min resolution of layer in degrees/pixel
         resolutionMeter:
           type: number
-          minimum: 0.01
-          maximum: 8000
+          minimum: 0.0185
+          maximum: 78273
           format: double
           description: min resolution of layer in meters
         sourceResolutionMeter:
           type: number
-          minimum: 0.01
-          maximum: 8000
+          minimum: 0.0185
+          maximum: 78273
           format: double
           description: min resolution of layer in meters
         horizontalAccuracyCE90:
@@ -376,7 +378,7 @@ components:
         geometry:
           $ref: '#/components/schemas/Geometry'
           example:
-            - example.tif
+            - example.gpkg
     InputFiles:
       title: Layer input files
       type: object
@@ -392,7 +394,7 @@ components:
             pattern: ^.+\.[Gg][Pp][Kk][Gg]$
             description: layer source files
           example:
-            - example.tif
+            - example.gpkg
       required:
         - originDirectory
         - fileNames
@@ -473,7 +475,19 @@ components:
           $ref: '#/components/schemas/polygonPartMetadata'
         inputFiles:
           $ref: '#/components/schemas/InputFiles'
-    filesInfoResponse:
+    validateSourcesResponse:
+      type: object
+      properties:
+        isValid:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Files are valid
+      required:
+        - status
+        - message
+    sourcesInfoResponse:
       type: array
       items:
         type: object
@@ -494,7 +508,7 @@ components:
         example:
           crs: 4326
           fileFormat: gpkg
-          pixelSize: 0.072
+          pixelSize: 0.703125
           footprint:
             type: Polygon
             coordinates:
@@ -522,9 +536,9 @@ components:
             name: string
             imagingTimeBeginUTC: '2024-01-28T13:47:43.427Z'
             imagingTimeEndUTC: '2024-01-28T13:47:43.427Z'
-            resolutionDegree: 0.072
-            resolutionMeter: 8000
-            sourceResolutionMeter: 8000
+            resolutionDegree: 0.703125
+            resolutionMeter: 78273
+            sourceResolutionMeter: 78273
             horizontalAccuracyCE90: 10
             sensors:
               - string
@@ -549,7 +563,7 @@ components:
         inputFiles:
           originDirectory: string
           fileNames:
-            - example.tif
+            - example.gpkg
     NewRasterLayerExample:
       value:
         metadata:
@@ -570,7 +584,7 @@ components:
             name: string
             imagingTimeBeginUTC: '2024-01-28T13:47:43.427Z'
             imagingTimeEndUTC: '2024-01-28T13:47:43.427Z'
-            resolutionDegree: 0.072
+            resolutionDegree: 0.703125
             resolutionMeter: 8000
             sourceResolutionMeter: 8000
             horizontalAccuracyCE90: 10
@@ -597,4 +611,4 @@ components:
         inputFiles:
           originDirectory: string
           fileNames:
-            - example.tif
+            - example.gpkg
