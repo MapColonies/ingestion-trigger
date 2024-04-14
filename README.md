@@ -2,7 +2,7 @@
 
 ----------------------------------
 
-This is a specialized service for the MapColonies project, designed to handle the ingestion of new layers from raw data and update existing layers. It’s built in Typescript.
+This is a specialized service for the MapColonies project, designed to trigger the ingestion of new layers from raw data and update existing layers. It’s built in Typescript.
 
 ### Template Features:
 

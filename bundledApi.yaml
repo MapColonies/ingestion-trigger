@@ -2,8 +2,8 @@ openapi: 3.0.1
 info:
   title: ingestion-trigger
   description: >-
-    Service that designed to validate and handle the ingestion of new layers
-    from raw data and update existing layers
+    Service that designed to validate and trigger ingestion of new layers from
+    raw data and update existing layers
   version: 1.0.0
   license:
     name: MIT
@@ -100,10 +100,9 @@ paths:
             schema:
               $ref: '#/components/schemas/InputFiles'
             example:
-              inputFiles:
-                originDirectory: string
-                fileNames:
-                  - example.gpkg
+              originDirectory: string
+              fileNames:
+                - example.gpkg
       responses:
         '200':
           description: OK
