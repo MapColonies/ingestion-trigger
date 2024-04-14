@@ -25,7 +25,9 @@
       }
     }
   },
-  "layerSourceDir": "/layerSources",
-  "displayNameDir": "\\layerSources",
-  "validFileExtensions": ["gpkg"]
+  "storageExplorer": {
+    "layerSourceDir": "/layerSources",
+    "displayNameDir": "\\layerSources",
+    "validFileExtensions": ["gpkg"]
+  }
 }

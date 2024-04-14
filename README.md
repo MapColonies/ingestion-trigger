@@ -1,8 +1,8 @@
-# Map Colonies typescript service template
+# Map Colonies Ingestion Trigger Service
 
 ----------------------------------
 
-This is a basic repo template for building new MapColonies web services in Typescript.
+This is a specialized service for the MapColonies project, designed to handle the ingestion of new layers from raw data and update existing layers. It’s built in Typescript.
 
 ### Template Features:
 
@@ -49,7 +49,7 @@ This is a basic repo template for building new MapColonies web services in Types
 - snyk
 
 ## API
-Checkout the OpenAPI spec [here](/openapi3.yaml)
+Checkout the OpenAPI spec for the ingestion-trigger [here](/openapi3.yaml)
 
 ## Installation
 

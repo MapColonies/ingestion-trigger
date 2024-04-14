@@ -71,6 +71,11 @@ env:
   metrics:
     enabled: false
     url: http://localhost:55681/v1/metrics
+  storageExplorer:  
+    layerSourceDir: '/layerSources'
+    displayNameDir: "\\layerSources"
+    validFileExtensions: 
+    - 'gpkg'    
 
 resources:
   enabled: true

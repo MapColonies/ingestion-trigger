@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
   title: ingestion-trigger
-  description: basic template for map colonies service
+  description: Service that designed to validate and handle the ingestion of new layers from raw data and update existing layers
   version: 1.0.0
   license:
     name: MIT
@@ -114,7 +114,7 @@ paths:
               inputFiles:
                 originDirectory: string
                 fileNames:
-                  - example.tif
+                  - example.gpkg
       responses:
         '200':
           description: OK
