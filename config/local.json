@@ -26,7 +26,7 @@
     }
   },
   "storageExplorer": {
-    "layerSourceDir": "/layerSources",
+    "layerSourceDir": "/home/almogk/Documents/raster-team/ingestion-trigger-checks/layerSources",
     "displayNameDir": "\\layerSources",
     "watchDirectory": "watch",
     "validFileExtensions": ["gpkg"]

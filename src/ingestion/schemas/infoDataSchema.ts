@@ -1,0 +1,29 @@
+import { z } from 'zod';
+import { GeoJSON } from 'geojson';
+import config from 'config';
+import { PixelRange } from '../interfaces';
+
+export const infoDataSchema = z
+  .object({
+    crs: z.number().refine((crs) => {
+      const validCRSs = config.get<number[]>('validationValuesByInfo.crs');
+      const isValidCrs = validCRSs.includes(crs);
+      return isValidCrs ? true : { message: `Unsupported crs: ${crs}, must have valid crs: ${validCRSs.toString()}.` };
+    }),
+    fileFormat: z.string().refine((value) => {
+      const validFormats = config.get<string[]>('validationValuesByInfo.fileFormat').map((format) => format.toLowerCase());
+      const isValidFormat = validFormats.includes(value.toLowerCase());
+      return isValidFormat ? true : { message: `Unsupported file format: ${value}, must have valid file format: ${validFormats.toString()}.` };
+    }),
+    pixelSize: z.number().refine((value) => {
+      const validPixelSize = config.get<PixelRange>('validationValuesByInfo.pixelSize');
+      const isValidPixelSize = value > validPixelSize.min && value < validPixelSize.max;
+      return isValidPixelSize
+        ? true
+        : { message: `Unsupported pixel size: ${value}, not in the range of: ${validPixelSize.min} to ${validPixelSize.max}.` };
+    }),
+    extentPolygon: z.custom<GeoJSON>(),
+  })
+  .describe('InfoDataSchema');
+
+export type InfoData = z.infer<typeof infoDataSchema>;
