@@ -1,10 +1,11 @@
 import { inject, injectable } from 'tsyringe';
 import { z } from 'zod';
 import { Logger } from '@map-colonies/js-logger';
-import { BadRequestError } from '@map-colonies/error-types';
+import { StatusCodes } from 'http-status-codes';
 import { InputFiles } from '@map-colonies/mc-model-types';
+import { BadRequestError } from '@map-colonies/error-types';
 import { SERVICES } from '../../common/constants';
-import { SourcesValidationResponse } from '../interfaces';
+import { SourcesValidationResponseWithStatusCode } from '../interfaces';
 import { ZodValidator } from '../../utils/zodValidator';
 import { inputFilesSchema } from '../schemas/inputFilesSchema';
 import { SourceValidator } from '../validators/sourceValidator';
@@ -19,25 +20,27 @@ export class IngestionManager {
     private readonly sourceValidator: SourceValidator
   ) {}
 
-  public async validateSources(sources: unknown): Promise<SourcesValidationResponse> {
+  public async validateSources(sources: unknown): Promise<SourcesValidationResponseWithStatusCode> {
     try {
       const validatedInputFiles = await this.zodValidator.validate<z.ZodType<InputFiles>>(inputFilesSchema, sources);
       const { originDirectory, fileNames } = validatedInputFiles;
 
-      this.logger.debug({
-        files: fileNames,
-        originDirectory: originDirectory,
-        msg: 'validating gdal info for files',
-      });
       await this.sourceValidator.validateGdalInfo(fileNames, originDirectory);
 
-      const validResponse: SourcesValidationResponse = { isValid: true, message: 'Sources are valid' };
+      const validResponse: SourcesValidationResponseWithStatusCode = { isValid: true, message: 'Sources are valid', statusCode: StatusCodes.OK };
       return validResponse;
     } catch (err) {
-      if (!(err instanceof BadRequestError)) {
+      if (!(err instanceof Error)) {
         throw err;
       }
-      const response: SourcesValidationResponse = { isValid: false, message: err.message };
+      const response: SourcesValidationResponseWithStatusCode = {
+        isValid: false,
+        message: err.message,
+        statusCode: StatusCodes.INTERNAL_SERVER_ERROR,
+      };
+      if (err instanceof BadRequestError) {
+        response.statusCode = StatusCodes.BAD_REQUEST;
+      }
       return response;
     }
   }

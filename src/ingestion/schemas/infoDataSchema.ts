@@ -16,11 +16,11 @@ export const infoDataSchema = z
       return isValidFormat ? true : { message: `Unsupported file format: ${value}, must have valid file format: ${validFormats.toString()}.` };
     }),
     pixelSize: z.number().refine((value) => {
-      const validPixelSize = config.get<PixelRange>('validationValuesByInfo.pixelSize');
-      const isValidPixelSize = value > validPixelSize.min && value < validPixelSize.max;
+      const pixelSizeRange = config.get<PixelRange>('validationValuesByInfo.pixelSizeRange');
+      const isValidPixelSize = value > pixelSizeRange.min && value < pixelSizeRange.max;
       return isValidPixelSize
         ? true
-        : { message: `Unsupported pixel size: ${value}, not in the range of: ${validPixelSize.min} to ${validPixelSize.max}.` };
+        : { message: `Unsupported pixel size: ${value}, not in the range of: ${pixelSizeRange.min} to ${pixelSizeRange.max}.` };
     }),
     extentPolygon: z.custom<GeoJSON>(),
   })

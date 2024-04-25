@@ -32,7 +32,6 @@ export class GdalInfoValidator {
       );
     } catch (err) {
       const msg = `failed to validate info data for file: ${filePath}`;
-
       if (err instanceof BadRequestError) {
         const badRequestMsg = `${msg}: ${err.message}`;
         throw new BadRequestError(badRequestMsg);

@@ -3,6 +3,10 @@ export interface SourcesValidationResponse {
   message: string;
 }
 
+export interface SourcesValidationResponseWithStatusCode extends SourcesValidationResponse {
+  statusCode: number;
+}
+
 export interface PixelRange {
   min: number;
   max: number;

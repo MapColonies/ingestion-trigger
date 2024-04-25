@@ -2,31 +2,33 @@ import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import { z } from 'zod';
 import * as gdal from 'gdal-async';
-import { BadRequestError } from '@map-colonies/error-types';
 import { SERVICES } from '../../common/constants';
 import { InfoData } from '../../ingestion/schemas/infoDataSchema';
 import { GdalInfo, gdalInfoSchema } from '../../ingestion/schemas/gdalDataSchema';
 import { ZodValidator } from '../zodValidator';
+import { LogContext } from '../logger/logContext';
 
 @injectable()
 export class GdalUtilities {
-  private readonly className: string;
+  private readonly logContext: LogContext;
 
   public constructor(@inject(SERVICES.LOGGER) protected readonly logger: Logger, private readonly zodValidator: ZodValidator) {
-    this.className = GdalUtilities.name;
+    this.logContext = {
+      dirName: __dirname,
+      fileName: __filename,
+      class: GdalUtilities.name,
+    };
   }
+
   public async getInfoData(filePath: string): Promise<InfoData | undefined> {
-    const fnName = this.getInfoData.name;
+    const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
 
     try {
-      this.logger.debug({
-        filePath,
-        msg: `get gdal info for path: ${filePath}`,
-      });
+      this.logger.debug({ msg: `get gdal info for path: ${filePath}` });
 
       const dataset: gdal.Dataset = await this.getDataset(filePath);
-      const jsonString = await gdal.infoAsync(dataset, ['-json']);
-      const info = await this.parseAndValidateGdalInfo(jsonString);
+      const infoJsonString = await gdal.infoAsync(dataset, ['-json']);
+      const info = await this.parseAndValidateGdalInfo(infoJsonString);
       const { driverShortName, wgs84Extent, geoTransform, stac } = info;
 
       const infoData: InfoData = {
@@ -40,25 +42,26 @@ export class GdalUtilities {
 
       return infoData;
     } catch (err) {
-      if (err instanceof BadRequestError) {
-        throw new BadRequestError(err.message);
-      } else {
-        const message = err instanceof Error ? err.message : 'failed to get gdal info on file';
-        this.logger.error({
-          filePath,
-          msg: `[${this.className}][${fnName}] error occurred: ${message}`,
-          err,
-        });
-        throw new Error(message);
+      let message = 'failed to get gdal info on file';
+      if (err instanceof Error) {
+        message = err.message;
       }
+      this.logger.error({
+        msg: `error occurred: ${message}`,
+        err,
+        logContext: logCtx,
+        metadata: { filePath },
+      });
+      throw new Error(message);
     }
   }
 
   private async parseAndValidateGdalInfo(jsonString: string): Promise<GdalInfo> {
-    const fnName = this.parseAndValidateGdalInfo.name;
+    const logCtx: LogContext = { ...this.logContext, function: this.parseAndValidateGdalInfo.name };
     this.logger.debug({
-      msg: `[${this.className}][${fnName}] parsing gdalInfo string`,
-      jsonString,
+      msg: 'parsing and validating gdalInfo string',
+      logContext: logCtx,
+      metadata: { jsonString },
     });
 
     const data: unknown = JSON.parse(jsonString);
@@ -67,13 +70,17 @@ export class GdalUtilities {
   }
 
   private async getDataset(filePath: string): Promise<gdal.Dataset> {
+    const logCtx: LogContext = { ...this.logContext, function: this.getDataset.name };
+
     try {
       return await gdal.openAsync(filePath);
     } catch (err) {
-      const errMessage = `failed to open file: ${filePath}`;
-      const fnName = this.getDataset.name;
-      this.logger.error({ msg: `[${this.className}][${fnName}] - ${errMessage}`, filePath, err });
-      throw new BadRequestError(errMessage);
+      let errMsg = `failed to open dataset for file: ${filePath}`;
+      if (err instanceof Error) {
+        errMsg = err.message;
+      }
+      this.logger.error({ msg: errMsg, err, logContext: logCtx, metadata: { filePath } });
+      throw new Error(errMsg);
     }
   }
 }
