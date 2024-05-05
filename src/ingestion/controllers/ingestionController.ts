@@ -1,22 +1,28 @@
 import { RequestHandler } from 'express';
 import { InputFiles } from '@map-colonies/mc-model-types';
-import { injectable } from 'tsyringe';
-import { SourcesValidationResponse, SourcesValidationResponseWithStatusCode } from '../interfaces';
+import { StatusCodes } from 'http-status-codes';
+import { inject, injectable } from 'tsyringe';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
+import { SourcesValidationResponse } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 
-export type SourcesValidationHandler = RequestHandler<undefined, SourcesValidationResponse, InputFiles>;
+type SourcesValidationHandler = RequestHandler<undefined, SourcesValidationResponse, InputFiles>;
 
 @injectable()
 export class IngestionController {
-  public constructor(private readonly ingestionManager: IngestionManager) {}
+  public constructor(
+    @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator,
+    private readonly ingestionManager: IngestionManager
+  ) {}
 
   public validateSources: SourcesValidationHandler = async (req, res, next): Promise<void> => {
     try {
-      const inputFilesToValidate: unknown = req.body;
-      const { isValid, message, statusCode }: SourcesValidationResponseWithStatusCode = await this.ingestionManager.validateSources(
-        inputFilesToValidate
-      );
-      res.status(statusCode).send({ isValid, message });
+      const inputFilesRequestBody: unknown = req.body;
+      const validInputFilesRequestBody: InputFiles = await this.schemasValidator.validateInputFilesRequestBody(inputFilesRequestBody);
+
+      const validationResponse = await this.ingestionManager.validateSources(validInputFilesRequestBody);
+
+      res.status(StatusCodes.OK).send(validationResponse);
     } catch (error) {
       next(error);
     }

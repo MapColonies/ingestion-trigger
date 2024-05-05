@@ -32,14 +32,21 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/successMessage
         '400':
-          description: Invalid request
+          description: Bad request
           content:
             application/json:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '409':
-          description: Invalid request
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '422':
+          description: Unprocessable Content
           content:
             application/json:
               schema:
@@ -76,14 +83,21 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/successMessage
         '400':
-          description: Invalid request
+          description: Bad request
           content:
             application/json:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '409':
-          description: Invalid request
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '422':
+          description: Unprocessable Content
           content:
             application/json:
               schema:

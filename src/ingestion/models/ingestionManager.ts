@@ -1,47 +1,32 @@
 import { inject, injectable } from 'tsyringe';
-import { z } from 'zod';
 import { Logger } from '@map-colonies/js-logger';
-import { StatusCodes } from 'http-status-codes';
 import { InputFiles } from '@map-colonies/mc-model-types';
-import { BadRequestError } from '@map-colonies/error-types';
 import { SERVICES } from '../../common/constants';
-import { SourcesValidationResponseWithStatusCode } from '../interfaces';
-import { ZodValidator } from '../../utils/zodValidator';
-import { inputFilesSchema } from '../schemas/inputFilesSchema';
 import { SourceValidator } from '../validators/sourceValidator';
+import { FileNotFoundError, GdalInfoError } from '../errors/ingestionErrors';
+import { SourcesValidationResponse } from '../interfaces';
+import { InvalidGpkgError } from '../../serviceClients/database/errors';
 
 @injectable()
 export class IngestionManager {
   private readonly className = IngestionManager.name;
 
-  public constructor(
-    @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    private readonly zodValidator: ZodValidator,
-    private readonly sourceValidator: SourceValidator
-  ) {}
+  public constructor(@inject(SERVICES.LOGGER) private readonly logger: Logger, private readonly sourceValidator: SourceValidator) {}
 
-  public async validateSources(sources: unknown): Promise<SourcesValidationResponseWithStatusCode> {
+  public async validateSources(inputFiles: InputFiles): Promise<SourcesValidationResponse> {
     try {
-      const validatedInputFiles = await this.zodValidator.validate<z.ZodType<InputFiles>>(inputFilesSchema, sources);
-      const { originDirectory, fileNames } = validatedInputFiles;
+      const { originDirectory, fileNames } = inputFiles;
 
-      await this.sourceValidator.validateGdalInfo(fileNames, originDirectory);
+      await this.sourceValidator.validateFilesExist(originDirectory, fileNames);
+      await this.sourceValidator.validateGdalInfo(originDirectory, fileNames);
+      this.sourceValidator.validateGpkgFiles(fileNames, originDirectory);
 
-      const validResponse: SourcesValidationResponseWithStatusCode = { isValid: true, message: 'Sources are valid', statusCode: StatusCodes.OK };
-      return validResponse;
+      return { isValid: true, message: 'Sources are valid' };
     } catch (err) {
-      if (!(err instanceof Error)) {
-        throw err;
+      if (err instanceof FileNotFoundError || err instanceof GdalInfoError || err instanceof InvalidGpkgError) {
+        return { isValid: false, message: err.message };
       }
-      const response: SourcesValidationResponseWithStatusCode = {
-        isValid: false,
-        message: err.message,
-        statusCode: StatusCodes.INTERNAL_SERVER_ERROR,
-      };
-      if (err instanceof BadRequestError) {
-        response.statusCode = StatusCodes.BAD_REQUEST;
-      }
-      return response;
+      throw err;
     }
   }
 }

@@ -2,13 +2,13 @@ import { BadRequestError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { inject, injectable } from 'tsyringe';
 import { ZodError, z } from 'zod';
-import { SERVICES } from '../common/constants';
+import { SERVICES } from '../../common/constants';
 
 @injectable()
 export class ZodValidator {
   public constructor(@inject(SERVICES.LOGGER) private readonly logger: Logger) {}
 
-  public async validate<T extends z.ZodTypeAny>(schema: T, data: unknown): Promise<z.infer<T>> {
+  public async validate<T extends z.ZodSchema>(schema: T, data: unknown): Promise<z.infer<T>> {
     this.logger.debug({ message: 'Validating data', schema: schema.description, data });
     const result = await schema.safeParseAsync(data);
 

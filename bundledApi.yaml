@@ -31,13 +31,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/successMessage'
         '400':
-          description: Invalid request
+          description: Bad request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/errorMessage'
         '409':
-          description: Invalid request
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+        '422':
+          description: Unprocessable Content
           content:
             application/json:
               schema:
@@ -69,13 +75,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/successMessage'
         '400':
-          description: Invalid request
+          description: Bad request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/errorMessage'
         '409':
-          description: Invalid request
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+        '422':
+          description: Unprocessable Content
           content:
             application/json:
               schema:
@@ -318,7 +330,6 @@ components:
         id:
           type: string
           description: Layer's external identifier
-          pattern: ^[a-zA-Z0-9_-]+$
         name:
           type: string
           description: Layer's external name
@@ -369,9 +380,6 @@ components:
           items:
             type: string
           description: cities included in the layer
-        classification:
-          type: string
-          description: Permitted roles
         description:
           type: string
         geometry:
@@ -528,7 +536,7 @@ components:
           productSubType: string
           description: string
           region: string
-          classification: string
+          classification: '6'
           scale: 100000000
         partData:
           - id: string
@@ -571,11 +579,11 @@ components:
           productType: Orthophoto
           productSubType: string
           description: string
-          srs: string
-          srsName: string
+          srs: '4326'
+          srsName: WGS84GEO
           transparency: TRANSPARENT
           region: string
-          classification: string
+          classification: '6'
           producerName: string
           scale: 100000000
         partData:
