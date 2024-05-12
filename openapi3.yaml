@@ -29,8 +29,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: >-
-                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/successMessage
+                $ref: '#/components/schemas/successMessage'
         '400':
           description: Bad request
           content:
@@ -80,8 +79,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: >-
-                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/successMessage
+                $ref: '#/components/schemas/successMessage'
         '400':
           description: Bad request
           content:
