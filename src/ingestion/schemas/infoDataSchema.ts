@@ -21,6 +21,7 @@ export const createInfoDataSchema = (container: DependencyContainer) => {
   const config = container.resolve<IConfig>(SERVICES.CONFIG);
   const validCRSs = config.get<number[]>('validationValuesByInfo.crs');
   const validFormats = config.get<string[]>('validationValuesByInfo.fileFormat').map((format) => format.toLowerCase());
+
   const pixelSizeRange = config.get<PixelRange>('validationValuesByInfo.pixelSizeRange');
 
   const infoDataSchema = basicInfoDataSchema

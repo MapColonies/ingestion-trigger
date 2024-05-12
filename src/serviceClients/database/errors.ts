@@ -1,22 +1,22 @@
-export class InvalidGpkgError extends Error {
+export class GpkgError extends Error {
   public constructor(message: string) {
     super(message);
   }
 }
 
-export class InvalidIndexError extends InvalidGpkgError {
+export class InvalidIndexError extends GpkgError {
   public constructor(message: string) {
     super(message);
   }
 }
 
-export class UnsupportedGridError extends InvalidGpkgError {
+export class UnsupportedGridError extends GpkgError {
   public constructor(message: string) {
     super(message);
   }
 }
 
-export class UnsupportedTileSizeError extends InvalidGpkgError {
+export class UnsupportedTileSizeError extends GpkgError {
   public constructor(message: string) {
     super(message);
   }

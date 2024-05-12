@@ -35,16 +35,16 @@ export class SourceValidator {
         throw new FileNotFoundError(file, fullPath);
       });
     });
-
     await Promise.all(filePromises);
+
     this.logger.info({ msg: 'source files exist', logContext: logCtx });
   }
 
   public async validateGdalInfo(originDirectory: string, files: string[]): Promise<void> {
-    await this.gdalInfoValidator.validateInfoData(files, originDirectory);
+    await this.gdalInfoValidator.validateInfoData(originDirectory, files);
   }
 
-  public validateGpkgFiles(files: string[], originDirectory: string): void {
+  public validateGpkgFiles(originDirectory: string, files: string[]): void {
     this.gpkgManager.validateGpkgFiles(originDirectory, files);
   }
 }

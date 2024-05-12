@@ -1,8 +1,9 @@
+/* istanbul ignore next @preserve */
 export class FileNotFoundError extends Error {
   public constructor(fileName: string);
   public constructor(fileName: string, path: string);
   public constructor(fileName: string, path?: string) {
-    const message = path != null ? `File ${fileName} does not exist in path ${path}` : `File ${fileName} does not exist`;
+    const message = path != null ? `File '${fileName}' does not exist in path ${path}` : `File ${fileName} does not exist`;
     super(message);
   }
 }

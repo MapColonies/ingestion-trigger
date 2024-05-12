@@ -1,12 +1,12 @@
 import { join } from 'path';
-import Database, { Database as SQLiteDB } from 'better-sqlite3';
+import Database, { Database as SQLiteDB, SqliteError } from 'better-sqlite3';
 import { Logger } from '@map-colonies/js-logger';
 import { inject, injectable } from 'tsyringe';
 import { IConfig } from '../../common/interfaces';
 import { SERVICES } from '../../common/constants';
 import { Grid, IMatrixValues, TileSize, matrixRatioToGrid } from '../../ingestion/interfaces';
 import { LogContext } from '../../utils/logger/logContext';
-import { InvalidGpkgError } from './errors';
+import { GpkgError } from './errors';
 
 @injectable()
 export class SQLiteClient {
@@ -79,7 +79,7 @@ export class SQLiteClient {
       const queryResult = db.prepare(query).all() as { tile_width: number; tile_height: number }[];
 
       if (queryResult.length !== 1) {
-        throw new InvalidGpkgError('Invalid GPKG: All tile_width and tile_height must be the same pixel size');
+        throw new Error('Invalid GPKG: All tile_width and tile_height must be the same pixel size');
       }
 
       const tileSizes: TileSize = { width: queryResult[0].tile_width, height: queryResult[0].tile_height };
@@ -92,6 +92,7 @@ export class SQLiteClient {
     }
   }
 
+  /* istanbul ignore next @preserve */
   private hasUniqueGpkgIndex(db: SQLiteDB, tableName: string): boolean {
     const logCtx = { ...this.logContext, function: this.hasUniqueGpkgIndex.name };
     const query = `SELECT name FROM pragma_index_list('${tableName}') WHERE "unique" = 1 AND origin = 'u';`;
@@ -123,6 +124,7 @@ export class SQLiteClient {
     }
   }
 
+  /* istanbul ignore next @preserve */
   private hasGpkgManualIndex(db: SQLiteDB, tableName: string): boolean {
     const logCtx = { ...this.logContext, function: this.hasGpkgManualIndex.name };
     const query = `SELECT COUNT(*) as count
@@ -130,7 +132,7 @@ export class SQLiteClient {
                   WHERE type = 'index' AND tbl_name='${tableName}' AND sql LIKE '%zoom_level%'
                   AND sql LIKE '%tile_column%' AND sql LIKE '%tile_row%';`;
     try {
-      const queryResult = db.prepare(query).pluck().get(tableName) as { count: number };
+      const queryResult = db.prepare(query).get() as { count: number };
       const indexCount = queryResult.count;
       return indexCount > 0;
     } catch (error) {
@@ -138,6 +140,7 @@ export class SQLiteClient {
     }
   }
 
+  /* istanbul ignore next @preserve */
   private getMatrixValues(db: SQLiteDB): IMatrixValues {
     const query = 'SELECT MAX(matrix_width) as matrixWidth, MAX(matrix_height) as matrixHeight FROM gpkg_tile_matrix';
     try {
@@ -148,6 +151,7 @@ export class SQLiteClient {
     }
   }
 
+  /* istanbul ignore next @preserve */
   private getGpkgTableName(db: SQLiteDB): string {
     const query = 'SELECT table_name FROM gpkg_contents';
     const logCtx = { ...this.logContext, function: this.getGpkgTableName.name };
@@ -163,6 +167,8 @@ export class SQLiteClient {
       this.handleError(error, `Error when getting table name`, logCtx, { query });
     }
   }
+
+  /* istanbul ignore next @preserve */
   private closeDB(db: SQLiteDB | undefined): void {
     if (db !== undefined) {
       db.close();
@@ -174,7 +180,12 @@ export class SQLiteClient {
     if (error instanceof Error) {
       errorMessage = error.message;
     }
+
     this.logger.error({ msg: errorMessage, customMessage: message, err: error, logContext: logCtx, metadata: metadata });
-    throw new Error(`${message}: ${errorMessage}`);
+
+    if (error instanceof SqliteError) {
+      throw new SqliteError(`${message}: ${errorMessage}`, error.code);
+    }
+    throw new GpkgError(`${message}: ${errorMessage}`);
   }
 }

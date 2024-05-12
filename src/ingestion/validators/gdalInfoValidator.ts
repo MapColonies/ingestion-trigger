@@ -25,7 +25,7 @@ export class GdalInfoValidator {
     this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
   }
 
-  public async validateInfoData(files: string[], originDirectory: string): Promise<void> {
+  public async validateInfoData(originDirectory: string, files: string[]): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateInfoData.name };
     this.logger.info({ msg: 'Validating GDAL info data files', logContext: logCtx, metadata: { originDirectory, files } });
     let currentFile = '';
@@ -43,6 +43,7 @@ export class GdalInfoValidator {
     } catch (err) {
       const customMessage = `failed to validate gdal info data for file: ${currentFile}`;
       const errorMessage = err instanceof Error ? `${customMessage}: ${err.message}` : customMessage;
+
       this.logger.error({ msg: errorMessage, err, logContext: logCtx });
       throw new GdalInfoError(errorMessage);
     }

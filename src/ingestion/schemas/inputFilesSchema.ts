@@ -17,7 +17,7 @@ export const createInputFilesSchema = (container: DependencyContainer) => {
         .string()
         .min(1, { message: 'Origin directory is required, files should be stored on specific directory' })
         .refine((value) => value !== watchDirectory, { message: `can't be with same name as watch directory: ${watchDirectory}` }),
-      fileNames: z.array(z.string().regex(GPKG_REGEX, 'File name must end with .gpkg')),
+      fileNames: z.array(z.string().regex(GPKG_REGEX, 'File name must end with .gpkg')).length(1, { message: 'Number of files should be 1' }),
     })
     .describe('InputFiles');
 };

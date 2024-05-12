@@ -134,22 +134,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: >-
-                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/validateSourcesResponse
+                $ref: '#/components/schemas/validateSourcesResponse'
         '400':
           description: Invalid request
           content:
             application/json:
               schema:
-                $ref: >-
-                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+                $ref: '#/components/schemas/errorMessage'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: >-
-                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+                $ref: '#/components/schemas/errorMessage'
+
   /ingestion/sourcesInfo:
     post:
       operationId: getGdalInfo
@@ -193,3 +191,32 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+
+components:
+  schemas:
+    validateSourcesResponse:
+      type: object
+      properties:
+        isValid:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: 'Files are valid'
+      required:
+        - message
+    successMessage:
+      type: object
+      properties:
+        status:
+          type: string
+          example: 'success'
+      required:
+        - message
+    errorMessage:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message

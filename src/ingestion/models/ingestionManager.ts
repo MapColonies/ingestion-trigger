@@ -5,7 +5,7 @@ import { SERVICES } from '../../common/constants';
 import { SourceValidator } from '../validators/sourceValidator';
 import { FileNotFoundError, GdalInfoError } from '../errors/ingestionErrors';
 import { SourcesValidationResponse } from '../interfaces';
-import { InvalidGpkgError } from '../../serviceClients/database/errors';
+import { GpkgError } from '../../serviceClients/database/errors';
 
 @injectable()
 export class IngestionManager {
@@ -19,11 +19,11 @@ export class IngestionManager {
 
       await this.sourceValidator.validateFilesExist(originDirectory, fileNames);
       await this.sourceValidator.validateGdalInfo(originDirectory, fileNames);
-      this.sourceValidator.validateGpkgFiles(fileNames, originDirectory);
+      this.sourceValidator.validateGpkgFiles(originDirectory, fileNames);
 
       return { isValid: true, message: 'Sources are valid' };
     } catch (err) {
-      if (err instanceof FileNotFoundError || err instanceof GdalInfoError || err instanceof InvalidGpkgError) {
+      if (err instanceof FileNotFoundError || err instanceof GdalInfoError || err instanceof GpkgError) {
         return { isValid: false, message: err.message };
       }
       throw err;
