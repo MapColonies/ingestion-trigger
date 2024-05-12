@@ -8,9 +8,9 @@ import { SQLiteClient } from '../../../src/serviceClients/database/SQLiteClient'
 import { ZodValidator } from '../../../src/utils/validation/zodValidator';
 import { Grid } from '../../../src/ingestion/interfaces';
 import { GpkgManager } from '../../../src/ingestion/models/gpkgManager';
+import { fakeIngestionSources } from '../../mocks/sourcesRequestBody';
 import { IngestionRequestSender } from './helpers/ingestionRequestSender';
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
-import { fakeIngestionSources } from '../../mocks/sourcesRequestBody';
 
 describe('Ingestion', function () {
   let requestSender: IngestionRequestSender;
