@@ -33,9 +33,13 @@ function getFakeIngestionSources() {
         originDirectory: sourceDirectory,
         fileNames: ['unsupportedGridMatrix.gpkg'],
       },
-      unsupportedTileSize: {
+      unsupportedTileWidthSize: {
         originDirectory: sourceDirectory,
-        fileNames: ['unsupportedTileSize(512).gpkg'],
+        fileNames: ['unsupportedTileSize(width=512).gpkg'],
+      },
+      unsupportedTileHeightSize: {
+        originDirectory: sourceDirectory,
+        fileNames: ['unsupportedTileSize(height=512).gpkg'],
       },
     },
     invalidValidation: {

@@ -188,7 +188,7 @@ describe('Ingestion', function () {
       it('should return 200 status code and sources invalid response - unsupported tile size', async function () {
         const validateTilesSizeSpy = jest.spyOn(GpkgManager.prototype as unknown as { validateTilesSize: jest.Mock }, 'validateTilesSize');
 
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.unsupportedTileSize;
+        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.unsupportedTileWidthSize;
         const response = await requestSender.validateSources(invalidSources);
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
@@ -223,6 +223,7 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
         expect(response.body).toHaveProperty('message', 'fileNames: Number of files should be 1');
       });
+
       it('should return 400 status code and error message not supported file', async function () {
         const invalidSources = fakeIngestionSources.invalidValidation.notGpkg;
         const response = await requestSender.validateSources(invalidSources);
@@ -231,6 +232,7 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
         expect(response.body).toHaveProperty('message');
       });
+
       it('should return 400 status code and error message no files supplied', async function () {
         const invalidSources = fakeIngestionSources.invalidValidation.noFiles;
         const response = await requestSender.validateSources(invalidSources);
@@ -241,6 +243,7 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
         expect(response.body).toHaveProperty('message');
       });
+
       it('should return 400 status code and error message no directory supplied', async function () {
         const invalidSources = fakeIngestionSources.invalidValidation.noDirectory;
         const response = await requestSender.validateSources(invalidSources);
@@ -263,6 +266,7 @@ describe('Ingestion', function () {
       afterEach(function () {
         jest.restoreAllMocks();
       });
+
       it('should return 500 status code and error message, isGpkgIndexExist access db error', async function () {
         const sources = fakeIngestionSources.validSources.validInputFiles;
 

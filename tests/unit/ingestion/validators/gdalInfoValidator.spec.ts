@@ -10,6 +10,7 @@ import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
 import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
 import { GdalInfoError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { getApp } from '../../../../src/app';
+import { getTestContainerConfig } from '../../../integration/ingestion/helpers/containerConfig';
 
 describe('GdalInfoValidator', () => {
   let gdalInfoValidator: GdalInfoValidator;
@@ -22,7 +23,10 @@ describe('GdalInfoValidator', () => {
   } as unknown as GdalUtilities;
 
   beforeEach(() => {
-    const [app, container] = getApp();
+    const [, container] = getApp({
+      override: [...getTestContainerConfig()],
+      useChild: true,
+    });
     const schemasValidator = container.resolve<SchemasValidator>(INGESTION_SCHEMAS_VALIDATOR_SYMBOL);
     gdalInfoValidator = new GdalInfoValidator(jsLogger({ enabled: false }), configMock as unknown as IConfig, schemasValidator, gdalUtilitiesMock);
     registerDefaultConfig();

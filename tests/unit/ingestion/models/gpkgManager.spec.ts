@@ -59,8 +59,16 @@ describe('GpkgManager', () => {
       expect(validateGpkgGridSpy).toHaveBeenCalledWith(originDirectory, fileNames);
     });
 
-    it('should throw UnsupportedTileSizeError if tile size is not supported', () => {
-      const inputFiles = fakeIngestionSources.invalidSources.unsupportedTileSize;
+    it('should throw UnsupportedTileSizeError if tile width is not supported', () => {
+      const inputFiles = fakeIngestionSources.invalidSources.unsupportedTileWidthSize;
+      const { originDirectory, fileNames } = inputFiles;
+
+      expect(() => gpkgManager.validateGpkgFiles(originDirectory, fileNames)).toThrow(UnsupportedTileSizeError);
+      expect(validateTilesSizeSpy).toHaveBeenCalledWith(originDirectory, fileNames);
+    });
+
+    it('should throw UnsupportedTileSizeError if tile height is not supported', () => {
+      const inputFiles = fakeIngestionSources.invalidSources.unsupportedTileHeightSize;
       const { originDirectory, fileNames } = inputFiles;
 
       expect(() => gpkgManager.validateGpkgFiles(originDirectory, fileNames)).toThrow(UnsupportedTileSizeError);

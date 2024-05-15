@@ -39,12 +39,12 @@ export class GdalInfoValidator {
           await this.schemasValidator.validateInfoData(infoData);
         })
       );
-      this.logger.info({ msg: 'GDAL info data files are valid', logContext: logCtx });
+      this.logger.info({ msg: 'GDAL info data files are valid', logContext: logCtx, metadata: { originDirectory, files } });
     } catch (err) {
       const customMessage = `failed to validate gdal info data for file: ${currentFile}`;
       const errorMessage = err instanceof Error ? `${customMessage}: ${err.message}` : customMessage;
 
-      this.logger.error({ msg: errorMessage, err, logContext: logCtx });
+      this.logger.error({ msg: errorMessage, err, logContext: logCtx, metadata: { originDirectory, files } });
       throw new GdalInfoError(errorMessage);
     }
   }

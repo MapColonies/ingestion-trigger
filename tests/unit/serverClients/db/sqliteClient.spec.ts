@@ -46,7 +46,7 @@ describe('SQLClient', () => {
       expect(result).toBe(Grid.ONE_ON_ONE);
     });
 
-    it('should return undefined grid', function () {
+    it('should return unsupported grid', function () {
       setValue({ layerSourceDir: 'tests/mocks' });
       const mockMatrixValues = { matrixWidth: 400, matrixHeight: 1 };
       const prepareSpy = jest.spyOn(Database.prototype, 'prepare');

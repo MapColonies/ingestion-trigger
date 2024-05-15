@@ -78,7 +78,7 @@ const registerDefaultConfig = (): void => {
       crs: [EPSG],
       fileFormat: ['GPKG'],
       pixelSizeRange: {
-        min: 0.000000335276,
+        min: 1.67638e-7,
         max: 0.703125,
       },
       tileSize: 256,

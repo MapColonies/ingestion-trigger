@@ -25,7 +25,7 @@ export class GpkgManager {
     this.validateGpkgIndex(originDirectory, files);
     this.validateGpkgGrid(originDirectory, files);
     this.validateTilesSize(originDirectory, files);
-    this.logger.info({ msg: 'GPKG files are valid', logContext: logCtx });
+    this.logger.info({ msg: 'GPKG files are valid', logContext: logCtx, metadata: { originDirectory, files } });
   }
 
   private validateGpkgIndex(originDirectory: string, files: string[]): void {
@@ -35,7 +35,7 @@ export class GpkgManager {
 
       if (!isGpkgIndexExist) {
         const message = `GPKG index does not exist in file: ${file}`;
-        this.logger.warn({ msg: message, logContext: logCtx });
+        this.logger.warn({ msg: message, logContext: logCtx, metadata: { originDirectory, files } });
         throw new InvalidIndexError(message);
       }
     });
@@ -56,11 +56,12 @@ export class GpkgManager {
   }
 
   private validateTilesSize(originDirectory: string, files: string[]): void {
+    const logCtx = { ...this.logContext, function: this.validateTilesSize.name };
     this.readGpkgFiles(originDirectory, files, (file, sqlClient) => {
       const tileSize = sqlClient.getGpkgTileSize();
       if (tileSize.width !== this.validTileSize || tileSize.height !== this.validTileSize) {
         const message = `Geopackage name: ${file} tile size is not supported (tile size should be ${this.validTileSize})`;
-        this.logger.warn({ msg: message, logContext: this.logContext, metadata: { originDirectory, file, tileSize } });
+        this.logger.warn({ msg: message, logContext: logCtx, metadata: { originDirectory, file, tileSize } });
         throw new UnsupportedTileSizeError(message);
       }
     });

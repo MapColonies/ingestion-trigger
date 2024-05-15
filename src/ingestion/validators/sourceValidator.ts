@@ -12,6 +12,7 @@ import { GdalInfoValidator } from './gdalInfoValidator';
 @injectable()
 export class SourceValidator {
   private readonly logContext: LogContext;
+  private readonly sourceMount: string;
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
@@ -22,22 +23,25 @@ export class SourceValidator {
       fileName: __filename,
       class: SourceValidator.name,
     };
+    this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
   }
 
   public async validateFilesExist(srcDir: string, files: string[]): Promise<void> {
     const logCtx = { ...this.logContext, function: this.validateFilesExist.name };
     this.logger.info({ msg: 'validating source files exist', logContext: logCtx, metadata: { srcDir, files } });
-    const sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
+    const fullPaths: string[] = [];
 
     const filePromises = files.map(async (file) => {
-      const fullPath = join(sourceMount, srcDir, file);
+      const fullPath = join(this.sourceMount, srcDir, file);
+      fullPaths.push(fullPath);
       return fsPromises.access(fullPath, fsConstants.F_OK).catch(() => {
+        this.logger.error({ msg: `File '${file}' not found at '${fullPath}'`, logContext: logCtx, metadata: { file, fullPath } });
         throw new FileNotFoundError(file, fullPath);
       });
     });
     await Promise.all(filePromises);
 
-    this.logger.info({ msg: 'source files exist', logContext: logCtx });
+    this.logger.info({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullPaths } });
   }
 
   public async validateGdalInfo(originDirectory: string, files: string[]): Promise<void> {

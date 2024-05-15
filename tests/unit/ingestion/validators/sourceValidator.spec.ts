@@ -2,24 +2,31 @@ import { promises as fsp, constants as fsConstants } from 'node:fs';
 import jsLogger from '@map-colonies/js-logger';
 import { IConfig } from 'config';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
-import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
 import { GdalInfoValidator } from '../../../../src/ingestion/validators/gdalInfoValidator';
 import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
 import { FileNotFoundError } from '../../../../src/ingestion/errors/ingestionErrors';
+import { getApp } from '../../../../src/app';
+import { SERVICES } from '../../../../src/common/constants';
+import { getTestContainerConfig } from '../../../integration/ingestion/helpers/containerConfig';
 
 describe('SourceValidator', () => {
   let sourceValidator: SourceValidator;
   let mockGdalInfoValidator: GdalInfoValidator;
   let mockGpkgManager: GpkgManager;
   let fspAccessSpy: jest.SpyInstance;
+  const [, container] = getApp({
+    override: [...getTestContainerConfig()],
+    useChild: true,
+  });
+  let config: IConfig;
 
   beforeEach(() => {
+    config = container.resolve<IConfig>(SERVICES.CONFIG);
     mockGdalInfoValidator = { validateInfoData: jest.fn } as unknown as GdalInfoValidator;
     mockGpkgManager = { validateGpkgFiles: jest.fn } as unknown as GpkgManager;
-    sourceValidator = new SourceValidator(jsLogger({ enabled: false }), configMock as unknown as IConfig, mockGdalInfoValidator, mockGpkgManager);
+    sourceValidator = new SourceValidator(jsLogger({ enabled: false }), config, mockGdalInfoValidator, mockGpkgManager);
     fspAccessSpy = jest.spyOn(fsp, 'access');
-    registerDefaultConfig();
   });
   afterEach(() => {
     jest.clearAllMocks();
@@ -28,7 +35,7 @@ describe('SourceValidator', () => {
   describe('validateFilesExist', () => {
     it('should validate that all files exist', async () => {
       fspAccessSpy.mockResolvedValue(undefined);
-      const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
+      const sourceMount = config.get<string>('storageExplorer.layerSourceDir');
 
       const { originDirectory, fileNames } = fakeIngestionSources.validSources.validInputFiles;
       const existFile2 = fakeIngestionSources.invalidSources.unsupportedCrs.fileNames[0];
@@ -46,7 +53,7 @@ describe('SourceValidator', () => {
 
     it('should throw FileNotFoundError when a file does not exist', async () => {
       fspAccessSpy.mockImplementation(async () => Promise.reject());
-      const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
+      const sourceMount = config.get<string>('storageExplorer.layerSourceDir');
 
       const { originDirectory, fileNames } = fakeIngestionSources.invalidSources.filesNotExist;
       const notExistFile1 = fileNames[0];
