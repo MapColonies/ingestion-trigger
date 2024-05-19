@@ -10,6 +10,10 @@ data:
   RESPONSE_COMPRESSION_ENABLED: {{ .Values.env.responseCompressionEnabled | quote }}
   LOG_LEVEL: {{ .Values.env.logLevel | quote }}
   LOG_PRETTY_PRINT_ENABLED: {{ .Values.env.logPrettyPrintEnabled | quote }}
+  STORAGE_EXPLORER_DISPLAY_NAME_DIR: {{ .Values.env.storageExplorer.displayNameDir | quote }}
+  STORAGE_EXPLORER_LAYER_SOURCE_DIR: {{ .Values.env.storageExplorer.layerSourceDir | quote }}
+  STORAGE_EXPLORER_WATCH_DIRECTORY: {{ .Values.env.storageExplorer.watchDirectory | quote }}
+  STORAGE_EXPLORER_VALID_FILE_EXTENSIONS: {{ .Values.env.storageExplorer.validFileExtensions | toJson | quote }}
   {{ if .Values.env.tracing.enabled }}
   TELEMETRY_TRACING_ENABLED: 'true'
   TELEMETRY_TRACING_URL: {{ $tracingUrl }}

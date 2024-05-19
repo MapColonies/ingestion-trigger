@@ -38,5 +38,46 @@
         }
       }
     }
+  },
+  "storageExplorer": {
+    "layerSourceDir": "STORAGE_EXPLORER_LAYER_SOURCE_DIR",
+    "displayNameDir": "STORAGE_EXPLORER_DISPLAY_NAME_DIR",
+    "watchDirectory": "STORAGE_EXPLORER_WATCH_DIRECTORY",
+    "validFileExtensions": {
+      "__name": "STORAGE_EXPLORER_VALID_FILE_EXTENSIONS",
+      "__format": "json"
+    }
+  },
+  "validationValuesByInfo": {
+    "crs": {
+      "__name": "CRS",
+      "__format": "json"
+    },
+    "fileFormat": {
+      "__name": "FILE_FORMAT",
+      "__format": "json"
+    },
+    "pixelSizeRange": {
+      "min": {
+        "__name": "PIXEL_SIZE_RANGE_MIN",
+        "__format": "number"
+      },
+      "max": {
+        "__name": "PIXEL_SIZE_RANGE_MAX",
+        "__format": "number"
+      }
+    },
+    "tileSize": {
+      "__name": "TILE_SIZE",
+      "__format": "number"
+    },
+    "resolutionFixedPointTolerance": {
+      "__name": "RESOLUTION_FIXED_POINT_TOLERANCE",
+      "__format": "number"
+    },
+    "extentBufferInMeters": {
+      "__name": "EXTENT_BUFFER_IN_METERS",
+      "__format": "number"
+    }
   }
 }

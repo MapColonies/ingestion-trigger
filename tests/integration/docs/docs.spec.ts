@@ -8,7 +8,7 @@ import { DocsRequestSender } from './helpers/docsRequestSender';
 describe('docs', function () {
   let requestSender: DocsRequestSender;
   beforeEach(function () {
-    const app = getApp({
+    const [app] = getApp({
       override: [
         { token: SERVICES.LOGGER, provider: { useValue: jsLogger({ enabled: false }) } },
         { token: SERVICES.TRACER, provider: { useValue: trace.getTracer('testTracer') } },

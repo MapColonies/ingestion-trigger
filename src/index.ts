@@ -11,7 +11,7 @@ import { getApp } from './app';
 
 const port: number = config.get<number>('server.port') || DEFAULT_SERVER_PORT;
 
-const app = getApp();
+const [app] = getApp();
 
 const logger = container.resolve<Logger>(SERVICES.LOGGER);
 const stubHealthCheck = async (): Promise<void> => Promise.resolve();

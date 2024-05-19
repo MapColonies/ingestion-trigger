@@ -71,6 +71,23 @@ env:
   metrics:
     enabled: false
     url: http://localhost:55681/v1/metrics
+  storageExplorer:  
+    layerSourceDir: '/layerSources'
+    displayNameDir: "\\layerSources"
+    watchDirectory: 'watch'
+    validFileExtensions: 
+    - 'gpkg'
+  validationValuesByInfo:
+    crs: 
+    - 4326
+    fileFormat: 
+    - 'GPKG'
+    pixelSizeRange:
+      min: 1.67638e-7
+      max: 0.703125
+    tileSize : 256
+    resolutionFixedPointTolerance: 12
+    extentBufferInMeters: 50        
 
 resources:
   enabled: true
