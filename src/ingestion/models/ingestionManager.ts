@@ -44,7 +44,7 @@ export class IngestionManager {
       return validationResult;
     } catch (err) {
       if (err instanceof FileNotFoundError || err instanceof GdalInfoError || err instanceof GpkgError) {
-        this.logger.error({ msg: `Sources are not valid:${err.message}`, logContext: logCtx, err: err, metadata: { originDirectory, fileNames } });
+        this.logger.info({ msg: `Sources are not valid:${err.message}`, logContext: logCtx, err: err, metadata: { originDirectory, fileNames } });
         return { isValid: false, message: err.message };
       }
 
