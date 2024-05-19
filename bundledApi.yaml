@@ -31,13 +31,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/successMessage'
         '400':
-          description: Invalid request
+          description: Bad request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/errorMessage'
         '409':
-          description: Invalid request
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+        '422':
+          description: Unprocessable Content
           content:
             application/json:
               schema:
@@ -69,13 +75,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/successMessage'
         '400':
-          description: Invalid request
+          description: Bad request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/errorMessage'
         '409':
-          description: Invalid request
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
+        '422':
+          description: Unprocessable Content
           content:
             application/json:
               schema:
@@ -162,6 +174,32 @@ paths:
                 $ref: '#/components/schemas/errorMessage'
 components:
   schemas:
+    validateSourcesResponse:
+      type: object
+      properties:
+        isValid:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Files are valid
+      required:
+        - message
+    successMessage:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+      required:
+        - message
+    errorMessage:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
     updateRasterLayerMetadata:
       type: object
       required:
@@ -318,7 +356,6 @@ components:
         id:
           type: string
           description: Layer's external identifier
-          pattern: ^[a-zA-Z0-9_-]+$
         name:
           type: string
           description: Layer's external name
@@ -369,9 +406,6 @@ components:
           items:
             type: string
           description: cities included in the layer
-        classification:
-          type: string
-          description: Permitted roles
         description:
           type: string
         geometry:
@@ -406,23 +440,6 @@ components:
           $ref: '#/components/schemas/polygonPartMetadata'
         inputFiles:
           $ref: '#/components/schemas/InputFiles'
-    successMessage:
-      type: object
-      properties:
-        status:
-          type: string
-          example: success
-      required:
-        - message
-    errorMessage:
-      type: object
-      properties:
-        message:
-          type: string
-        stacktrace:
-          type: string
-      required:
-        - message
     productType:
       type: string
       enum:
@@ -474,18 +491,6 @@ components:
           $ref: '#/components/schemas/polygonPartMetadata'
         inputFiles:
           $ref: '#/components/schemas/InputFiles'
-    validateSourcesResponse:
-      type: object
-      properties:
-        isValid:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: Files are valid
-      required:
-        - status
-        - message
     sourcesInfoResponse:
       type: array
       items:
@@ -497,18 +502,18 @@ components:
             type: string
           pixelSize:
             type: number
-          footprint:
+          extentPolygon:
             $ref: '#/components/schemas/Geometry'
         required:
           - crs
           - fileFormat
           - pixelSize
-          - footprint
+          - extentPolygon
         example:
           crs: 4326
           fileFormat: gpkg
           pixelSize: 0.703125
-          footprint:
+          extentPolygon:
             type: Polygon
             coordinates:
               - - - -180
@@ -528,7 +533,7 @@ components:
           productSubType: string
           description: string
           region: string
-          classification: string
+          classification: '6'
           scale: 100000000
         partData:
           - id: string
@@ -571,11 +576,11 @@ components:
           productType: Orthophoto
           productSubType: string
           description: string
-          srs: string
-          srsName: string
+          srs: '4326'
+          srsName: WGS84GEO
           transparency: TRANSPARENT
           region: string
-          classification: string
+          classification: '6'
           producerName: string
           scale: 100000000
         partData:
