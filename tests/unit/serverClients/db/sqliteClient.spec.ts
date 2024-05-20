@@ -1,12 +1,13 @@
 /* eslint-disable jest/no-conditional-expect */
 import jsLogger from '@map-colonies/js-logger';
-import Database, { Statement, SqliteError } from 'better-sqlite3';
+import Database, { Database as SQLiteDB, Statement, SqliteError } from 'better-sqlite3';
 import { init as initMockConfig, configMock, setValue, clear as clearMockConfig } from '../../../mocks/configMock';
 import { Grid } from '../../../../src/ingestion/interfaces';
 import { SQLiteClient } from '../../../../src/serviceClients/database/SQLiteClient';
 
 jest.mock('better-sqlite3');
 let sqlClient: SQLiteClient;
+let mockDB: SQLiteDB;
 
 describe('SQLClient', () => {
   beforeEach(function () {
@@ -15,6 +16,7 @@ describe('SQLClient', () => {
     jest.restoreAllMocks();
     clearMockConfig();
     initMockConfig();
+    mockDB = { close: jest.fn } as unknown as SQLiteDB;
 
     sqlClient = new SQLiteClient(jsLogger({ enabled: false }), configMock, 'test_gpkg', 'test_dir');
   });
@@ -89,6 +91,44 @@ describe('SQLClient', () => {
       }
 
       expect(handleErrorSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('isGpkgIndexExist', () => {
+    it('should return true when unique GPKG index exists', () => {
+      const mockTableName = 'test_table';
+      jest.spyOn(SQLiteClient.prototype, 'getDB').mockReturnValue(mockDB);
+      jest.spyOn(SQLiteClient.prototype as unknown as { getGpkgTableName: jest.Mock }, 'getGpkgTableName').mockReturnValue(mockTableName);
+      jest.spyOn(SQLiteClient.prototype as unknown as { hasUniqueGpkgIndex: jest.Mock }, 'hasUniqueGpkgIndex').mockReturnValue(true);
+      jest.spyOn(SQLiteClient.prototype as unknown as { hasGpkgManualIndex: jest.Mock }, 'hasGpkgManualIndex').mockReturnValue(false);
+
+      const result = sqlClient.isGpkgIndexExist();
+
+      expect(result).toBe(true);
+    });
+
+    it('should return true when manual GPKG index exists', () => {
+      const mockTableName = 'test_table';
+      jest.spyOn(SQLiteClient.prototype, 'getDB').mockReturnValue(mockDB);
+      jest.spyOn(SQLiteClient.prototype as unknown as { getGpkgTableName: jest.Mock }, 'getGpkgTableName').mockReturnValue(mockTableName);
+      jest.spyOn(SQLiteClient.prototype as unknown as { hasUniqueGpkgIndex: jest.Mock }, 'hasUniqueGpkgIndex').mockReturnValue(false);
+      jest.spyOn(SQLiteClient.prototype as unknown as { hasGpkgManualIndex: jest.Mock }, 'hasGpkgManualIndex').mockReturnValue(true);
+
+      const result = sqlClient.isGpkgIndexExist();
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false when GPKG index does not exist', () => {
+      const mockTableName = 'test_table';
+      jest.spyOn(SQLiteClient.prototype, 'getDB').mockReturnValue(mockDB);
+      jest.spyOn(SQLiteClient.prototype as unknown as { getGpkgTableName: jest.Mock }, 'getGpkgTableName').mockReturnValue(mockTableName);
+      jest.spyOn(SQLiteClient.prototype as unknown as { hasUniqueGpkgIndex: jest.Mock }, 'hasUniqueGpkgIndex').mockReturnValue(false);
+      jest.spyOn(SQLiteClient.prototype as unknown as { hasGpkgManualIndex: jest.Mock }, 'hasGpkgManualIndex').mockReturnValue(false);
+
+      const result = sqlClient.isGpkgIndexExist();
+
+      expect(result).toBe(false);
     });
 
     it('should throw SqliteError error - isGpkgIndexExist', function () {
