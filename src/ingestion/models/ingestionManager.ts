@@ -7,16 +7,35 @@ import { FileNotFoundError, GdalInfoError } from '../errors/ingestionErrors';
 import { SourcesValidationResponse } from '../interfaces';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { LogContext } from '../../utils/logger/logContext';
+import { InfoData } from '../schemas/infoDataSchema';
+import { GdalInfoManager } from './gdalInfoManager';
 
 @injectable()
 export class IngestionManager {
   private readonly logContext: LogContext;
 
-  public constructor(@inject(SERVICES.LOGGER) private readonly logger: Logger, private readonly sourceValidator: SourceValidator) {
+  public constructor(
+    @inject(SERVICES.LOGGER) private readonly logger: Logger,
+    private readonly sourceValidator: SourceValidator,
+    private readonly gdalInfoManager: GdalInfoManager
+  ) {
     this.logContext = {
       fileName: __filename,
       class: IngestionManager.name,
     };
+  }
+
+  public async getFilesGdalInfoData(inputFiles: InputFiles): Promise<InfoData[]> {
+    const logCtx: LogContext = { ...this.logContext, function: this.getFilesGdalInfoData.name };
+    const { originDirectory, fileNames } = inputFiles;
+
+    await this.sourceValidator.validateFilesExist(originDirectory, fileNames);
+    this.logger.info({ msg: 'Files exist validation passed', logCont: logCtx, metadata: { originDirectory, fileNames } });
+
+    this.logger.info({ msg: 'getting gdal info for files', logContext: logCtx, metadata: { originDirectory, fileNames } });
+    const filesGdalInfoData = await this.gdalInfoManager.getFilesGdalInfoData(originDirectory, fileNames);
+
+    return filesGdalInfoData;
   }
 
   public async validateSources(inputFiles: InputFiles): Promise<SourcesValidationResponse> {
@@ -44,7 +63,7 @@ export class IngestionManager {
       return validationResult;
     } catch (err) {
       if (err instanceof FileNotFoundError || err instanceof GdalInfoError || err instanceof GpkgError) {
-        this.logger.error({ msg: `Sources are not valid:${err.message}`, logContext: logCtx, err: err, metadata: { originDirectory, fileNames } });
+        this.logger.info({ msg: `Sources are not valid:${err.message}`, logContext: logCtx, err: err, metadata: { originDirectory, fileNames } });
         return { isValid: false, message: err.message };
       }
 

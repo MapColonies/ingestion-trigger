@@ -7,7 +7,7 @@ import { FileNotFoundError } from '../errors/ingestionErrors';
 import { LogContext } from '../../utils/logger/logContext';
 import { SERVICES } from '../../common/constants';
 import { GpkgManager } from '../models/gpkgManager';
-import { GdalInfoValidator } from './gdalInfoValidator';
+import { GdalInfoManager } from '../models/gdalInfoManager';
 
 @injectable()
 export class SourceValidator {
@@ -16,7 +16,7 @@ export class SourceValidator {
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
-    private readonly gdalInfoValidator: GdalInfoValidator,
+    private readonly gdalInfoValidator: GdalInfoManager,
     private readonly gpkgManager: GpkgManager
   ) {
     this.logContext = {

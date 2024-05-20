@@ -3,7 +3,7 @@ import jsLogger from '@map-colonies/js-logger';
 import { IConfig } from 'config';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
-import { GdalInfoValidator } from '../../../../src/ingestion/validators/gdalInfoValidator';
+import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
 import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
 import { FileNotFoundError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { getApp } from '../../../../src/app';
@@ -12,7 +12,7 @@ import { getTestContainerConfig } from '../../../integration/ingestion/helpers/c
 
 describe('SourceValidator', () => {
   let sourceValidator: SourceValidator;
-  let mockGdalInfoValidator: GdalInfoValidator;
+  let mockGdalInfoManager: GdalInfoManager;
   let mockGpkgManager: GpkgManager;
   let fspAccessSpy: jest.SpyInstance;
   const [, container] = getApp({
@@ -23,9 +23,9 @@ describe('SourceValidator', () => {
 
   beforeEach(() => {
     config = container.resolve<IConfig>(SERVICES.CONFIG);
-    mockGdalInfoValidator = { validateInfoData: jest.fn } as unknown as GdalInfoValidator;
+    mockGdalInfoManager = { validateInfoData: jest.fn } as unknown as GdalInfoManager;
     mockGpkgManager = { validateGpkgFiles: jest.fn } as unknown as GpkgManager;
-    sourceValidator = new SourceValidator(jsLogger({ enabled: false }), config, mockGdalInfoValidator, mockGpkgManager);
+    sourceValidator = new SourceValidator(jsLogger({ enabled: false }), config, mockGdalInfoManager, mockGpkgManager);
     fspAccessSpy = jest.spyOn(fsp, 'access');
   });
   afterEach(() => {
@@ -67,7 +67,7 @@ describe('SourceValidator', () => {
 
   describe('validateGdalInfo', () => {
     it('should validate gdal info', async () => {
-      const gdalInfoValidatorSpy = jest.spyOn(mockGdalInfoValidator, 'validateInfoData').mockResolvedValue(undefined);
+      const gdalInfoValidatorSpy = jest.spyOn(mockGdalInfoManager, 'validateInfoData');
       const { originDirectory, fileNames } = fakeIngestionSources.validSources.validInputFiles;
 
       await sourceValidator.validateGdalInfo(originDirectory, fileNames);

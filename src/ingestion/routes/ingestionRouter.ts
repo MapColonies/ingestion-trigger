@@ -9,7 +9,7 @@ const ingestionRouterFactory: FactoryFunction<Router> = (dependencyContainer) =>
   // router.post('/', controller.createLayer.bind(controller));
   // router.put('/:id', controller.updateLayer.bind(controller));
   router.post('/validateSources', controller.validateSources.bind(controller));
-  // router.post('/sourcesInfo', controller.getSourcesGdalInfo.bind(controller));
+  router.post('/sourcesInfo', controller.getSourcesGdalInfo.bind(controller));
 
   return router;
 };

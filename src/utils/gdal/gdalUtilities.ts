@@ -74,7 +74,8 @@ export class GdalUtilities {
     const logCtx: LogContext = { ...this.logContext, function: this.getDataset.name };
 
     try {
-      return await gdal.openAsync(filePath);
+      const dataSet = await gdal.openAsync(filePath);
+      return dataSet;
     } catch (err) {
       let errMsg = `failed to open dataset for file: ${filePath}`;
       if (err instanceof Error) {

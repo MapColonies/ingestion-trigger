@@ -166,6 +166,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/errorMessage'
+        '422':
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
         '500':
           description: Internal Server Error
           content:

@@ -7,4 +7,8 @@ export class IngestionRequestSender {
   public async validateSources(body: InputFiles): Promise<supertest.Response> {
     return supertest.agent(this.app).post('/ingestion/validateSources').send(body).set('Content-Type', 'application/json');
   }
+
+  public async getSourcesGdalInfo(body: InputFiles): Promise<supertest.Response> {
+    return supertest.agent(this.app).post('/ingestion/sourcesInfo').send(body).set('Content-Type', 'application/json');
+  }
 }
