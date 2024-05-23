@@ -43,9 +43,9 @@ export class GdalUtilities {
 
       return infoData;
     } catch (err) {
-      let message = 'failed to get gdal info on file';
+      let message = `failed to get gdal info on file: ${filePath}`;
       if (err instanceof Error) {
-        message = err.message;
+        message = `${message}: ${err.message}`;
       }
       this.logger.error({
         msg: message,
