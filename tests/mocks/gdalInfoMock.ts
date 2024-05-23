@@ -1,12 +1,25 @@
+/* eslint-disable @typescript-eslint/no-magic-numbers */
 import { Polygon } from 'geojson';
 import { InfoData } from '../../src/ingestion/schemas/infoDataSchema';
 
 export const gdalInfoCases = {
   validGdalInfo: {
     crs: 4326,
-    extentPolygon: {} as Polygon,
+    extentPolygon: {
+      coordinates: [
+        [
+          [-180, 90],
+          [-180, -90],
+          [180, -90],
+          [180, 90],
+          [-180, 90],
+        ],
+      ],
+      type: 'Polygon',
+    },
     fileFormat: 'GPKG',
-    pixelSize: 0.055656,
+    fileName: 'valid(blueMarble).gpkg',
+    pixelSize: 0.0439453125,
   },
   unsupportedCrs: {
     crs: 3857,
@@ -26,4 +39,4 @@ export const gdalInfoCases = {
     fileFormat: 'GPKG',
     pixelSize: 0.9,
   },
-} satisfies Record<string, InfoData>;
+} as Record<string, InfoData>;

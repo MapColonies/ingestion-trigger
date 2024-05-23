@@ -16,7 +16,7 @@ describe('IngestionManager', () => {
   };
 
   const gdalInfoManagerMock = {
-    getFilesGdalInfoData: jest.fn(),
+    getInfoData: jest.fn(),
     validateInfoData: jest.fn(),
   };
   beforeEach(() => {
@@ -87,15 +87,15 @@ describe('IngestionManager', () => {
     });
   });
 
-  describe('getFilesGdalInfoData', () => {
+  describe('getInfoData', () => {
     it('should return gdal info data when files exist and are valid', async () => {
       const inputFiles = fakeIngestionSources.validSources.validInputFiles;
       const mockGdalInfoData = [gdalInfoCases.validGdalInfo];
 
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
-      gdalInfoManagerMock.getFilesGdalInfoData.mockResolvedValue(mockGdalInfoData);
+      gdalInfoManagerMock.getInfoData.mockResolvedValue(mockGdalInfoData);
 
-      const result = await ingestionManager.getFilesGdalInfoData(inputFiles);
+      const result = await ingestionManager.getInfoData(inputFiles);
 
       expect(result).toEqual(mockGdalInfoData);
     });
@@ -104,15 +104,15 @@ describe('IngestionManager', () => {
       const inputFiles = fakeIngestionSources.invalidSources.filesNotExist;
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.reject(new FileNotFoundError(inputFiles.fileNames[0])));
 
-      await expect(ingestionManager.getFilesGdalInfoData(inputFiles)).rejects.toThrow(FileNotFoundError);
+      await expect(ingestionManager.getInfoData(inputFiles)).rejects.toThrow(FileNotFoundError);
     });
 
-    it('should throw an error when getFilesGdalInfoData throws GdalInfoError', async () => {
+    it('should throw an error when getInfoData throws GdalInfoError', async () => {
       const inputFiles = fakeIngestionSources.invalidSources.unsupportedCrs;
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
-      gdalInfoManagerMock.getFilesGdalInfoData.mockImplementation(async () => Promise.reject(new GdalInfoError('Error while getting gdal info')));
+      gdalInfoManagerMock.getInfoData.mockImplementation(async () => Promise.reject(new GdalInfoError('Error while getting gdal info')));
 
-      await expect(ingestionManager.getFilesGdalInfoData(inputFiles)).rejects.toThrow(GdalInfoError);
+      await expect(ingestionManager.getInfoData(inputFiles)).rejects.toThrow(GdalInfoError);
     });
   });
 });

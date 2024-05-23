@@ -25,15 +25,16 @@ export class IngestionManager {
     };
   }
 
-  public async getFilesGdalInfoData(inputFiles: InputFiles): Promise<InfoData[]> {
-    const logCtx: LogContext = { ...this.logContext, function: this.getFilesGdalInfoData.name };
+  public async getInfoData(inputFiles: InputFiles): Promise<InfoData[]> {
+    const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
+
     const { originDirectory, fileNames } = inputFiles;
+    this.logger.info({ msg: 'getting gdal info for files', logContext: logCtx, metadata: { originDirectory, fileNames } });
 
     await this.sourceValidator.validateFilesExist(originDirectory, fileNames);
-    this.logger.info({ msg: 'Files exist validation passed', logCont: logCtx, metadata: { originDirectory, fileNames } });
+    this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { originDirectory, fileNames } });
 
-    this.logger.info({ msg: 'getting gdal info for files', logContext: logCtx, metadata: { originDirectory, fileNames } });
-    const filesGdalInfoData = await this.gdalInfoManager.getFilesGdalInfoData(originDirectory, fileNames);
+    const filesGdalInfoData = await this.gdalInfoManager.getInfoData(originDirectory, fileNames);
 
     return filesGdalInfoData;
   }

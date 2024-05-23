@@ -16,6 +16,7 @@ const basicInfoDataSchema = z
 
 export const infoDataSchemaArray = z.array(basicInfoDataSchema);
 
+export type InfoDataWithFile = z.infer<typeof basicInfoDataSchema> & { fileName: string };
 export type InfoData = z.infer<typeof basicInfoDataSchema>;
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type

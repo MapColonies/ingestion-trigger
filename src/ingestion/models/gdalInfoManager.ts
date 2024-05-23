@@ -7,7 +7,7 @@ import { SERVICES } from '../../common/constants';
 import { GdalInfoError } from '../errors/ingestionErrors';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { LogContext } from '../../utils/logger/logContext';
-import { InfoData } from '../schemas/infoDataSchema';
+import { InfoDataWithFile } from '../schemas/infoDataSchema';
 
 @injectable()
 export class GdalInfoManager {
@@ -26,34 +26,22 @@ export class GdalInfoManager {
     this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
   }
 
-  public async getFilesGdalInfoData(originDirectory: string, files: string[]): Promise<InfoData[]> {
-    const logCtx: LogContext = { ...this.logContext, function: this.getFilesGdalInfoData.name };
-    this.logger.info({ msg: 'getting Gdal info data', logContext: logCtx, metadata: { originDirectory, files } });
-    const filesGdalInfoData = this.validateInfoData(originDirectory, files);
-    return filesGdalInfoData;
-  }
-
-  public async validateInfoData(originDirectory: string, files: string[]): Promise<InfoData[]> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateInfoData.name };
-    this.logger.info({ msg: 'Validating GDAL info data files', logContext: logCtx, metadata: { originDirectory, files } });
-    let currentFile = '';
+  public async getInfoData(originDirectory: string, files: string[]): Promise<InfoDataWithFile[]> {
+    const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
+    this.logger.debug({ msg: 'getting Gdal info data', logContext: logCtx, metadata: { originDirectory, files } });
 
     try {
       const filesGdalInfoData = await Promise.all(
         files.map(async (file) => {
-          currentFile = file;
           const filePath = join(this.sourceMount, originDirectory, file);
           const infoData = await this.gdalUtilities.getInfoData(filePath);
-          const validInfoData = await this.schemasValidator.validateInfoData(infoData);
-          return validInfoData;
+          return { ...infoData, fileName: file };
         })
       );
 
-      this.logger.info({ msg: 'GDAL info data files are valid', logContext: logCtx, metadata: { originDirectory, files } });
-
       return filesGdalInfoData;
     } catch (err) {
-      const customMessage = `failed to validate gdal info data for file: ${currentFile}`;
+      const customMessage = `failed to get gdal info data`;
       let errorMessage = customMessage;
       if (err instanceof Error) {
         errorMessage = `${customMessage}: ${err.message}`;
@@ -63,4 +51,29 @@ export class GdalInfoManager {
       throw new GdalInfoError(errorMessage);
     }
   }
+
+  public async validateInfoData(infoDataArray: InfoDataWithFile[]): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateInfoData.name };
+    this.logger.info({ msg: 'Validating GDAL info data', logContext: logCtx, metadata: { infoDataArray } });
+    let currentFile = '';
+
+    try {
+      for (const infoData of infoDataArray) {
+        currentFile = infoData.fileName;
+        this.logger.debug({ msg: 'validating gdal info data', logContext: logCtx, metadata: { infoData } });
+        await this.schemasValidator.validateInfoData(infoData);
+      }
+    } catch (err) {
+      const customMessage = `failed to validate gdal info data for file: ${currentFile}`;
+      let errorMessage = customMessage;
+      if (err instanceof Error) {
+        errorMessage = `${customMessage}: ${err.message}`;
+      }
+
+      this.logger.error({ msg: errorMessage, err, logContext: logCtx, metadata: { currentFile } });
+      throw new GdalInfoError(errorMessage);
+    }
+  }
 }
+
+export const GDAL_INFO_MANAGER_SYMBOL = Symbol('GdalInfoManager');

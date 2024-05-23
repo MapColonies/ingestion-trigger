@@ -16,7 +16,7 @@ export class SourceValidator {
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
-    private readonly gdalInfoValidator: GdalInfoManager,
+    private readonly gdalInfoManager: GdalInfoManager,
     private readonly gpkgManager: GpkgManager
   ) {
     this.logContext = {
@@ -45,7 +45,8 @@ export class SourceValidator {
   }
 
   public async validateGdalInfo(originDirectory: string, files: string[]): Promise<void> {
-    await this.gdalInfoValidator.validateInfoData(originDirectory, files);
+    const gdalInfoData = await this.gdalInfoManager.getInfoData(originDirectory, files);
+    await this.gdalInfoManager.validateInfoData(gdalInfoData);
   }
 
   public validateGpkgFiles(originDirectory: string, files: string[]): void {

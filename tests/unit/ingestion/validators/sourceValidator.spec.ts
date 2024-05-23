@@ -9,6 +9,8 @@ import { FileNotFoundError } from '../../../../src/ingestion/errors/ingestionErr
 import { getApp } from '../../../../src/app';
 import { SERVICES } from '../../../../src/common/constants';
 import { getTestContainerConfig } from '../../../integration/ingestion/helpers/containerConfig';
+import { InfoDataWithFile } from '../../../../src/ingestion/schemas/infoDataSchema';
+import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
 
 describe('SourceValidator', () => {
   let sourceValidator: SourceValidator;
@@ -23,7 +25,7 @@ describe('SourceValidator', () => {
 
   beforeEach(() => {
     config = container.resolve<IConfig>(SERVICES.CONFIG);
-    mockGdalInfoManager = { validateInfoData: jest.fn } as unknown as GdalInfoManager;
+    mockGdalInfoManager = { getInfoData: jest.fn, validateInfoData: jest.fn } as unknown as GdalInfoManager;
     mockGpkgManager = { validateGpkgFiles: jest.fn } as unknown as GpkgManager;
     sourceValidator = new SourceValidator(jsLogger({ enabled: false }), config, mockGdalInfoManager, mockGpkgManager);
     fspAccessSpy = jest.spyOn(fsp, 'access');
@@ -67,12 +69,15 @@ describe('SourceValidator', () => {
 
   describe('validateGdalInfo', () => {
     it('should validate gdal info', async () => {
-      const gdalInfoValidatorSpy = jest.spyOn(mockGdalInfoManager, 'validateInfoData');
       const { originDirectory, fileNames } = fakeIngestionSources.validSources.validInputFiles;
+      const fileName = fileNames[0];
+      const validGdalInfo: InfoDataWithFile = { ...gdalInfoCases.validGdalInfo, fileName };
 
-      await sourceValidator.validateGdalInfo(originDirectory, fileNames);
+      jest.spyOn(mockGdalInfoManager, 'getInfoData').mockResolvedValue([validGdalInfo]);
+      const gdalInfoValidatorSpy = jest.spyOn(mockGdalInfoManager, 'validateInfoData');
 
-      expect(gdalInfoValidatorSpy).toHaveBeenCalledWith(originDirectory, fileNames);
+      await expect(sourceValidator.validateGdalInfo(originDirectory, fileNames)).resolves.not.toThrow();
+      expect(gdalInfoValidatorSpy).toHaveBeenCalledWith([validGdalInfo]);
     });
   });
 

@@ -44,7 +44,7 @@ export class IngestionController {
     try {
       const inputFilesRequestBody: unknown = req.body;
       const validInputFilesRequestBody: InputFiles = await this.schemasValidator.validateInputFilesRequestBody(inputFilesRequestBody);
-      const filesGdalInfoData = await this.ingestionManager.getFilesGdalInfoData(validInputFilesRequestBody);
+      const filesGdalInfoData = await this.ingestionManager.getInfoData(validInputFilesRequestBody);
 
       res.status(StatusCodes.OK).send(filesGdalInfoData);
     } catch (err) {

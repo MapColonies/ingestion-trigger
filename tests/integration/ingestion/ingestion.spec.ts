@@ -334,12 +334,12 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
       });
 
-      it('should return 422 status code and sources info', async () => {
+      it('should return 200 status code and sources info', async () => {
         const sources = fakeIngestionSources.invalidSources.unsupportedCrs;
 
         const response = await requestSender.getSourcesGdalInfo(sources);
 
-        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(response.status).toBe(httpStatusCodes.OK);
       });
     });
   });

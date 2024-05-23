@@ -21,7 +21,7 @@ export class GdalUtilities {
     };
   }
 
-  public async getInfoData(filePath: string): Promise<InfoData | undefined> {
+  public async getInfoData(filePath: string): Promise<InfoData> {
     const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
 
     try {
