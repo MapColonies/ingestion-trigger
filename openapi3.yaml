@@ -67,7 +67,7 @@ paths:
       summary: start a process of creating update to exists layer from raw data
       parameters:
         - name: id
-          in: query
+          in: path
           description: The id of the layer to update
           required: true
           schema:
