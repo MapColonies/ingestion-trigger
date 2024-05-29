@@ -323,6 +323,7 @@ describe('Ingestion', function () {
 
         const response = await requestSender.getSourcesGdalInfo(sources);
 
+        expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
@@ -331,6 +332,7 @@ describe('Ingestion', function () {
 
         const response = await requestSender.getSourcesGdalInfo(sources);
 
+        expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
       });
 
@@ -339,6 +341,7 @@ describe('Ingestion', function () {
 
         const response = await requestSender.getSourcesGdalInfo(sources);
 
+        expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
       });
     });

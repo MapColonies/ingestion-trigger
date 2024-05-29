@@ -106,13 +106,5 @@ describe('IngestionManager', () => {
 
       await expect(ingestionManager.getInfoData(inputFiles)).rejects.toThrow(FileNotFoundError);
     });
-
-    it('should throw an error when getInfoData throws GdalInfoError', async () => {
-      const inputFiles = fakeIngestionSources.invalidSources.unsupportedCrs;
-      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
-      gdalInfoManagerMock.getInfoData.mockImplementation(async () => Promise.reject(new GdalInfoError('Error while getting gdal info')));
-
-      await expect(ingestionManager.getInfoData(inputFiles)).rejects.toThrow(GdalInfoError);
-    });
   });
 });

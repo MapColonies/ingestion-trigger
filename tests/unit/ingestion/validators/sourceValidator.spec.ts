@@ -40,7 +40,7 @@ describe('SourceValidator', () => {
       const sourceMount = config.get<string>('storageExplorer.layerSourceDir');
 
       const { originDirectory, fileNames } = fakeIngestionSources.validSources.validInputFiles;
-      const existFile2 = fakeIngestionSources.invalidSources.unsupportedCrs.fileNames[0];
+      const existFile2 = fakeIngestionSources.validSources.anotherValidInputFiles.fileNames[0];
       fileNames.push(existFile2);
       const existFile1 = fileNames[0];
       const fullPath1 = `${sourceMount}/${originDirectory}/${existFile1}`;

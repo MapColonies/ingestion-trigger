@@ -77,10 +77,6 @@ const registerDefaultConfig = (): void => {
     validationValuesByInfo: {
       crs: [EPSG],
       fileFormat: ['GPKG'],
-      pixelSizeRange: {
-        min: 1.67638e-7,
-        max: 0.703125,
-      },
       tileSize: 256,
       resolutionFixedPointTolerance: 12,
       extentBufferInMeters: 50,

@@ -467,8 +467,6 @@ components:
           type: string
         geometry:
           $ref: '#/components/schemas/Geometry'
-          example:
-            - example.gpkg
     InputFiles:
       title: Layer input files
       type: object
@@ -519,11 +517,14 @@ components:
             type: number
           extentPolygon:
             $ref: '#/components/schemas/Geometry'
+          fileName:
+            type: string
         required:
           - crs
           - fileFormat
           - pixelSize
           - extentPolygon
+          - fileName
         example:
           crs: 4326
           fileFormat: gpkg
@@ -541,6 +542,7 @@ components:
                   - -90
                 - - -180
                   - -90
+          fileName: file.gpkg
   examples:
     NewRasterLayerExample:
       value:
