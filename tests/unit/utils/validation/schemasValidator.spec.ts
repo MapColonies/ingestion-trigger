@@ -6,7 +6,6 @@ import { GPKG_REGEX } from '../../../../src/ingestion/schemas/inputFilesSchema';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
 import { fakeDataToValidate } from '../../../mocks/schemasValidatorMockData';
 import { SERVICES } from '../../../../src/common/constants';
-import { PixelRange } from '../../../../src/ingestion/interfaces';
 import { pixelSizeRange } from '../../../../src/ingestion/schemas/infoDataSchema';
 
 let schemasValidator: SchemasValidator;
