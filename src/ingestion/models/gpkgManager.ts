@@ -25,7 +25,7 @@ export class GpkgManager {
     this.validateGpkgIndex(originDirectory, files);
     this.validateGpkgGrid(originDirectory, files);
     this.validateTilesSize(originDirectory, files);
-    this.logger.info({ msg: 'GPKG files are valid', logContext: logCtx, metadata: { originDirectory, files } });
+    this.logger.debug({ msg: 'GPKG files are valid', logContext: logCtx, metadata: { originDirectory, files } });
   }
 
   private validateGpkgIndex(originDirectory: string, files: string[]): void {
