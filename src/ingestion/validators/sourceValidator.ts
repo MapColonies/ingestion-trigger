@@ -28,7 +28,7 @@ export class SourceValidator {
 
   public async validateFilesExist(srcDir: string, files: string[]): Promise<void> {
     const logCtx = { ...this.logContext, function: this.validateFilesExist.name };
-    this.logger.info({ msg: 'validating source files exist', logContext: logCtx, metadata: { srcDir, files } });
+    this.logger.debug({ msg: 'validating source files exist', logContext: logCtx, metadata: { srcDir, files } });
     const fullPaths: string[] = [];
 
     const filePromises = files.map(async (file) => {
@@ -41,7 +41,7 @@ export class SourceValidator {
     });
     await Promise.all(filePromises);
 
-    this.logger.info({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullPaths } });
+    this.logger.debug({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullPaths } });
   }
 
   public async validateGdalInfo(originDirectory: string, files: string[]): Promise<void> {
