@@ -175,7 +175,7 @@ export class SQLiteClient {
       this.logger.debug({ msg: `Connection to GPKG in path ${this.fullPath} closed` });
     }
   }
-  private handleError(error: unknown | undefined, message: string, logCtx: LogContext, metadata?: Record<string, unknown>): never {
+  private handleError(error: unknown, message: string, logCtx: LogContext, metadata?: Record<string, unknown>): never {
     let errorMessage = 'Unknown error';
     if (error instanceof Error) {
       errorMessage = error.message;

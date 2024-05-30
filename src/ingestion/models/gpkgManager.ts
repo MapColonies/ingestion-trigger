@@ -21,11 +21,11 @@ export class GpkgManager {
 
   public validateGpkgFiles(originDirectory: string, files: string[]): void {
     const logCtx = { ...this.logContext, function: this.validateGpkgFiles.name };
-    this.logger.info({ msg: 'Validating GPKG files', logContext: logCtx, metadata: { originDirectory, files } });
+    this.logger.debug({ msg: 'Validating GPKG files', logContext: logCtx, metadata: { originDirectory, files } });
     this.validateGpkgIndex(originDirectory, files);
     this.validateGpkgGrid(originDirectory, files);
     this.validateTilesSize(originDirectory, files);
-    this.logger.info({ msg: 'GPKG files are valid', logContext: logCtx, metadata: { originDirectory, files } });
+    this.logger.debug({ msg: 'GPKG files are valid', logContext: logCtx, metadata: { originDirectory, files } });
   }
 
   private validateGpkgIndex(originDirectory: string, files: string[]): void {

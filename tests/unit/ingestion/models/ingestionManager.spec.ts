@@ -6,6 +6,8 @@ import { FileNotFoundError, GdalInfoError } from '../../../../src/ingestion/erro
 import { GpkgError } from '../../../../src/serviceClients/database/errors';
 import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
 import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
+import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
+import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
 
 describe('IngestionManager', () => {
   let ingestionManager: IngestionManager;
@@ -19,10 +21,19 @@ describe('IngestionManager', () => {
     getInfoData: jest.fn(),
     validateInfoData: jest.fn(),
   };
+
+  const gdalInfoManagerMock = {
+    getInfoData: jest.fn(),
+    validateInfoData: jest.fn(),
+  };
   beforeEach(() => {
     ingestionManager = new IngestionManager(
+      
       jsLogger({ enabled: false }),
+     
       sourceValidator as unknown as SourceValidator,
+      gdalInfoManagerMock as unknown as GdalInfoManager
+    ,
       gdalInfoManagerMock as unknown as GdalInfoManager
     );
   });
@@ -84,6 +95,27 @@ describe('IngestionManager', () => {
       });
 
       await expect(ingestionManager.validateSources(inputFiles)).rejects.toThrow('Unexpected error');
+    });
+  });
+
+  describe('getInfoData', () => {
+    it('should return gdal info data when files exist and are valid', async () => {
+      const inputFiles = fakeIngestionSources.validSources.validInputFiles;
+      const mockGdalInfoData = [gdalInfoCases.validGdalInfo];
+
+      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
+      gdalInfoManagerMock.getInfoData.mockResolvedValue(mockGdalInfoData);
+
+      const result = await ingestionManager.getInfoData(inputFiles);
+
+      expect(result).toEqual(mockGdalInfoData);
+    });
+
+    it('should throw an error when validateFilesExist throws FileNotFoundError', async () => {
+      const inputFiles = fakeIngestionSources.invalidSources.filesNotExist;
+      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.reject(new FileNotFoundError(inputFiles.fileNames[0])));
+
+      await expect(ingestionManager.getInfoData(inputFiles)).rejects.toThrow(FileNotFoundError);
     });
   });
 
