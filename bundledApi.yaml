@@ -54,11 +54,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/errorMessage'
+  /ingestion/{id}:
     put:
       operationId: updateLayer
       tags:
         - ingestion
       summary: start a process of creating update to exists layer from raw data
+      parameters:
+        - name: id
+          in: path
+          description: The id of the layer to update
+          required: true
+          schema:
+            type: string
+          example: 5f7b3b3b-3b3b-3b3b-3b3b-3b3b3b3b3b3b
       requestBody:
         content:
           application/json:
@@ -166,6 +175,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/errorMessage'
+        '422':
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errorMessage'
         '500':
           description: Internal Server Error
           content:
@@ -223,6 +238,48 @@ components:
           type: integer
           minimum: 0
           maximum: 100000000
+    productType:
+      type: string
+      enum:
+        - Orthophoto
+        - OrthophotoHistory
+        - OrthophotoBest
+        - RasterMap
+        - RasterMapBest
+        - RasterAid
+        - RasterAidBest
+        - RasterVector
+        - RasterVectorBest
+      description: layer's type might be derived from the first letter
+    newRasterLayerMetadata:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/updateRasterLayerMetadata'
+        - properties:
+            productId:
+              type: string
+              description: Layer's external identifier
+              pattern: ^[a-zA-Z0-9_-]+$
+            productName:
+              type: string
+              description: Layer's external name
+            productType:
+              $ref: '#/components/schemas/productType'
+            srs:
+              type: string
+              description: geo system id
+            srsName:
+              type: string
+              description: geo system name
+            transparency:
+              type: string
+              enum:
+                - TRANSPARENT
+                - OPAQUE
+              description: layer can be transparent or opaque
+            producerName:
+              type: string
+              description: creator name default IDFMU
     GeometryBase:
       type: object
       description: GeoJSon geometry
@@ -410,8 +467,6 @@ components:
           type: string
         geometry:
           $ref: '#/components/schemas/Geometry'
-          example:
-            - example.gpkg
     InputFiles:
       title: Layer input files
       type: object
@@ -431,62 +486,20 @@ components:
       required:
         - originDirectory
         - fileNames
-    UpdateRasterLayer:
-      type: object
-      properties:
-        metadata:
-          $ref: '#/components/schemas/updateRasterLayerMetadata'
-        partData:
-          $ref: '#/components/schemas/polygonPartMetadata'
-        inputFiles:
-          $ref: '#/components/schemas/InputFiles'
-    productType:
-      type: string
-      enum:
-        - Orthophoto
-        - OrthophotoHistory
-        - OrthophotoBest
-        - RasterMap
-        - RasterMapBest
-        - RasterAid
-        - RasterAidBest
-        - RasterVector
-        - RasterVectorBest
-      description: layer's type might be derived from the first letter
-    newRasterLayerMetadata:
-      type: object
-      allOf:
-        - $ref: '#/components/schemas/updateRasterLayerMetadata'
-        - properties:
-            productId:
-              type: string
-              description: Layer's external identifier
-              pattern: ^[a-zA-Z0-9_-]+$
-            productName:
-              type: string
-              description: Layer's external name
-            productType:
-              $ref: '#/components/schemas/productType'
-            srs:
-              type: string
-              description: geo system id
-            srsName:
-              type: string
-              description: geo system name
-            transparency:
-              type: string
-              enum:
-                - TRANSPARENT
-                - OPAQUE
-              description: layer can be transparent or opaque
-            producerName:
-              type: string
-              description: creator name default IDFMU
     NewRasterLayer:
       type: object
       properties:
         metadata:
           $ref: '#/components/schemas/newRasterLayerMetadata'
+        partData:
+          $ref: '#/components/schemas/polygonPartMetadata'
+        inputFiles:
+          $ref: '#/components/schemas/InputFiles'
+    UpdateRasterLayer:
+      type: object
+      properties:
+        metadata:
+          $ref: '#/components/schemas/updateRasterLayerMetadata'
         partData:
           $ref: '#/components/schemas/polygonPartMetadata'
         inputFiles:
@@ -504,11 +517,14 @@ components:
             type: number
           extentPolygon:
             $ref: '#/components/schemas/Geometry'
+          fileName:
+            type: string
         required:
           - crs
           - fileFormat
           - pixelSize
           - extentPolygon
+          - fileName
         example:
           crs: 4326
           fileFormat: gpkg
@@ -526,14 +542,22 @@ components:
                   - -90
                 - - -180
                   - -90
+          fileName: file.gpkg
   examples:
-    UpdateRasterLayerExample:
+    NewRasterLayerExample:
       value:
         metadata:
+          productId: string
+          productName: string
+          productType: Orthophoto
           productSubType: string
           description: string
+          srs: '4326'
+          srsName: WGS84GEO
+          transparency: TRANSPARENT
           region: string
           classification: '6'
+          producerName: string
           scale: 100000000
         partData:
           - id: string
@@ -541,8 +565,8 @@ components:
             imagingTimeBeginUTC: '2024-01-28T13:47:43.427Z'
             imagingTimeEndUTC: '2024-01-28T13:47:43.427Z'
             resolutionDegree: 0.703125
-            resolutionMeter: 78273
-            sourceResolutionMeter: 78273
+            resolutionMeter: 8000
+            sourceResolutionMeter: 8000
             horizontalAccuracyCE90: 10
             sensors:
               - string
@@ -568,20 +592,13 @@ components:
           originDirectory: string
           fileNames:
             - example.gpkg
-    NewRasterLayerExample:
+    UpdateRasterLayerExample:
       value:
         metadata:
-          productId: string
-          productName: string
-          productType: Orthophoto
           productSubType: string
           description: string
-          srs: '4326'
-          srsName: WGS84GEO
-          transparency: TRANSPARENT
           region: string
           classification: '6'
-          producerName: string
           scale: 100000000
         partData:
           - id: string
@@ -589,8 +606,8 @@ components:
             imagingTimeBeginUTC: '2024-01-28T13:47:43.427Z'
             imagingTimeEndUTC: '2024-01-28T13:47:43.427Z'
             resolutionDegree: 0.703125
-            resolutionMeter: 8000
-            sourceResolutionMeter: 8000
+            resolutionMeter: 78273
+            sourceResolutionMeter: 78273
             horizontalAccuracyCE90: 10
             sensors:
               - string

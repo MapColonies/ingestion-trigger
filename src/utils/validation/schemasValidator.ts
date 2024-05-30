@@ -1,7 +1,7 @@
 import { DependencyContainer } from 'tsyringe';
 import { z } from 'zod';
 import { createInputFilesSchema } from '../../ingestion/schemas/inputFilesSchema';
-import { createInfoDataSchema } from '../../ingestion/schemas/infoDataSchema';
+import { InfoData, createInfoDataSchema } from '../../ingestion/schemas/infoDataSchema';
 import { gdalInfoSchema } from '../../ingestion/schemas/gdalDataSchema';
 import { ZodValidator } from './zodValidator';
 
@@ -15,7 +15,7 @@ export function schemasValidationsFactory(container: DependencyContainer) {
 
   return {
     validateInputFilesRequestBody: async (value: unknown): Promise<z.infer<typeof inputFilesSchema>> => validator.validate(inputFilesSchema, value),
-    validateInfoData: async (value: unknown): Promise<z.infer<typeof infoDataSchema>> => validator.validate(infoDataSchema, value),
+    validateInfoData: async (value: unknown): Promise<InfoData> => validator.validate(infoDataSchema, value),
     validateGdalInfo: async (value: unknown): Promise<z.infer<typeof gdalInfoSchema>> => validator.validate(gdalInfoSchema, value),
   };
 }

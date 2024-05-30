@@ -7,6 +7,10 @@ function getFakeIngestionSources() {
         originDirectory: sourceDirectory,
         fileNames: ['valid(blueMarble).gpkg'],
       },
+      anotherValidInputFiles: {
+        originDirectory: sourceDirectory,
+        fileNames: ['valid(blueMarble).gpkg'],
+      },
     },
     invalidSources: {
       filesNotExist: {

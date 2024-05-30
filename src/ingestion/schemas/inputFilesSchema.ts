@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { DependencyContainer } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 
-const GPKG_REGEX = new RegExp('^.+.[Gg][Pp][Kk][Gg]$');
+export const GPKG_REGEX = new RegExp('^.+.[Gg][Pp][Kk][Gg]$');
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const createInputFilesSchema = (container: DependencyContainer) => {

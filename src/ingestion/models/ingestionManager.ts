@@ -7,16 +7,36 @@ import { FileNotFoundError, GdalInfoError } from '../errors/ingestionErrors';
 import { SourcesValidationResponse } from '../interfaces';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { LogContext } from '../../utils/logger/logContext';
+import { InfoData } from '../schemas/infoDataSchema';
+import { GdalInfoManager } from './gdalInfoManager';
 
 @injectable()
 export class IngestionManager {
   private readonly logContext: LogContext;
 
-  public constructor(@inject(SERVICES.LOGGER) private readonly logger: Logger, private readonly sourceValidator: SourceValidator) {
+  public constructor(
+    @inject(SERVICES.LOGGER) private readonly logger: Logger,
+    private readonly sourceValidator: SourceValidator,
+    private readonly gdalInfoManager: GdalInfoManager
+  ) {
     this.logContext = {
       fileName: __filename,
       class: IngestionManager.name,
     };
+  }
+
+  public async getInfoData(inputFiles: InputFiles): Promise<InfoData[]> {
+    const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
+
+    const { originDirectory, fileNames } = inputFiles;
+    this.logger.info({ msg: 'getting gdal info for files', logContext: logCtx, metadata: { originDirectory, fileNames } });
+
+    await this.sourceValidator.validateFilesExist(originDirectory, fileNames);
+    this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { originDirectory, fileNames } });
+
+    const filesGdalInfoData = await this.gdalInfoManager.getInfoData(originDirectory, fileNames);
+
+    return filesGdalInfoData;
   }
 
   public async validateSources(inputFiles: InputFiles): Promise<SourcesValidationResponse> {
@@ -26,17 +46,17 @@ export class IngestionManager {
       this.logger.info({ msg: 'Starting source validation process', logContext: logCtx, metadata: { originDirectory, fileNames } });
 
       await this.sourceValidator.validateFilesExist(originDirectory, fileNames);
-      this.logger.info({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { originDirectory, fileNames } });
+      this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { originDirectory, fileNames } });
 
       await this.sourceValidator.validateGdalInfo(originDirectory, fileNames);
-      this.logger.info({ msg: 'GDAL info validation passed', logContext: logCtx, metadata: { originDirectory, fileNames } });
+      this.logger.debug({ msg: 'GDAL info validation passed', logContext: logCtx, metadata: { originDirectory, fileNames } });
 
       this.sourceValidator.validateGpkgFiles(originDirectory, fileNames);
-      this.logger.info({ msg: 'GPKG files validation passed', logContext: logCtx, metadata: { originDirectory, fileNames } });
+      this.logger.debug({ msg: 'GPKG files validation passed', logContext: logCtx, metadata: { originDirectory, fileNames } });
 
       const validationResult: SourcesValidationResponse = { isValid: true, message: 'Sources are valid' };
 
-      this.logger.info({
+      this.logger.debug({
         msg: validationResult.message,
         logContext: logCtx,
         metadata: { originDirectory, fileNames, isValid: validationResult.isValid },

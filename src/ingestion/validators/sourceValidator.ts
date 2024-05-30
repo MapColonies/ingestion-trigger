@@ -7,7 +7,7 @@ import { FileNotFoundError } from '../errors/ingestionErrors';
 import { LogContext } from '../../utils/logger/logContext';
 import { SERVICES } from '../../common/constants';
 import { GpkgManager } from '../models/gpkgManager';
-import { GdalInfoValidator } from './gdalInfoValidator';
+import { GdalInfoManager } from '../models/gdalInfoManager';
 
 @injectable()
 export class SourceValidator {
@@ -16,7 +16,7 @@ export class SourceValidator {
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
-    private readonly gdalInfoValidator: GdalInfoValidator,
+    private readonly gdalInfoManager: GdalInfoManager,
     private readonly gpkgManager: GpkgManager
   ) {
     this.logContext = {
@@ -28,7 +28,7 @@ export class SourceValidator {
 
   public async validateFilesExist(srcDir: string, files: string[]): Promise<void> {
     const logCtx = { ...this.logContext, function: this.validateFilesExist.name };
-    this.logger.info({ msg: 'validating source files exist', logContext: logCtx, metadata: { srcDir, files } });
+    this.logger.debug({ msg: 'validating source files exist', logContext: logCtx, metadata: { srcDir, files } });
     const fullPaths: string[] = [];
 
     const filePromises = files.map(async (file) => {
@@ -41,11 +41,12 @@ export class SourceValidator {
     });
     await Promise.all(filePromises);
 
-    this.logger.info({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullPaths } });
+    this.logger.debug({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullPaths } });
   }
 
   public async validateGdalInfo(originDirectory: string, files: string[]): Promise<void> {
-    await this.gdalInfoValidator.validateInfoData(originDirectory, files);
+    const gdalInfoData = await this.gdalInfoManager.getInfoData(originDirectory, files);
+    await this.gdalInfoManager.validateInfoData(gdalInfoData);
   }
 
   public validateGpkgFiles(originDirectory: string, files: string[]): void {

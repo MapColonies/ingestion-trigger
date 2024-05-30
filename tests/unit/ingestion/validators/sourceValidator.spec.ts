@@ -3,16 +3,18 @@ import jsLogger from '@map-colonies/js-logger';
 import { IConfig } from 'config';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
-import { GdalInfoValidator } from '../../../../src/ingestion/validators/gdalInfoValidator';
+import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
 import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
 import { FileNotFoundError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { getApp } from '../../../../src/app';
 import { SERVICES } from '../../../../src/common/constants';
 import { getTestContainerConfig } from '../../../integration/ingestion/helpers/containerConfig';
+import { InfoDataWithFile } from '../../../../src/ingestion/schemas/infoDataSchema';
+import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
 
 describe('SourceValidator', () => {
   let sourceValidator: SourceValidator;
-  let mockGdalInfoValidator: GdalInfoValidator;
+  let mockGdalInfoManager: GdalInfoManager;
   let mockGpkgManager: GpkgManager;
   let fspAccessSpy: jest.SpyInstance;
   const [, container] = getApp({
@@ -23,9 +25,9 @@ describe('SourceValidator', () => {
 
   beforeEach(() => {
     config = container.resolve<IConfig>(SERVICES.CONFIG);
-    mockGdalInfoValidator = { validateInfoData: jest.fn } as unknown as GdalInfoValidator;
+    mockGdalInfoManager = { getInfoData: jest.fn, validateInfoData: jest.fn } as unknown as GdalInfoManager;
     mockGpkgManager = { validateGpkgFiles: jest.fn } as unknown as GpkgManager;
-    sourceValidator = new SourceValidator(jsLogger({ enabled: false }), config, mockGdalInfoValidator, mockGpkgManager);
+    sourceValidator = new SourceValidator(jsLogger({ enabled: false }), config, mockGdalInfoManager, mockGpkgManager);
     fspAccessSpy = jest.spyOn(fsp, 'access');
   });
   afterEach(() => {
@@ -38,7 +40,7 @@ describe('SourceValidator', () => {
       const sourceMount = config.get<string>('storageExplorer.layerSourceDir');
 
       const { originDirectory, fileNames } = fakeIngestionSources.validSources.validInputFiles;
-      const existFile2 = fakeIngestionSources.invalidSources.unsupportedCrs.fileNames[0];
+      const existFile2 = fakeIngestionSources.validSources.anotherValidInputFiles.fileNames[0];
       fileNames.push(existFile2);
       const existFile1 = fileNames[0];
       const fullPath1 = `${sourceMount}/${originDirectory}/${existFile1}`;
@@ -67,12 +69,15 @@ describe('SourceValidator', () => {
 
   describe('validateGdalInfo', () => {
     it('should validate gdal info', async () => {
-      const gdalInfoValidatorSpy = jest.spyOn(mockGdalInfoValidator, 'validateInfoData').mockResolvedValue(undefined);
       const { originDirectory, fileNames } = fakeIngestionSources.validSources.validInputFiles;
+      const fileName = fileNames[0];
+      const validGdalInfo: InfoDataWithFile = { ...gdalInfoCases.validGdalInfo, fileName };
 
-      await sourceValidator.validateGdalInfo(originDirectory, fileNames);
+      jest.spyOn(mockGdalInfoManager, 'getInfoData').mockResolvedValue([validGdalInfo]);
+      const gdalInfoValidatorSpy = jest.spyOn(mockGdalInfoManager, 'validateInfoData');
 
-      expect(gdalInfoValidatorSpy).toHaveBeenCalledWith(originDirectory, fileNames);
+      await expect(sourceValidator.validateGdalInfo(originDirectory, fileNames)).resolves.not.toThrow();
+      expect(gdalInfoValidatorSpy).toHaveBeenCalledWith([validGdalInfo]);
     });
   });
 

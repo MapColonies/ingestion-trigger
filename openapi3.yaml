@@ -58,11 +58,21 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+
+  /ingestion/{id}:
     put:
       operationId: updateLayer
       tags:
         - ingestion
       summary: start a process of creating update to exists layer from raw data
+      parameters:
+        - name: id
+          in: path
+          description: The id of the layer to update
+          required: true
+          schema:
+            type: string
+          example: '5f7b3b3b-3b3b-3b3b-3b3b-3b3b3b3b3b3b'
       requestBody:
         content:
           application/json:
@@ -177,6 +187,13 @@ paths:
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '404':
           description: Files not found
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '422':
+          description: Unprocessable Content
           content:
             application/json:
               schema:

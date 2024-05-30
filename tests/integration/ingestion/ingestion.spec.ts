@@ -3,6 +3,7 @@ import { InputFiles } from '@map-colonies/mc-model-types';
 import gdal from 'gdal-async';
 import { SqliteError } from 'better-sqlite3';
 import { getApp } from '../../../src/app';
+import { infoDataSchemaArray } from '../../../src/ingestion/schemas/infoDataSchema';
 import { SourceValidator } from '../../../src/ingestion/validators/sourceValidator';
 import { SQLiteClient } from '../../../src/serviceClients/database/SQLiteClient';
 import { ZodValidator } from '../../../src/utils/validation/zodValidator';
@@ -300,6 +301,48 @@ describe('Ingestion', function () {
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
         expect(response.body).toHaveProperty('message');
+      });
+    });
+  });
+
+  describe('Ingestion Sources Info', () => {
+    describe('Happy Path', () => {
+      it('should return 200 status code and sources info', async () => {
+        const sources = fakeIngestionSources.validSources.validInputFiles;
+        const response = await requestSender.getSourcesGdalInfo(sources);
+
+        expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toHaveLength(sources.fileNames.length);
+        expect(infoDataSchemaArray.safeParse(response.body).success).toBe(true);
+      });
+    });
+
+    describe('Bad Path', () => {
+      it('should return 400 status code and sources info', async () => {
+        const sources = fakeIngestionSources.invalidValidation.tooManyFiles;
+
+        const response = await requestSender.getSourcesGdalInfo(sources);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 404 status code and sources info', async () => {
+        const sources = fakeIngestionSources.invalidSources.filesNotExist;
+
+        const response = await requestSender.getSourcesGdalInfo(sources);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+      });
+
+      it('should return 200 status code and sources info', async () => {
+        const sources = fakeIngestionSources.invalidSources.unsupportedCrs;
+
+        const response = await requestSender.getSourcesGdalInfo(sources);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
       });
     });
   });

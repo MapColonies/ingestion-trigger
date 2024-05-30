@@ -8,6 +8,7 @@ export interface PixelRange {
   min: number;
   max: number;
 }
+
 export interface IMatrixValues {
   matrixWidth: number;
   matrixHeight: number;
