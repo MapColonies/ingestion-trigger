@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
+import { BBox } from '@turf/helpers';
+
 export interface SourcesValidationResponse {
   isValid: boolean;
   message: string;
+}
+
+export interface ResponseStatus {
+  status: string;
 }
 
 export interface PixelRange {
@@ -33,4 +39,14 @@ export const matrixRatioToGrid = new Map([
 export interface TileSize {
   width: number;
   height: number;
+}
+
+export interface ITaskParameters {
+  discreteId: string;
+  version: string;
+  originDirectory: string;
+  minZoom: number;
+  maxZoom: number;
+  layerRelativePath: string;
+  bbox: BBox;
 }

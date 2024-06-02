@@ -2,10 +2,9 @@ import { BadRequestError } from '@map-colonies/error-types';
 import { IConfig } from 'config';
 import { DependencyContainer } from 'tsyringe';
 import { getApp } from '../../../../src/app';
-import { GPKG_REGEX } from '../../../../src/ingestion/schemas/inputFilesSchema';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
 import { fakeDataToValidate } from '../../../mocks/schemasValidatorMockData';
-import { SERVICES } from '../../../../src/common/constants';
+import { SERVICES, GPKG_REGEX } from '../../../../src/common/constants';
 import { pixelSizeRange } from '../../../../src/ingestion/schemas/infoDataSchema';
 
 let schemasValidator: SchemasValidator;

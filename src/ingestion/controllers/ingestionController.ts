@@ -1,16 +1,17 @@
 import { RequestHandler } from 'express';
-import { InputFiles } from '@map-colonies/mc-model-types';
+import { InputFiles, PolygonPart, RasterIngestionLayer } from '@map-colonies/mc-model-types';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
 import { HttpError } from 'express-openapi-validator/dist/framework/types';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
-import { SourcesValidationResponse } from '../interfaces';
+import { SourcesValidationResponse, ResponseStatus } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 import { InfoData } from '../schemas/infoDataSchema';
-import { FileNotFoundError, GdalInfoError } from '../errors/ingestionErrors';
+import { FileNotFoundError, GdalInfoError, ValidationError, ConflictError } from '../errors/ingestionErrors';
 
 type SourcesValidationHandler = RequestHandler<undefined, SourcesValidationResponse, InputFiles>;
 type SourcesInfoHandler = RequestHandler<undefined, InfoData[], InputFiles>;
+type NewLayerHandler = RequestHandler<undefined, ResponseStatus, RasterIngestionLayer>;
 
 @injectable()
 export class IngestionController {
@@ -19,8 +20,25 @@ export class IngestionController {
     private readonly ingestionManager: IngestionManager
   ) {}
 
-  public createLayer: RequestHandler = (req, res, next) => {
-    throw new Error('Method not implemented.');
+  public createLayer: NewLayerHandler = async (req, res, next) => {
+    try {
+      const newLayerRequestBody: unknown = req.body;
+      const validNewLayerRequestBody: RasterIngestionLayer = await this.schemasValidator.validateNewLayerRequest(newLayerRequestBody);
+      await this.ingestionManager.validateIngestion(validNewLayerRequestBody);
+
+      res.status(StatusCodes.OK).send({ status: 'success' });
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
+      }
+      if (error instanceof ConflictError) {
+        (error as HttpError).status = StatusCodes.CONFLICT; //409
+      }
+      if (error instanceof GdalInfoError) {
+        (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
+      }
+      next(error);
+    }
   };
 
   public updateLayer: RequestHandler = (req, res, next) => {
