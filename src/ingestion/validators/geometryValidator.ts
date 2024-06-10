@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { GeoJSON } from 'geojson';
-import { Feature, Geometry, bbox, buffer } from '@turf/turf';
+import { GeoJSON, Geometry } from 'geojson';
+import { bbox, buffer } from '@turf/turf';
 import { getIssues } from '@placemarkio/check-geojson';
 import booleanContains from '@turf/boolean-contains';
 import isValidGeoJson from '@turf/boolean-valid';
@@ -76,11 +76,13 @@ export class GeometryValidator {
     if (footprint.type === 'MultiPolygon') {
       footprint.coordinates.forEach((coords) => {
         const polygon = { type: 'Polygon', coordinates: coords };
-        if (!(booleanContains(bufferedExtent as Geometry, polygon as Geometry) || booleanContains(extent as Geometry, polygon as Geometry))) {
+        if (
+          !(booleanContains(bufferedExtent as unknown as Geometry, polygon as Geometry) || booleanContains(extent as Geometry, polygon as Geometry))
+        ) {
           return false;
         }
       });
-    } else if (!(booleanContains(bufferedExtent as Geometry, footprint) || booleanContains(extent as Geometry, footprint))) {
+    } else if (!(booleanContains(bufferedExtent as unknown as Geometry, footprint) || booleanContains(extent as Geometry, footprint))) {
       return false;
     }
     return true;

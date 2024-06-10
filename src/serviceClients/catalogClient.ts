@@ -15,7 +15,7 @@ export class CatalogClient extends HttpClient {
   ) {
     super(
       logger,
-      config.get<string>('catalogPublishingServiceURL'),
+      config.get<string>('catalogServiceURL'),
       'CatalogClient',
       config.get<IHttpRetryConfig>('httpRetry'),
       config.get<boolean>('disableHttpClientLogs')

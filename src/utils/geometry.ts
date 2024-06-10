@@ -1,22 +1,39 @@
-import { FeatureCollection, combine, feature, featureCollection, Feature, buffer } from '@turf/turf';
-import { GeoJSON } from 'geojson';
+import { combine, feature, featureCollection, buffer } from '@turf/turf';
+import { GeoJSON, FeatureCollection, Feature, Polygon, MultiPolygon, Geometry } from 'geojson';
 import { InfoData } from '../ingestion/schemas/infoDataSchema';
 
-export const combineExtentPolygons = (infoData: InfoData[]): FeatureCollection => {
+export const combineExtentPolygons = (infoData: InfoData[]): Feature<MultiPolygon> => {
   const features = infoData.map((data) => {
-    return feature(data.extentPolygon);
+    const polygon = data.extentPolygon as Polygon;
+    return feature(polygon);
   });
 
   const collection = featureCollection(features);
-  //console.log(JSON.stringify(collection, null, 2));
-
   const combinedFeature = combine(collection);
 
-  //console.log(JSON.stringify(combinedFeature, null, 2));
-  //const combinedExtentGeoJson = JSON.stringify(combinedFeature, null, 2);
-  return combinedFeature;
+  // Collect all Polygon and MultiPolygon coordinates into one MultiPolygon
+  const multiPolygonCoordinates: MultiPolygon['coordinates'] = [];
+
+  combinedFeature.features.forEach((feat) => {
+    const geometry = feat.geometry as Geometry;
+    if (geometry.type === 'Polygon') {
+      multiPolygonCoordinates.push(geometry.coordinates);
+    } else if (geometry.type === 'MultiPolygon') {
+      multiPolygonCoordinates.push(...geometry.coordinates);
+    } else {
+      throw new Error(`Unexpected geometry type: ${geometry.type}`);
+    }
+  });
+
+  // Create a MultiPolygon feature with the collected coordinates
+  const multiPolygon: MultiPolygon = {
+    type: 'MultiPolygon',
+    coordinates: multiPolygonCoordinates,
+  };
+
+  return feature(multiPolygon);
 };
 
-export const extentBuffer = (extentBuffer: number, extent: GeoJSON): GeoJSON => {
+export const extentBuffer = (extentBuffer: number, extent: GeoJSON): Feature<Polygon | MultiPolygon> | undefined => {
   return buffer(extent as Feature, extentBuffer, { units: 'meters' });
 };

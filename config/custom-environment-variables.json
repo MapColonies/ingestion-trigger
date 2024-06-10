@@ -69,5 +69,37 @@
       "__name": "EXTENT_BUFFER_IN_METERS",
       "__format": "number"
     }
+  },
+  "forbiddenTypesForParallelIngesion": {
+    "__name": "FORBIDDEN_TYPES_FOR_PARALLEL_INGESTION",
+    "__format": "json"
+  },
+  "supportedIngestionSwapTypes": {
+    "__name": "SUPPORTED_INGESTION_SWAP_TYPES",
+    "__format": "json"
+  },
+  "jobDomain": "JOB_DOMAIN",
+  "ingestionNewJobType": "INGESTION_NEW_JOB_TYPE",
+  "ingestionUpdateJobType": "INGESTION_UPDATE_JOB_TYPE",
+  "ingestionSwapUpdateJobType": "INGESTION_SWAP_UPDATE_JOB_TYPE",
+  "jobManagerURL": "JOB_MANAGER_URL",
+  "syncServiceURL": "SYNC_SERVICE_URL",
+  "mapPublishingServiceURL": "MAP_PUBLISHING_SERVICE_URL",
+  "publicMapServerURL": "PUBLIC_MAP_SERVER_URL",
+  "catalogServiceURL": "CATALOG_PUBLISHING_SERVICE_URL",
+  "httpRetry": {
+    "attempts": {
+      "__name": "HTTP_RETRY_ATTEMPTS",
+      "__format": "number"
+    },
+    "delay": "HTTP_RETRY_DELAY",
+    "shouldResetTimeout": {
+      "__name": "HTTP_RETRY_RESET_TIMEOUT",
+      "__format": "boolean"
+    }
+  },
+  "disableHttpClientLogs": {
+    "__name": "DISABLE_HTTP_CLIENT_LOGS",
+    "__format": "boolean"
   }
 }

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { BBox } from '@turf/helpers';
+import { NewRasterLayer, UpdateRasterLayer } from '@map-colonies/mc-model-types';
 
 export interface SourcesValidationResponse {
   isValid: boolean;
@@ -42,11 +42,6 @@ export interface TileSize {
 }
 
 export interface ITaskParameters {
-  discreteId: string;
-  version: string;
-  originDirectory: string;
-  minZoom: number;
-  maxZoom: number;
-  layerRelativePath: string;
-  bbox: BBox;
+  rasterIngestionLayer: NewRasterLayer | UpdateRasterLayer;
+  blockDuplication?: boolean;
 }
