@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
+
 export const bufferedGeometry = {
   type: 'Feature',
   properties: {},
