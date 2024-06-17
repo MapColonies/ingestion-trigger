@@ -1,7 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
-import { InputFiles, NewRasterLayerMetadata, ProductType, NewRasterLayer } from '@map-colonies/mc-model-types';
-import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { InputFiles, ProductType, NewRasterLayer } from '@map-colonies/mc-model-types';
+import { ConflictError } from '@map-colonies/error-types';
 import { ICreateJobResponse, IFindJobsRequest, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { SERVICES } from '../../common/constants';
 import { SourceValidator } from '../validators/sourceValidator';
@@ -96,27 +96,30 @@ export class IngestionManager {
   public async validateIngestion(rasterIngestionLayer: NewRasterLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateIngestion.name };
     const { metadata, partData, inputFiles } = rasterIngestionLayer;
-    const existsInCatalog = await this.catalogClient.exists(metadata.productId, metadata.productType);
-    if (existsInCatalog) {
-      const message = `Layer id: ${metadata.productId} ProductType: ${metadata.productType}, already exists in catalog`;
-      this.logger.error({
-        productId: metadata.productId,
-        productType: metadata.productType,
-        msg: message,
-      });
-      throw new ConflictError(message);
-    }
+    this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, partData, inputFiles }, logCtx: logCtx });
+    this.logger.info({
+      productId: metadata.productId,
+      productType: metadata.productType,
+      productName: metadata.productName,
+      msg: 'started validation on new layer request',
+      logCtx: logCtx,
+    });
+
+    //validate files exist, gdal info and GPKG data
+    await this.validateSources(inputFiles);
+    this.logger.debug({ msg: 'validated sources', logContext: logCtx });
+
+    //validate new ingestion payload against gpkg data for each part
+    const infoData: InfoData[] = await this.getInfoData(inputFiles);
+    this.geometryValidator.validate(partData, infoData);
+    this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
+
+    //catalog ,mapproxy, jobmanager validation
+    await this.isInCatalog(metadata.productId, metadata.productType);
     await this.isInMapProxy(metadata.productId, metadata.productType);
     await this.validateJobNotRunning(metadata.productId, metadata.productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
 
-    await this.validateSources(inputFiles);
-    this.logger.debug({ msg: 'validated sources', logContext: logCtx, metadata: { inputFiles } });
-    const infoData: InfoData[] = await this.getInfoData(inputFiles);
-    this.geometryValidator.validate(partData, infoData);
-    this.logger.info({ msg: 'validated geometries', logContext: logCtx });
-
-    //all validation have passed
     //create one job with one task
     const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(rasterIngestionLayer);
     this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
@@ -148,6 +151,19 @@ export class IngestionManager {
     const existsInMapServer = await this.mapProxyClient.exists(layerName);
     if (existsInMapServer) {
       const message = `Failed to create new ingestion job for layer: '${productId}-${productType}', already exists on MapProxy`;
+      this.logger.error({
+        productId: productId,
+        productType: productType,
+        msg: message,
+      });
+      throw new ConflictError(message);
+    }
+  }
+
+  private async isInCatalog(productId: string, productType: ProductType): Promise<void> {
+    const existsInCatalog = await this.catalogClient.exists(productId, productType);
+    if (existsInCatalog) {
+      const message = `Layer id: ${productId} ProductType: ${productType}, already exists in catalog`;
       this.logger.error({
         productId: productId,
         productType: productType,

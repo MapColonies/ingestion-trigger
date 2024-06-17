@@ -1,7 +1,7 @@
 /* istanbul ignore next @preserve */
 export class FileNotFoundError extends Error {
-  //public constructor(fileName: string);
-  //public constructor(fileName: string, path: string);
+  public constructor(fileName: string);
+  public constructor(fileName: string, path: string);
   public constructor(fileName: string, path?: string) {
     const message = path != null ? `File '${fileName}' does not exist in path ${path}` : `File ${fileName} does not exist`;
     super(message);
@@ -15,8 +15,7 @@ export class GdalInfoError extends Error {
 }
 
 export class ValidationError extends Error {
-  public constructor(avi: string) {
-    const message = 'avi av';
+  public constructor(message: string) {
     super(message);
   }
 }

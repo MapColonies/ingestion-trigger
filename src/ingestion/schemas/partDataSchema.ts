@@ -2,12 +2,12 @@
 import { GeoJSON } from 'geojson';
 import { z } from 'zod';
 import { getUTCDate } from '@map-colonies/mc-utils';
-import { horizontalAccuracyCE90Range, resolutionDegRange, resolutionMeterRange } from '../../common/constants';
+import { horizontalAccuracyCE90Range, resolutionDegRange, resolutionMeterRange, PRODUCT_ID_REGEX } from '../../common/constants';
 
 //eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const partSchema = z.object({
-  id: z.string().uuid().optional(),
-  name: z.string(),
+  id: z.string().regex(PRODUCT_ID_REGEX).optional(),
+  name: z.string().min(1),
   description: z.string().optional(),
   imagingTimeBeginUTC: z.coerce.date(),
   imagingTimeEndUTC: z.coerce.date(),
@@ -24,14 +24,15 @@ const partSchema = z.object({
     .min(resolutionMeterRange.min as number)
     .max(resolutionMeterRange.max as number),
   horizontalAccuracyCE90: z.number().min(horizontalAccuracyCE90Range.min).max(horizontalAccuracyCE90Range.max),
-  sensors: z.array(z.string()),
-  countries: z.array(z.string()).optional(),
-  cities: z.array(z.string()).optional(),
+  sensors: z.array(z.string().min(1)),
+  countries: z.array(z.string().min(1)).optional(),
+  cities: z.array(z.string().min(1)).optional(),
   geometry: z.custom<GeoJSON>(),
 });
 
 export type Part = z.infer<typeof partSchema>;
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const createPartDataSchema = () => {
   return z
     .array(

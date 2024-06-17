@@ -1,9 +1,9 @@
 import { RequestHandler } from 'express';
-import { InputFiles, PolygonPart, NewRasterLayer } from '@map-colonies/mc-model-types';
+import { InputFiles, NewRasterLayer } from '@map-colonies/mc-model-types';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
 import { HttpError } from 'express-openapi-validator/dist/framework/types';
-import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { ConflictError } from '@map-colonies/error-types';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { SourcesValidationResponse, ResponseStatus } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';

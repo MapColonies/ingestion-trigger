@@ -1,19 +1,16 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { GeoJSON, Geometry } from 'geojson';
-import { bbox, buffer } from '@turf/turf';
 import { getIssues } from '@placemarkio/check-geojson';
 import booleanContains from '@turf/boolean-contains';
 import isValidGeoJson from '@turf/boolean-valid';
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import { IConfig } from 'config';
-import { Tracer } from '@opentelemetry/api';
-import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 import { PolygonPart } from '@map-colonies/mc-model-types';
 import { LogContext } from '../../utils/logger/logContext';
 import { SERVICES } from '../../common/constants';
 import { InfoData } from '../schemas/infoDataSchema';
-import { combineExtentPolygons, extentBuffer } from '../../utils/geometry';
+import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';
 import { GeometryValidationError } from '../errors/ingestionErrors';
 
 @injectable()
@@ -31,7 +28,8 @@ export class GeometryValidator {
   public validate(partData: PolygonPart[], infoDataFiles: InfoData[]): void {
     const logCtx = { ...this.logContext, function: this.validate.name };
     //create combined extent
-    const combinedExtent = combineExtentPolygons(infoDataFiles);
+    const features = extractPolygons(infoDataFiles);
+    const combinedExtent = combineExtentPolygons(features);
     this.logger.debug({ msg: 'created combined extent', logContext: logCtx, metadata: { combinedExtent } });
     //run on map and check that the geometry is in extent
     partData.map((polygonPart) => {
@@ -40,6 +38,7 @@ export class GeometryValidator {
         msg: `validated geometry of part ${polygonPart.name} . validGeo: ${validGeo}`,
         logContext: logCtx,
         metadata: { polygonPart },
+        logCtx: logCtx,
       });
       if (!validGeo) {
         this.logger.error({ msg: `invalid geometry in part: ${polygonPart.name}`, logContext: logCtx, metadata: { polygonPart } });
@@ -71,7 +70,6 @@ export class GeometryValidator {
   }
 
   private isContainedByExtent(footprint: Geometry, extent: GeoJSON): boolean {
-    const logCtx = { ...this.logContext, function: this.isContainedByExtent.name };
     const bufferedExtent = extentBuffer(this.extentBufferInMeters, extent);
     if (footprint.type === 'MultiPolygon') {
       footprint.coordinates.forEach((coords) => {

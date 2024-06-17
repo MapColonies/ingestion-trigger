@@ -1,4 +1,4 @@
-import { IRasterCatalogUpsertRequestBody, ProductType, TileOutputFormat } from '@map-colonies/mc-model-types';
+import { IRasterCatalogUpsertRequestBody } from '@map-colonies/mc-model-types';
 
 export interface IConfig {
   get: <T>(setting: string) => T;
