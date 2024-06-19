@@ -14,13 +14,13 @@ import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../util
 import { GeometryValidationError } from '../errors/ingestionErrors';
 
 @injectable()
-export class GeometryValidator {
+export class PolygonPartGeometryValidator {
   private readonly logContext: LogContext;
   private readonly extentBufferInMeters: number;
   public constructor(@inject(SERVICES.LOGGER) private readonly logger: Logger, @inject(SERVICES.CONFIG) private readonly config: IConfig) {
     this.logContext = {
       fileName: __filename,
-      class: GeometryValidator.name,
+      class: PolygonPartGeometryValidator.name,
     };
     this.extentBufferInMeters = this.config.get<number>('validationValuesByInfo.extentBufferInMeters');
   }
@@ -32,31 +32,35 @@ export class GeometryValidator {
     const combinedExtent = combineExtentPolygons(features);
     this.logger.debug({ msg: 'created combined extent', logContext: logCtx, metadata: { combinedExtent } });
     //run on map and check that the geometry is in extent
-    partData.map((polygonPart) => {
+    partData.map((polygonPart, index) => {
       const validGeo = this.validateGeometry(polygonPart.geometry as Geometry);
       this.logger.debug({
-        msg: `validated geometry of part ${polygonPart.name} . validGeo: ${validGeo}`,
+        msg: `validated geometry of part ${polygonPart.name} at index: ${index} . validGeo: ${validGeo}`,
         logContext: logCtx,
         metadata: { polygonPart },
         logCtx: logCtx,
       });
       if (!validGeo) {
-        this.logger.error({ msg: `invalid geometry in part: ${polygonPart.name}`, logContext: logCtx, metadata: { polygonPart } });
-        throw new GeometryValidationError(polygonPart.name as string, 'Geometry is not valid');
+        this.logger.error({
+          msg: `invalid geometry in part: ${polygonPart.name} at index: ${index} `,
+          logContext: logCtx,
+          metadata: { polygonPart },
+        });
+        throw new GeometryValidationError(polygonPart.name as string, index, 'Geometry is not valid');
       }
       const containedByExtent = this.isContainedByExtent(polygonPart.geometry as Geometry, combinedExtent as GeoJSON);
       this.logger.debug({
-        msg: `validated geometry of part ${polygonPart.name} . containedByExtent: ${containedByExtent}`,
+        msg: `validated geometry of part ${polygonPart.name} at index: ${index}. containedByExtent: ${containedByExtent}`,
         logContext: logCtx,
         metadata: { polygonPart },
       });
       if (!containedByExtent) {
         this.logger.error({
-          msg: `Geometry ${polygonPart.name} is not contained by combined extent`,
+          msg: `Geometry ${polygonPart.name} at index: ${index} is not contained by combined extent`,
           logContext: logCtx,
           metadata: { polygonPart, combinedExtent },
         });
-        throw new GeometryValidationError(polygonPart.name as string, 'Geometry is not contained by combined extent');
+        throw new GeometryValidationError(polygonPart.name as string, index, 'Geometry is not contained by combined extent');
       }
     });
   }

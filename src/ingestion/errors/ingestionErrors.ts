@@ -21,8 +21,8 @@ export class ValidationError extends Error {
 }
 
 export class GeometryValidationError extends Error {
-  public constructor(partDataName: string, description: string) {
-    const message = `error in part: ${partDataName} . ${description}`;
+  public constructor(partDataName: string, index: number, description: string) {
+    const message = `error in part: ${partDataName} at index ${index}. ${description}`;
     super(message);
   }
 }

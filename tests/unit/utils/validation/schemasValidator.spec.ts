@@ -1,8 +1,7 @@
 import { BadRequestError } from '@map-colonies/error-types';
 import { IConfig } from 'config';
 import { DependencyContainer } from 'tsyringe';
-import { ProductType, Transparency, PolygonPart } from '@map-colonies/mc-model-types';
-import { containsNumber } from '@turf/turf';
+import { ProductType, Transparency } from '@map-colonies/mc-model-types';
 import { getApp } from '../../../../src/app';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
 import { fakeDataToValidate, mockMetadata, mockPart } from '../../../mocks/schemasValidatorMockData';
@@ -16,7 +15,6 @@ import {
   resolutionMeterRange,
 } from '../../../../src/common/constants';
 import { pixelSizeRange } from '../../../../src/ingestion/schemas/infoDataSchema';
-import { createNewMetadataSchema } from '../../../../src/ingestion/schemas/newMetadataSchema';
 
 let schemasValidator: SchemasValidator;
 let appContainer: DependencyContainer;

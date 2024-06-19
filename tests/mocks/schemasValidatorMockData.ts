@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 
-import { ProductType, Transparency, NewRasterLayerMetadata } from '@map-colonies/mc-model-types';
+import { ProductType, Transparency } from '@map-colonies/mc-model-types';
 import { scaleRange, horizontalAccuracyCE90Range, resolutionDegRange, resolutionMeterRange } from '../../src/common/constants';
 
 export const fakeDataToValidate = {

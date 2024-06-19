@@ -69,7 +69,7 @@ export const createPartDataSchema = () => {
             const isValidGeoJson = typeof data.geometry === 'object' && (data.geometry.type === 'Polygon' || data.geometry.type === 'MultiPolygon');
             return isValidGeoJson;
           },
-          (data: Part) => ({
+          () => ({
             message: `geometry is not a valid geoJson`,
           })
         )
