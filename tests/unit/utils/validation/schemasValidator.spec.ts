@@ -138,11 +138,36 @@ describe('SchemasValidator', () => {
       expect(result).toHaveProperty('inputFiles');
     });
 
-    it('should throw error when fails validate new layer request', async () => {
-      const layerRequest = fakeDataToValidate.newLayerRequest.invalidMetadata;
+    it('should throw error on invalid new layer request when metadata is invalid', async () => {
+      const layerRequest = {
+        metadata: fakeDataToValidate.newLayerRequest.invalid.metadata,
+        partdata: fakeDataToValidate.newLayerRequest.valid.partData,
+        inputFiles: fakeDataToValidate.inputFiles.valid,
+      };
 
       const validationAction = async () => schemasValidator.validateNewLayerRequest(layerRequest);
+      await expect(validationAction).rejects.toThrow(BadRequestError);
+    });
 
+    it('should throw error on invalid new layer request when partdata is invalid', async () => {
+      const layerRequest = {
+        metadata: fakeDataToValidate.newLayerRequest.valid.metadata,
+        partdata: fakeDataToValidate.newLayerRequest.invalid.partData,
+        inputFiles: fakeDataToValidate.inputFiles.valid,
+      };
+
+      const validationAction = async () => schemasValidator.validateNewLayerRequest(layerRequest);
+      await expect(validationAction).rejects.toThrow(BadRequestError);
+    });
+
+    it('should throw error on invalid new layer request when inputFiles is invalid', async () => {
+      const layerRequest = {
+        metadata: fakeDataToValidate.newLayerRequest.valid.metadata,
+        partdata: fakeDataToValidate.newLayerRequest.valid.partData,
+        inputFiles: fakeDataToValidate.inputFiles.invalid.filesNotSupplied,
+      };
+
+      const validationAction = async () => schemasValidator.validateNewLayerRequest(layerRequest);
       await expect(validationAction).rejects.toThrow(BadRequestError);
     });
   });
@@ -150,6 +175,8 @@ describe('SchemasValidator', () => {
   describe('validateNewMetadataSchema', () => {
     it('should return valid new metadata schema', async () => {
       const validMetadata = fakeDataToValidate.newLayerRequest.valid.metadata;
+      console.log(fakeDataToValidate.newLayerRequest.valid.metadata);
+      console.log(validMetadata);
       const result = await schemasValidator.validateNewMetadata(validMetadata);
 
       expect(result).toHaveProperty('productId');

@@ -147,9 +147,9 @@ export const fakeDataToValidate = {
         fileNames: ['example.gpkg'],
       },
     },
-    invalidMetadata: {
+    invalid: {
       metadata: {
-        productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
+        productId: 'invalid !',
         productName: 'string',
         productType: 'Orthophoto',
         productSubType: 'string',
@@ -157,14 +157,14 @@ export const fakeDataToValidate = {
         srs: '4326',
         srsName: 'WGS84Geo',
         transparency: 'TRANSPARENT',
-        region: [''],
+        region: ['string'],
         classification: '6',
         producerName: 'string',
         scale: 100000000,
       },
       partData: [
         {
-          id: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
+          id: 'invalid !',
           name: 'string',
           imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
           imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
