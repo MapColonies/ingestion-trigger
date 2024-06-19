@@ -234,7 +234,7 @@ export const infoDataArray = [
   },
 ];
 
-export const aviPolygons = [
+export const expectedExtractedPolygons = [
   {
     type: 'Feature',
     properties: {},
@@ -268,6 +268,36 @@ export const aviPolygons = [
     },
   },
 ];
+
+export const expectedCombined = {
+  type: 'Feature',
+  properties: {
+    collectedProperties: [{}, {}],
+  },
+  geometry: {
+    type: 'MultiPolygon',
+    coordinates: [
+      [
+        [
+          [0, 0],
+          [0, 1],
+          [1, 1],
+          [1, 0],
+          [0, 0],
+        ],
+      ],
+      [
+        [
+          [0, 0],
+          [0, 2],
+          [2, 2],
+          [2, 0],
+          [0, 0],
+        ],
+      ],
+    ],
+  },
+};
 
 export const mockMetadata = {
   productId: {
