@@ -24,7 +24,7 @@ const partSchema = z.object({
     .min(resolutionMeterRange.min as number)
     .max(resolutionMeterRange.max as number),
   horizontalAccuracyCE90: z.number().min(horizontalAccuracyCE90Range.min).max(horizontalAccuracyCE90Range.max),
-  sensors: z.array(z.string().min(1)),
+  sensors: z.array(z.string().min(1)).min(1),
   countries: z.array(z.string().min(1)).optional(),
   cities: z.array(z.string().min(1)).optional(),
   geometry: z.custom<GeoJSON>(),
@@ -62,6 +62,15 @@ export const createPartDataSchema = () => {
           },
           (data: Part) => ({
             message: `imagingTimeEndUTC: ${data.imagingTimeEndUTC.toISOString()} must be after imagingTimeBeginUTC: ${data.imagingTimeBeginUTC.toISOString()}`,
+          })
+        )
+        .refine(
+          (data: Part) => {
+            const isValidGeoJson = typeof data.geometry === 'object' && (data.geometry.type === 'Polygon' || data.geometry.type === 'MultiPolygon');
+            return isValidGeoJson;
+          },
+          (data: Part) => ({
+            message: `geometry is not a valid geoJson`,
           })
         )
     )

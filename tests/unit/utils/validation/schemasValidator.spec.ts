@@ -1,11 +1,22 @@
 import { BadRequestError } from '@map-colonies/error-types';
 import { IConfig } from 'config';
 import { DependencyContainer } from 'tsyringe';
+import { ProductType, Transparency, PolygonPart } from '@map-colonies/mc-model-types';
+import { containsNumber } from '@turf/turf';
 import { getApp } from '../../../../src/app';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
-import { fakeDataToValidate } from '../../../mocks/schemasValidatorMockData';
-import { SERVICES, GPKG_REGEX } from '../../../../src/common/constants';
+import { fakeDataToValidate, mockMetadata, mockPart } from '../../../mocks/schemasValidatorMockData';
+import {
+  SERVICES,
+  GPKG_REGEX,
+  PRODUCT_ID_REGEX,
+  CLASSIFICATION_REGEX,
+  horizontalAccuracyCE90Range,
+  resolutionDegRange,
+  resolutionMeterRange,
+} from '../../../../src/common/constants';
 import { pixelSizeRange } from '../../../../src/ingestion/schemas/infoDataSchema';
+import { createNewMetadataSchema } from '../../../../src/ingestion/schemas/newMetadataSchema';
 
 let schemasValidator: SchemasValidator;
 let appContainer: DependencyContainer;
@@ -112,6 +123,116 @@ describe('SchemasValidator', () => {
 
       const validationAction = async () => schemasValidator.validateInfoData(infoData);
 
+      await expect(validationAction).rejects.toThrow(BadRequestError);
+    });
+  });
+
+  describe('validateNewLayerRequest', () => {
+    it('should return valid new layer request', async () => {
+      const layerRequest = fakeDataToValidate.newLayerRequest.valid;
+
+      const result = await schemasValidator.validateNewLayerRequest(layerRequest);
+
+      expect(result).toHaveProperty('metadata');
+      expect(result).toHaveProperty('partData');
+      expect(result).toHaveProperty('inputFiles');
+    });
+
+    it('should throw error when fails validate new layer request', async () => {
+      const layerRequest = fakeDataToValidate.newLayerRequest.invalidMetadata;
+
+      const validationAction = async () => schemasValidator.validateNewLayerRequest(layerRequest);
+
+      await expect(validationAction).rejects.toThrow(BadRequestError);
+    });
+  });
+
+  describe('validateNewMetadataSchema', () => {
+    it('should return valid new metadata schema', async () => {
+      const validMetadata = fakeDataToValidate.newLayerRequest.valid.metadata;
+      const result = await schemasValidator.validateNewMetadata(validMetadata);
+
+      expect(result).toHaveProperty('productId');
+      expect(result.productId).toMatch(PRODUCT_ID_REGEX);
+      expect(result).toHaveProperty('productName');
+      expect(typeof result.productName).toBe('string');
+      expect(result).toHaveProperty('productType');
+      expect(Object.values(ProductType)).toContain(result.productType);
+      expect(result).toHaveProperty('srs');
+      expect(result.srs).toBe('4326');
+      expect(result).toHaveProperty('srsName');
+      expect(result.srsName).toBe('WGS84Geo');
+      expect(result).toHaveProperty('transparency');
+      expect(Object.values(Transparency)).toContain(result.transparency);
+      expect(result).toHaveProperty('region');
+      expect(Array.isArray(result.region)).toBe(true);
+      expect(result).toHaveProperty('classification');
+      expect(result.classification).toMatch(CLASSIFICATION_REGEX);
+    });
+    it.each(Object.keys(mockMetadata) as (keyof typeof mockMetadata)[])(
+      'should throw error when given invalid value in %p attribute',
+      async (attribute) => {
+        const { invalid } = mockMetadata[attribute];
+        const invalidMetadata = {
+          ...fakeDataToValidate.newLayerRequest.valid.metadata,
+          [attribute]: invalid,
+        };
+        const validationAction = async () => schemasValidator.validateNewMetadata(invalidMetadata);
+        await expect(validationAction).rejects.toThrow(BadRequestError);
+      }
+    );
+  });
+
+  describe('validatePartDataSchema', () => {
+    it('should return valid partData schema', async () => {
+      const validPartData = fakeDataToValidate.newLayerRequest.valid.partData;
+      const result = await schemasValidator.validatePartData(validPartData);
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result[0]).toHaveProperty('id');
+      expect(result[0].id).toMatch(PRODUCT_ID_REGEX);
+      expect(result[0]).toHaveProperty('name');
+      expect(typeof result[0].name).toBe('string');
+      expect(result[0].name).not.toHaveLength(0);
+      expect(result[0]).toHaveProperty('imagingTimeBeginUTC');
+      expect(result[0].imagingTimeBeginUTC).toBeInstanceOf(Date);
+      expect(result[0]).toHaveProperty('imagingTimeEndUTC');
+      expect(result[0].imagingTimeEndUTC).toBeInstanceOf(Date);
+      expect(result[0]).toHaveProperty('resolutionDegree');
+      expect(typeof result[0].resolutionDegree).toBe('number');
+      expect(result[0].resolutionDegree).toBeGreaterThanOrEqual(resolutionDegRange.min as number);
+      expect(result[0].resolutionDegree).toBeLessThanOrEqual(resolutionDegRange.max as number);
+      expect(result[0]).toHaveProperty('resolutionMeter');
+      expect(typeof result[0].resolutionMeter).toBe('number');
+      expect(result[0].resolutionMeter).toBeGreaterThanOrEqual(resolutionMeterRange.min as number);
+      expect(result[0].resolutionMeter).toBeLessThanOrEqual(resolutionMeterRange.max as number);
+      expect(result[0]).toHaveProperty('sourceResolutionMeter');
+      expect(typeof result[0].sourceResolutionMeter).toBe('number');
+      expect(result[0].sourceResolutionMeter).toBeGreaterThanOrEqual(resolutionMeterRange.min as number);
+      expect(result[0].sourceResolutionMeter).toBeLessThanOrEqual(resolutionMeterRange.max as number);
+      expect(result[0]).toHaveProperty('horizontalAccuracyCE90');
+      expect(typeof result[0].horizontalAccuracyCE90).toBe('number');
+      expect(result[0].horizontalAccuracyCE90).toBeGreaterThanOrEqual(horizontalAccuracyCE90Range.min);
+      expect(result[0].horizontalAccuracyCE90).toBeLessThanOrEqual(horizontalAccuracyCE90Range.max);
+      expect(result[0]).toHaveProperty('sensors');
+      expect(Array.isArray(result[0].sensors)).toBe(true);
+      expect(result[0]).toHaveProperty('geometry');
+      expect(typeof result[0].geometry).toBe('object');
+      expect(result[0].geometry).toHaveProperty('type');
+      expect(result[0].geometry).toHaveProperty('coordinates');
+    });
+
+    it.each(
+      Object.keys(fakeDataToValidate.newLayerRequest.valid.partData[0]) as (keyof (typeof fakeDataToValidate.newLayerRequest.valid.partData)[0])[]
+    )('should throw error when given invalid value in %p attribute', async (attribute) => {
+      const { invalid } = mockPart[attribute];
+      const invalidPart = [
+        {
+          ...fakeDataToValidate.newLayerRequest.valid.partData[0],
+          [attribute]: invalid,
+        },
+      ];
+      const validationAction = async () => schemasValidator.validatePartData(invalidPart);
       await expect(validationAction).rejects.toThrow(BadRequestError);
     });
   });
