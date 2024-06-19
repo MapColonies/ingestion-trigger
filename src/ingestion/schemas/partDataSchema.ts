@@ -74,5 +74,6 @@ export const createPartDataSchema = () => {
           })
         )
     )
+    .min(1)
     .describe('PartData');
 };
