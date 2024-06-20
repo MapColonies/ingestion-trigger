@@ -173,8 +173,6 @@ describe('SchemasValidator', () => {
   describe('validateNewMetadataSchema', () => {
     it('should return valid new metadata schema', async () => {
       const validMetadata = fakeDataToValidate.newLayerRequest.valid.metadata;
-      console.log(fakeDataToValidate.newLayerRequest.valid.metadata);
-      console.log(validMetadata);
       const result = await schemasValidator.validateNewMetadata(validMetadata);
 
       expect(result).toHaveProperty('productId');

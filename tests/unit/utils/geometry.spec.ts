@@ -44,7 +44,7 @@ describe('geometryUtils', () => {
     const extractedFromInfoArray = extractPolygons(infoDataArray as InfoData[]);
     const combined = combineExtentPolygons(extractedFromInfoArray);
     expect(combined).toHaveProperty('type');
-    expect(combined.type).toEqual('Feature');
+    expect(combined.type).toBe('Feature');
     expect(combined).toHaveProperty('geometry');
     expect(combined.geometry).toHaveProperty('type');
     expect(combined.geometry).toHaveProperty('coordinates');

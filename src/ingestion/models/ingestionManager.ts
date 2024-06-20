@@ -10,7 +10,7 @@ import { SourcesValidationResponse } from '../interfaces';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { LogContext } from '../../utils/logger/logContext';
 import { InfoData } from '../schemas/infoDataSchema';
-import { GeometryValidator } from '../validators/geometryValidator';
+import { PolygonPartGeometryValidator } from '../validators/polygonPartGeometryValidator';
 import { CatalogClient } from '../../serviceClients/catalogClient';
 import { IConfig } from '../../common/interfaces';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
@@ -28,7 +28,7 @@ export class IngestionManager {
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     private readonly sourceValidator: SourceValidator,
     private readonly gdalInfoManager: GdalInfoManager,
-    private readonly geometryValidator: GeometryValidator,
+    private readonly polygonPartGeometryValidator: PolygonPartGeometryValidator,
     private readonly catalogClient: CatalogClient,
     private readonly jobManagerWrapper: JobManagerWrapper,
     private readonly mapProxyClient: MapProxyClient
@@ -111,12 +111,12 @@ export class IngestionManager {
 
     //validate new ingestion payload against gpkg data for each part
     const infoData: InfoData[] = await this.getInfoData(inputFiles);
-    this.geometryValidator.validate(partData, infoData);
+    this.polygonPartGeometryValidator.validate(partData, infoData);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
 
     //catalog ,mapproxy, jobmanager validation
-    await this.isInCatalog(metadata.productId, metadata.productType);
     await this.isInMapProxy(metadata.productId, metadata.productType);
+    await this.isInCatalog(metadata.productId, metadata.productType);
     await this.validateJobNotRunning(metadata.productId, metadata.productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
 

@@ -480,8 +480,6 @@ components:
           type: string
         geometry:
           $ref: '#/components/schemas/Geometry'
-          example:
-            - example.gpkg
     InputFiles:
       title: Layer input files
       type: object
@@ -536,11 +534,14 @@ components:
             type: number
           extentPolygon:
             $ref: '#/components/schemas/Geometry'
+          fileName:
+            type: string
         required:
           - crs
           - fileFormat
           - pixelSize
           - extentPolygon
+          - fileName
         example:
           crs: 4326
           fileFormat: gpkg
@@ -558,11 +559,12 @@ components:
                   - -90
                 - - -180
                   - -90
+          fileName: file.gpkg
   examples:
     NewRasterLayerExample:
       value:
         metadata:
-          productId: c5e3f820-b2bd-4f0b-a70f-c98bf33b2692
+          productId: some-name
           productName: string
           productType: Orthophoto
           productSubType: string
@@ -576,7 +578,7 @@ components:
           producerName: string
           scale: 100000000
         partData:
-          - id: c5e3f820-b2bd-4f0b-a70f-c98bf33b2692
+          - id: avi
             name: string
             imagingTimeBeginUTC: '2024-01-28T13:47:43.427Z'
             imagingTimeEndUTC: '2024-01-28T13:47:43.427Z'

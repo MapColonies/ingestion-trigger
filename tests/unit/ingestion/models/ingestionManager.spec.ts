@@ -1,13 +1,19 @@
 import jsLogger from '@map-colonies/js-logger';
+import { OperationStatus } from '@map-colonies/mc-priority-queue';
+import { ConflictError } from '@map-colonies/error-types';
 import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
+import { jobResponse, newLayerRequest } from '../../../mocks/newLayerRequestMock';
 import { FileNotFoundError, GdalInfoError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { GpkgError } from '../../../../src/serviceClients/database/errors';
 import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
 import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
-import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
-import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
+import { PolygonPartGeometryValidator } from '../../../../src/ingestion/validators/polygonPartGeometryValidator';
+import { configMock, init as initConfig } from '../../../mocks/configMock';
+import { CatalogClient } from '../../../../src/serviceClients/catalogClient';
+import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
+import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 
 describe('IngestionManager', () => {
   let ingestionManager: IngestionManager;
@@ -22,22 +28,107 @@ describe('IngestionManager', () => {
     validateInfoData: jest.fn(),
   };
 
-  const gdalInfoManagerMock = {
-    getInfoData: jest.fn(),
-    validateInfoData: jest.fn(),
+  const polygonPartGeometryValidatorMock = {
+    validate: jest.fn(),
   };
+
+  const catalogClientMock = {
+    exists: jest.fn(),
+  };
+  const jobManagerWrapperMock = {
+    createInitJob: jest.fn(),
+    createNewJob: jest.fn(),
+    createTask: jest.fn(),
+    updateJobById: jest.fn(),
+    getJobs: jest.fn(),
+  };
+  const mapProxyClientMock = {
+    exists: jest.fn(),
+  };
+
   beforeEach(() => {
+    initConfig();
     ingestionManager = new IngestionManager(
       jsLogger({ enabled: false }),
-
+      configMock,
       sourceValidator as unknown as SourceValidator,
       gdalInfoManagerMock as unknown as GdalInfoManager,
-      gdalInfoManagerMock as unknown as GdalInfoManager
+      polygonPartGeometryValidatorMock as unknown as PolygonPartGeometryValidator,
+      catalogClientMock as unknown as CatalogClient,
+      jobManagerWrapperMock as unknown as JobManagerWrapper,
+      mapProxyClientMock as unknown as MapProxyClient
     );
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.resetAllMocks();
+  });
+
+  describe('validateNewLayerIngestion', () => {
+    it('should not throw any errors when the request is valid', () => {
+      const layerRequest = newLayerRequest.valid;
+      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
+      polygonPartGeometryValidatorMock.validate.mockReturnValue(() => void 0);
+      catalogClientMock.exists.mockResolvedValue(false);
+      jobManagerWrapperMock.createInitJob.mockResolvedValue(jobResponse);
+      jobManagerWrapperMock.getJobs.mockResolvedValue([]);
+      mapProxyClientMock.exists.mockResolvedValue(false);
+
+      const response = async () => ingestionManager.validateIngestion(layerRequest);
+
+      expect(response).not.toThrow(Error);
+    });
+
+    it('should throw conflict error when there is a job running', async () => {
+      const layerRequest = newLayerRequest.valid;
+      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
+      polygonPartGeometryValidatorMock.validate.mockReturnValue(() => void 0);
+      catalogClientMock.exists.mockResolvedValue(false);
+      jobManagerWrapperMock.createInitJob.mockResolvedValue(jobResponse);
+      jobManagerWrapperMock.getJobs.mockResolvedValue([{ status: OperationStatus.PENDING, type: 'Ingestion_New' }]);
+      mapProxyClientMock.exists.mockResolvedValue(false);
+
+      const response = async () => ingestionManager.validateIngestion(layerRequest);
+
+      await expect(response).rejects.toThrow(ConflictError);
+    });
+
+    it('should throw conflict error when the layer is in mapProxy', async () => {
+      const layerRequest = newLayerRequest.valid;
+      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
+      polygonPartGeometryValidatorMock.validate.mockReturnValue(() => void 0);
+      catalogClientMock.exists.mockResolvedValue(false);
+      jobManagerWrapperMock.createInitJob.mockResolvedValue(jobResponse);
+      jobManagerWrapperMock.getJobs.mockResolvedValue([{ status: OperationStatus.PENDING, type: 'Ingestion_New' }]);
+      mapProxyClientMock.exists.mockResolvedValue(true);
+
+      const response = async () => ingestionManager.validateIngestion(layerRequest);
+
+      await expect(response).rejects.toThrow(ConflictError);
+    });
+
+    it('should throw conflict error when the layer is in catalog', async () => {
+      const layerRequest = newLayerRequest.valid;
+      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
+      polygonPartGeometryValidatorMock.validate.mockReturnValue(() => void 0);
+      catalogClientMock.exists.mockResolvedValue(true);
+      jobManagerWrapperMock.createInitJob.mockResolvedValue(jobResponse);
+      jobManagerWrapperMock.getJobs.mockResolvedValue([{ status: OperationStatus.PENDING, type: 'Ingestion_New' }]);
+      mapProxyClientMock.exists.mockResolvedValue(false);
+
+      const response = async () => ingestionManager.validateIngestion(layerRequest);
+
+      await expect(response).rejects.toThrow(ConflictError);
+    });
   });
 
   describe('validateSources', () => {
