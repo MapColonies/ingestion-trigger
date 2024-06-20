@@ -62,7 +62,7 @@ describe('IngestionManager', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
-    jest.resetAllMocks();
+    //jest.resetAllMocks();
   });
 
   describe('validateNewLayerIngestion', () => {
