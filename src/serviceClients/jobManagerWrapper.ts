@@ -3,8 +3,6 @@ import { inject, injectable } from 'tsyringe';
 import { NewRasterLayer } from '@map-colonies/mc-model-types';
 import { ICreateJobBody, ICreateJobResponse, IJobResponse, OperationStatus, ITaskResponse, JobManagerClient } from '@map-colonies/mc-priority-queue';
 import { IHttpRetryConfig } from '@map-colonies/mc-utils';
-import { Tracer } from '@opentelemetry/api';
-import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../common/constants';
 import { IConfig } from '../common/interfaces';
 import { ITaskParameters } from '../ingestion/interfaces';
@@ -16,11 +14,7 @@ export class JobManagerWrapper extends JobManagerClient {
   private readonly jobDomain: string;
   private readonly logContext: LogContext;
 
-  public constructor(
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
-    @inject(SERVICES.LOGGER) protected readonly logger: Logger,
-    @inject(SERVICES.TRACER) public readonly tracer: Tracer
-  ) {
+  public constructor(@inject(SERVICES.CONFIG) private readonly config: IConfig, @inject(SERVICES.LOGGER) protected readonly logger: Logger) {
     super(
       logger,
       config.get<string>('jobManagerURL'),
@@ -35,7 +29,6 @@ export class JobManagerWrapper extends JobManagerClient {
     };
   }
 
-  @withSpanAsyncV4
   public async createInitJob(data: NewRasterLayer): Promise<ICreateJobResponse> {
     const jobId: string = '';
     const taskParams: ITaskParameters[] = [{ rasterIngestionLayer: data, blockDuplication: true }];
@@ -49,7 +42,6 @@ export class JobManagerWrapper extends JobManagerClient {
     }
   }
 
-  @withSpanAsyncV4
   private async createNewJob(data: NewRasterLayer, jobType: string, taskType: string, taskParams?: ITaskParameters[]): Promise<ICreateJobResponse> {
     const createLayerTasksUrl = `/jobs`;
     let createJobRequest: CreateJobBody = {
@@ -80,20 +72,18 @@ export class JobManagerWrapper extends JobManagerClient {
     return res;
   }
 
-  @withSpanAsyncV4
-  private async createTask(jobId: string, taskParams: ITaskParameters[], taskType: string): Promise<void> {
-    const createTasksUrl = `/jobs/${jobId}/tasks`;
-    const parmas = taskParams;
-    const req = parmas.map((params) => {
-      return {
-        type: taskType,
-        parameters: params,
-      };
-    });
-    await this.post(createTasksUrl, req);
-  }
+  // private async createTask(jobId: string, taskParams: ITaskParameters[], taskType: string): Promise<void> {
+  //   const createTasksUrl = `/jobs/${jobId}/tasks`;
+  //   const parmas = taskParams;
+  //   const req = parmas.map((params) => {
+  //     return {
+  //       type: taskType,
+  //       parameters: params,
+  //     };
+  //   });
+  //   await this.post(createTasksUrl, req);
+  // }
 
-  @withSpanAsyncV4
   private async updateJobById(jobId: string, status: OperationStatus, jobPercentage?: number, reason?: string, catalogId?: string): Promise<void> {
     const updateJobBody = {
       status: status,
