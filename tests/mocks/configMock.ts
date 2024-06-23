@@ -81,6 +81,20 @@ const registerDefaultConfig = (): void => {
       resolutionFixedPointTolerance: 12,
       extentBufferInMeters: 50,
     },
+    jobManagerURL: 'http://jobmanagerurl',
+    mapProxyApiServiceUrl: 'http://mapproxyapiserviceurl',
+    catalogServiceURL: 'http://catalogserviceurl',
+    jobDomain: 'RASTER',
+    ingestionNewJobType: 'Ingestion_New',
+    ingestionUpdateJobType: 'Ingestion_Update',
+    ingestionSwapUpdateJobType: 'Ingestion_Swap_Update',
+    supportedIngestionSwapTypes: [
+      {
+        productType: 'RasterVectorBest',
+        productSubType: 'testProductSubType',
+      },
+    ],
+    forbiddenTypesForParallelIngestion: ['Ingestion_New', 'Ingestion_Update'],
   };
 
   setConfigValues(config);

@@ -23,13 +23,13 @@ describe('polygonPartGeometryValidator', () => {
       expect(result).not.toThrow(Error);
     });
 
-    it('should throw geometry validation on an invalid geometry', () => {
+    it('should throw geometry validation error on an invalid geometry', () => {
       const result = () => polygonPartGeometryValidator.validate(polygonPartsMock.invalid.notValidGeometry, infoDataMock);
       expect(result).toThrow(GeometryValidationError);
     });
 
-    it('should throw geometry validation on partData geometry not contained by extent', () => {
-      const result = () => polygonPartGeometryValidator.validate(polygonPartsMock.invalid.notValidGeometry, infoDataMock);
+    it('should throw geometry validation error on partData geometry not contained by extent', () => {
+      const result = () => polygonPartGeometryValidator.validate(polygonPartsMock.invalid.notContainedGeometry, infoDataMock);
       expect(result).toThrow(GeometryValidationError);
     });
   });

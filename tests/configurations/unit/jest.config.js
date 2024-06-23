@@ -13,6 +13,7 @@ module.exports = {
     '!**/controllers/**',
     '!**/routes/**',
     '!<rootDir>/src/*',
+    '!<rootDir>/src/ingestion/schemas/updateMetadataSchema.ts',
   ],
   coverageDirectory: '<rootDir>/coverage',
   reporters: [

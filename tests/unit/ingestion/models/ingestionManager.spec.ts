@@ -1,19 +1,20 @@
 import jsLogger from '@map-colonies/js-logger';
-import { OperationStatus } from '@map-colonies/mc-priority-queue';
+import nock from 'nock';
 import { ConflictError } from '@map-colonies/error-types';
 import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
-import { jobResponse, newLayerRequest } from '../../../mocks/newLayerRequestMock';
+import { jobResponse, newJobRequest, newLayerRequest, runningJobResponse } from '../../../mocks/newLayerRequestMock';
 import { FileNotFoundError, GdalInfoError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { GpkgError } from '../../../../src/serviceClients/database/errors';
 import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
 import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
 import { PolygonPartGeometryValidator } from '../../../../src/ingestion/validators/polygonPartGeometryValidator';
-import { configMock, init as initConfig } from '../../../mocks/configMock';
+import { configMock, registerDefaultConfig, clear as clearConfig, setValue } from '../../../mocks/configMock';
 import { CatalogClient } from '../../../../src/serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
+import { getMapServingLayerName } from '../../../../src/utils/layerNameGenerator';
 
 describe('IngestionManager', () => {
   let ingestionManager: IngestionManager;
@@ -32,9 +33,10 @@ describe('IngestionManager', () => {
     validate: jest.fn(),
   };
 
-  const catalogClientMock = {
-    exists: jest.fn(),
-  };
+  let catalogClient: CatalogClient;
+  let mapProxyClient: MapProxyClient;
+  let jobManagerWrapper: JobManagerWrapper;
+
   const jobManagerWrapperMock = {
     createInitJob: jest.fn(),
     createNewJob: jest.fn(),
@@ -42,93 +44,133 @@ describe('IngestionManager', () => {
     updateJobById: jest.fn(),
     getJobs: jest.fn(),
   };
-  const mapProxyClientMock = {
-    exists: jest.fn(),
-  };
+
+  let jobManagerURL = '';
+  let catalogServiceURL = '';
+  let mapProxyApiServiceUrl = '';
+  let layerName = '';
+  let catalogPostBody = {};
 
   beforeEach(() => {
-    initConfig();
+    registerDefaultConfig();
+    catalogServiceURL = configMock.get<string>('catalogServiceURL');
+    mapProxyApiServiceUrl = configMock.get<string>('mapProxyApiServiceUrl');
+    jobManagerURL = configMock.get<string>('jobManagerURL');
+
+    layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
+    catalogPostBody = { metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType } };
+
+    mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }));
+    catalogClient = new CatalogClient(configMock, jsLogger({ enabled: false }));
+    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }));
+
     ingestionManager = new IngestionManager(
       jsLogger({ enabled: false }),
       configMock,
       sourceValidator as unknown as SourceValidator,
       gdalInfoManagerMock as unknown as GdalInfoManager,
       polygonPartGeometryValidatorMock as unknown as PolygonPartGeometryValidator,
-      catalogClientMock as unknown as CatalogClient,
-      jobManagerWrapperMock as unknown as JobManagerWrapper,
-      mapProxyClientMock as unknown as MapProxyClient
+      catalogClient,
+      jobManagerWrapper,
+      mapProxyClient
     );
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
-    //jest.resetAllMocks();
+    nock.cleanAll();
+    clearConfig();
+    jest.resetAllMocks();
   });
 
   describe('validateNewLayerIngestion', () => {
-    it('should not throw any errors when the request is valid', () => {
+    it('should not throw any errors when the request is valid', async () => {
       const layerRequest = newLayerRequest.valid;
+
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
       polygonPartGeometryValidatorMock.validate.mockReturnValue(() => void 0);
-      catalogClientMock.exists.mockResolvedValue(false);
-      jobManagerWrapperMock.createInitJob.mockResolvedValue(jobResponse);
-      jobManagerWrapperMock.getJobs.mockResolvedValue([]);
-      mapProxyClientMock.exists.mockResolvedValue(false);
 
-      const response = async () => ingestionManager.validateIngestion(layerRequest);
+      const getJobsParams = {
+        resourceId: layerRequest.metadata.productId,
+        productType: layerRequest.metadata.productType,
+        isCleaned: false,
+        shouldReturnTasks: false,
+      };
+      nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+      nock(jobManagerURL).post('/jobs', newJobRequest).reply(200, jobResponse);
+      nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(200, []);
+      nock(mapProxyApiServiceUrl)
+        .get(`/layer/${encodeURIComponent(layerName)}`)
+        .reply(404);
 
-      expect(response).not.toThrow(Error);
+      const action = async () => {
+        await ingestionManager.validateIngestion(layerRequest);
+      };
+      await expect(action()).resolves.not.toThrow();
     });
 
     it('should throw conflict error when there is a job running', async () => {
       const layerRequest = newLayerRequest.valid;
+
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
       polygonPartGeometryValidatorMock.validate.mockReturnValue(() => void 0);
-      catalogClientMock.exists.mockResolvedValue(false);
-      jobManagerWrapperMock.createInitJob.mockResolvedValue(jobResponse);
-      jobManagerWrapperMock.getJobs.mockResolvedValue([{ status: OperationStatus.PENDING, type: 'Ingestion_New' }]);
-      mapProxyClientMock.exists.mockResolvedValue(false);
 
-      const response = async () => ingestionManager.validateIngestion(layerRequest);
+      const getJobsParams = {
+        resourceId: layerRequest.metadata.productId,
+        productType: layerRequest.metadata.productType,
+        isCleaned: false,
+        shouldReturnTasks: false,
+      };
+      nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, runningJobResponse);
+      nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(200, []);
+      nock(mapProxyApiServiceUrl)
+        .get(`/layer/${encodeURIComponent(layerName)}`)
+        .reply(404);
 
-      await expect(response).rejects.toThrow(ConflictError);
+      const action = async () => ingestionManager.validateIngestion(layerRequest);
+
+      await expect(action()).rejects.toThrow(ConflictError);
     });
 
     it('should throw conflict error when the layer is in mapProxy', async () => {
       const layerRequest = newLayerRequest.valid;
+
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
       polygonPartGeometryValidatorMock.validate.mockReturnValue(() => void 0);
-      catalogClientMock.exists.mockResolvedValue(false);
-      jobManagerWrapperMock.createInitJob.mockResolvedValue(jobResponse);
-      jobManagerWrapperMock.getJobs.mockResolvedValue([{ status: OperationStatus.PENDING, type: 'Ingestion_New' }]);
-      mapProxyClientMock.exists.mockResolvedValue(true);
 
-      const response = async () => ingestionManager.validateIngestion(layerRequest);
+      nock(mapProxyApiServiceUrl)
+        .get(`/layer/${encodeURIComponent(layerName)}`)
+        .reply(200, []);
 
-      await expect(response).rejects.toThrow(ConflictError);
+      const action = async () => {
+        await ingestionManager.validateIngestion(layerRequest);
+      };
+      await expect(action()).rejects.toThrow(ConflictError);
     });
 
     it('should throw conflict error when the layer is in catalog', async () => {
       const layerRequest = newLayerRequest.valid;
+
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
       polygonPartGeometryValidatorMock.validate.mockReturnValue(() => void 0);
-      catalogClientMock.exists.mockResolvedValue(true);
-      jobManagerWrapperMock.createInitJob.mockResolvedValue(jobResponse);
-      jobManagerWrapperMock.getJobs.mockResolvedValue([{ status: OperationStatus.PENDING, type: 'Ingestion_New' }]);
-      mapProxyClientMock.exists.mockResolvedValue(false);
 
-      const response = async () => ingestionManager.validateIngestion(layerRequest);
+      nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(200, ['1']);
+      nock(mapProxyApiServiceUrl)
+        .get(`/layer/${encodeURIComponent(layerName)}`)
+        .reply(404);
 
-      await expect(response).rejects.toThrow(ConflictError);
-    });
+      const action = async () => {
+        await ingestionManager.validateIngestion(layerRequest);
+      };
+      await expect(action()).rejects.toThrow(ConflictError);
+    }, 1000000);
   });
 
   describe('validateSources', () => {

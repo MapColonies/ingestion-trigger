@@ -83,9 +83,7 @@
   "ingestionUpdateJobType": "INGESTION_UPDATE_JOB_TYPE",
   "ingestionSwapUpdateJobType": "INGESTION_SWAP_UPDATE_JOB_TYPE",
   "jobManagerURL": "JOB_MANAGER_URL",
-  "syncServiceURL": "SYNC_SERVICE_URL",
-  "mapPublishingServiceURL": "MAP_PUBLISHING_SERVICE_URL",
-  "publicMapServerURL": "PUBLIC_MAP_SERVER_URL",
+  "mapProxyApiServiceUrl": "MAP_PROXY_API_SERVICE_URL",
   "catalogServiceURL": "CATALOG_PUBLISHING_SERVICE_URL",
   "httpRetry": {
     "attempts": {
