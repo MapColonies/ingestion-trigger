@@ -27,7 +27,7 @@ describe('Ingestion', function () {
 
   afterEach(function () {
     resetContainer();
-    jest.resetAllMocks();
+    jest.restoreAllMocks();
   });
 
   describe('validateSources', function () {
@@ -207,7 +207,7 @@ describe('Ingestion', function () {
 
     describe('Bad Path', function () {
       let zodValidatorSpy: jest.SpyInstance;
-      beforeAll(function () {
+      beforeEach(function () {
         zodValidatorSpy = jest.spyOn(ZodValidator.prototype, 'validate');
       });
       afterEach(function () {
