@@ -258,5 +258,19 @@ describe('SchemasValidator', () => {
       const validationAction = async () => schemasValidator.validatePartData(invalidPart);
       await expect(validationAction).rejects.toThrow(BadRequestError);
     });
+
+    it('should throw error when imagingTimeBeginUTC is after presentTime', async () => {
+      const invalidPartData = fakeDataToValidate.newLayerRequest.valid.partData;
+      invalidPartData[0]['imagingTimeBeginUTC'] = new Date(Date.UTC(2099, 12, 24, 22, 22, 22));
+      const validationAction = async () => schemasValidator.validatePartData(invalidPartData);
+      await expect(validationAction).rejects.toThrow(BadRequestError);
+    });
+
+    it('should throw error when imagingTimeEndUTC is after presentTime', async () => {
+      const invalidPartData = fakeDataToValidate.newLayerRequest.valid.partData;
+      invalidPartData[0]['imagingTimeEndUTC'] = new Date(Date.UTC(2099, 12, 24, 22, 22, 22));
+      const validationAction = async () => schemasValidator.validatePartData(invalidPartData);
+      await expect(validationAction).rejects.toThrow(BadRequestError);
+    });
   });
 });

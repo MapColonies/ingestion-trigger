@@ -30,14 +30,14 @@ export class JobManagerWrapper extends JobManagerClient {
   }
 
   public async createInitJob(data: NewRasterLayer): Promise<ICreateJobResponse> {
-    const jobId: string = '';
+    const logCtx: LogContext = { ...this.logContext, function: this.createInitJob.name };
     const taskParams: ITaskParameters[] = [{ rasterIngestionLayer: data, blockDuplication: true }];
     try {
       const jobResponse = await this.createNewJob(data, JobAction.NEW, TaskAction.INIT, taskParams);
-      //await this.createTask(jobId, taskParams, TaskAction.INIT);
       return jobResponse;
     } catch (err) {
-      await this.updateJobById(jobId, OperationStatus.FAILED);
+      const message = 'failed to create a new init job ';
+      this.logger.error({ msg: message, err, logContext: logCtx, layer: data });
       throw err;
     }
   }
@@ -70,28 +70,6 @@ export class JobManagerWrapper extends JobManagerClient {
 
     const res = await this.post<ICreateJobResponse>(createLayerTasksUrl, createJobRequest);
     return res;
-  }
-
-  // private async createTask(jobId: string, taskParams: ITaskParameters[], taskType: string): Promise<void> {
-  //   const createTasksUrl = `/jobs/${jobId}/tasks`;
-  //   const parmas = taskParams;
-  //   const req = parmas.map((params) => {
-  //     return {
-  //       type: taskType,
-  //       parameters: params,
-  //     };
-  //   });
-  //   await this.post(createTasksUrl, req);
-  // }
-
-  private async updateJobById(jobId: string, status: OperationStatus, jobPercentage?: number, reason?: string, catalogId?: string): Promise<void> {
-    const updateJobBody = {
-      status: status,
-      reason: reason,
-      internalId: catalogId,
-      percentage: jobPercentage,
-    };
-    await this.updateJob(jobId, updateJobBody);
   }
 }
 

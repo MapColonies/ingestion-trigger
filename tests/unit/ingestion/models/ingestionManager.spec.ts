@@ -10,7 +10,7 @@ import { GpkgError } from '../../../../src/serviceClients/database/errors';
 import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
 import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
 import { PolygonPartGeometryValidator } from '../../../../src/ingestion/validators/polygonPartGeometryValidator';
-import { configMock, registerDefaultConfig, clear as clearConfig, setValue } from '../../../mocks/configMock';
+import { configMock, registerDefaultConfig, clear as clearConfig } from '../../../mocks/configMock';
 import { CatalogClient } from '../../../../src/serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
@@ -36,14 +36,6 @@ describe('IngestionManager', () => {
   let catalogClient: CatalogClient;
   let mapProxyClient: MapProxyClient;
   let jobManagerWrapper: JobManagerWrapper;
-
-  const jobManagerWrapperMock = {
-    createInitJob: jest.fn(),
-    createNewJob: jest.fn(),
-    createTask: jest.fn(),
-    updateJobById: jest.fn(),
-    getJobs: jest.fn(),
-  };
 
   let jobManagerURL = '';
   let catalogServiceURL = '';
