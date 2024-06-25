@@ -397,7 +397,43 @@ describe('Ingestion', function () {
       });
 
       it('should return 400 status code when partData geometry isnt a valid geometry', async () => {
+        const layerRequest = newLayerRequest.invalid.invalidBeginDate;
+
+        const response = await requestSender.validateIngestion(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when partData BeginTime is after EndTime', async () => {
         const layerRequest = newLayerRequest.invalid.invalidPartDataGeometry;
+
+        const response = await requestSender.validateIngestion(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when partData BeginTime is after currentTime', async () => {
+        const layerRequest = newLayerRequest.invalid.invalidBeginDateAfterCurrent;
+
+        const response = await requestSender.validateIngestion(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when partData EndTime is after currentTime', async () => {
+        const layerRequest = newLayerRequest.invalid.invalidEndDateAfterCurrent;
+
+        const response = await requestSender.validateIngestion(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when partData geometry type is wrong', async () => {
+        const layerRequest = newLayerRequest.invalid.invalidGeometryType;
 
         const response = await requestSender.validateIngestion(layerRequest);
 
@@ -419,7 +455,7 @@ describe('Ingestion', function () {
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-      }, 40000000);
+      });
 
       it('should throw 409 status when the ingested layer is in mapProxy', async () => {
         const layerRequest = newLayerRequest.valid;
@@ -446,18 +482,53 @@ describe('Ingestion', function () {
       });
     });
     describe('Sad Path', () => {
-      beforeEach(function () {
-        jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
-          throw new SqliteError('failed read sqlite file', 'SQLITE_ERROR');
-        });
-      });
+      beforeEach(() => {});
 
-      afterEach(function () {
+      afterEach(() => {
         jest.restoreAllMocks();
+        nock.cleanAll();
       });
 
       it('should return 500 status code when failed to read sqlite file', async () => {
         const layerRequest = newLayerRequest.valid;
+        jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
+          throw new SqliteError('failed read sqlite file', 'SQLITE_ERROR');
+        });
+
+        const response = await requestSender.validateIngestion(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+      });
+
+      it('should return 500 status code when failed to create new init job', async () => {
+        const layerRequest = newLayerRequest.valid;
+
+        const getJobsParams = {
+          resourceId: layerRequest.metadata.productId,
+          productType: layerRequest.metadata.productType,
+          isCleaned: false,
+          shouldReturnTasks: false,
+        };
+        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+        nock(jobManagerURL).post('/jobs', newJobRequest).reply(504);
+        nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(200, []);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(layerName)}`)
+          .reply(404);
+
+        const response = await requestSender.validateIngestion(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+      });
+
+      it('should return 500 status code when unexpected error from mapproxy occurs', async () => {
+        const layerRequest = newLayerRequest.valid;
+
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(layerName)}`)
+          .reply(504);
 
         const response = await requestSender.validateIngestion(layerRequest);
 
