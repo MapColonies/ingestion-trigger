@@ -76,14 +76,15 @@ export class PolygonPartGeometryValidator {
   private isContainedByExtent(footprint: Geometry, extent: GeoJSON): boolean {
     const bufferedExtent = extentBuffer(this.extentBufferInMeters, extent);
     if (footprint.type === 'MultiPolygon') {
-      footprint.coordinates.forEach((coords) => {
+      for (let i = 0; i < footprint.coordinates.length; i++) {
+        const coords = footprint.coordinates[i];
         const polygon = { type: 'Polygon', coordinates: coords };
         if (
           !(booleanContains(bufferedExtent as unknown as Geometry, polygon as Geometry) || booleanContains(extent as Geometry, polygon as Geometry))
         ) {
           return false;
         }
-      });
+      }
     } else if (!(booleanContains(bufferedExtent as unknown as Geometry, footprint) || booleanContains(extent as Geometry, footprint))) {
       return false;
     }

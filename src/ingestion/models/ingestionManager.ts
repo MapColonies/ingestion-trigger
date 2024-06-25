@@ -5,7 +5,7 @@ import { ConflictError } from '@map-colonies/error-types';
 import { ICreateJobResponse, IFindJobsRequest, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { SERVICES } from '../../common/constants';
 import { SourceValidator } from '../validators/sourceValidator';
-import { FileNotFoundError, GdalInfoError } from '../errors/ingestionErrors';
+import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
 import { SourcesValidationResponse } from '../interfaces';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { LogContext } from '../../utils/logger/logContext';
@@ -106,7 +106,12 @@ export class IngestionManager {
     });
 
     //validate files exist, gdal info and GPKG data
-    await this.validateSources(inputFiles);
+    const isValidSources: SourcesValidationResponse = await this.validateSources(inputFiles);
+    if (!isValidSources.isValid) {
+      const errorMessage = isValidSources.message;
+      this.logger.error({ msg: errorMessage, logContext: logCtx, inputFiles: { inputFiles } });
+      throw new UnsupportedEntityError(isValidSources.message);
+    }
     this.logger.debug({ msg: 'validated sources', logContext: logCtx });
 
     //validate new ingestion payload against gpkg data for each part

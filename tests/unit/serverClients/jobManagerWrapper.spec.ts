@@ -2,7 +2,7 @@ import jsLogger from '@map-colonies/js-logger';
 import nock from 'nock';
 import { JobManagerWrapper } from '../../../src/serviceClients/jobManagerWrapper';
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
-import { newLayerRequest, jobResponse, newJobRequest } from '../../mocks/newLayerRequestMock';
+import { newLayerRequest, jobResponse, newJobRequest } from '../../mocks/newIngestionRequestMockData';
 
 describe('jobManagerWrapper', () => {
   let jobManagerWrapper: JobManagerWrapper;

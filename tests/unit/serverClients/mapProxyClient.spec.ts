@@ -2,7 +2,7 @@ import jsLogger from '@map-colonies/js-logger';
 import nock from 'nock';
 import { MapProxyClient } from '../../../src/serviceClients/mapProxyClient';
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
-import { newLayerRequest } from '../../mocks/newLayerRequestMock';
+import { newLayerRequest } from '../../mocks/newIngestionRequestMockData';
 import { getMapServingLayerName } from '../../../src/utils/layerNameGenerator';
 
 describe('mapProxyClient', () => {

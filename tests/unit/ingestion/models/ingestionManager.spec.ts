@@ -4,7 +4,7 @@ import { ConflictError } from '@map-colonies/error-types';
 import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
-import { jobResponse, newJobRequest, newLayerRequest, runningJobResponse } from '../../../mocks/newLayerRequestMock';
+import { jobResponse, newJobRequest, newLayerRequest, runningJobResponse } from '../../../mocks/newIngestionRequestMockData';
 import { FileNotFoundError, GdalInfoError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { GpkgError } from '../../../../src/serviceClients/database/errors';
 import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';

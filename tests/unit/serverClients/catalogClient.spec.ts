@@ -3,7 +3,7 @@ import { IConfig } from 'config';
 import nock from 'nock';
 import { CatalogClient } from '../../../src/serviceClients/catalogClient';
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
-import { newLayerRequest } from '../../mocks/newLayerRequestMock';
+import { newLayerRequest } from '../../mocks/newIngestionRequestMockData';
 
 describe('CatalogClient', () => {
   let catalogClient: CatalogClient;

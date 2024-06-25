@@ -8,7 +8,7 @@ import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../util
 import { SourcesValidationResponse, ResponseStatus } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 import { InfoData } from '../schemas/infoDataSchema';
-import { FileNotFoundError, GdalInfoError, ValidationError } from '../errors/ingestionErrors';
+import { FileNotFoundError, GdalInfoError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
 
 type SourcesValidationHandler = RequestHandler<undefined, SourcesValidationResponse, InputFiles>;
 type SourcesInfoHandler = RequestHandler<undefined, InfoData[], InputFiles>;
@@ -27,7 +27,7 @@ export class IngestionController {
       const validNewLayerRequestBody: NewRasterLayer = await this.schemasValidator.validateNewLayerRequest(newLayerRequestBody);
       await this.ingestionManager.validateIngestion(validNewLayerRequestBody);
 
-      res.status(StatusCodes.OK).send({ status: 'success' });
+      res.status(StatusCodes.OK).send({ message: 'success' });
     } catch (error) {
       if (error instanceof ValidationError) {
         (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
@@ -35,7 +35,7 @@ export class IngestionController {
       if (error instanceof ConflictError) {
         (error as HttpError).status = StatusCodes.CONFLICT; //409
       }
-      if (error instanceof GdalInfoError) {
+      if (error instanceof UnsupportedEntityError) {
         (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
       }
       next(error);
