@@ -272,5 +272,12 @@ describe('SchemasValidator', () => {
       const validationAction = async () => schemasValidator.validatePartData(invalidPartData);
       await expect(validationAction).rejects.toThrow(BadRequestError);
     });
+
+    it('should throw error when geometry is an empty object', async () => {
+      const invalidPartData = fakeDataToValidate.newLayerRequest.emptyGeometry;
+
+      const validationAction = async () => schemasValidator.validatePartData(invalidPartData);
+      await expect(validationAction).rejects.toThrow(BadRequestError);
+    });
   });
 });
