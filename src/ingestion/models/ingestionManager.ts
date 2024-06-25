@@ -131,6 +131,7 @@ export class IngestionManager {
   }
 
   private async validateJobNotRunning(productId: string, productType: ProductType): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateJobNotRunning.name };
     const findJobParameters: IFindJobsRequest = {
       resourceId: productId,
       productType,
@@ -145,6 +146,7 @@ export class IngestionManager {
           productId: productId,
           productType: productType,
           msg: message,
+          logCtx: logCtx,
         });
         throw new ConflictError(message);
       }
@@ -152,6 +154,7 @@ export class IngestionManager {
   }
 
   private async isInMapProxy(productId: string, productType: ProductType): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.isInMapProxy.name };
     const layerName = getMapServingLayerName(productId, productType);
     const existsInMapServer = await this.mapProxyClient.exists(layerName);
     if (existsInMapServer) {
@@ -160,12 +163,14 @@ export class IngestionManager {
         productId: productId,
         productType: productType,
         msg: message,
+        logCtx: logCtx,
       });
       throw new ConflictError(message);
     }
   }
 
   private async isInCatalog(productId: string, productType: ProductType): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.isInCatalog.name };
     const existsInCatalog = await this.catalogClient.exists(productId, productType);
     if (existsInCatalog) {
       const message = `Layer id: ${productId} ProductType: ${productType}, already exists in catalog`;
@@ -173,6 +178,7 @@ export class IngestionManager {
         productId: productId,
         productType: productType,
         msg: message,
+        logCtx: logCtx,
       });
       throw new ConflictError(message);
     }
