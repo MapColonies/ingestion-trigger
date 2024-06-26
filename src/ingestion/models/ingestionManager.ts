@@ -9,8 +9,8 @@ import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../err
 import { SourcesValidationResponse } from '../interfaces';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { LogContext } from '../../utils/logger/logContext';
-import { InfoData } from '../schemas/infoDataSchema';
-import { PolygonPartGeometryValidator } from '../validators/polygonPartGeometryValidator';
+import { InfoData, InfoDataWithFile } from '../schemas/infoDataSchema';
+import { PolygonPartValidator } from '../validators/polygonPartValidator';
 import { CatalogClient } from '../../serviceClients/catalogClient';
 import { IConfig } from '../../common/interfaces';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
@@ -28,7 +28,7 @@ export class IngestionManager {
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     private readonly sourceValidator: SourceValidator,
     private readonly gdalInfoManager: GdalInfoManager,
-    private readonly polygonPartGeometryValidator: PolygonPartGeometryValidator,
+    private readonly polygonPartValidator: PolygonPartValidator,
     private readonly catalogClient: CatalogClient,
     private readonly jobManagerWrapper: JobManagerWrapper,
     private readonly mapProxyClient: MapProxyClient
@@ -39,7 +39,7 @@ export class IngestionManager {
     };
   }
 
-  public async getInfoData(inputFiles: InputFiles): Promise<InfoData[]> {
+  public async getInfoData(inputFiles: InputFiles): Promise<InfoDataWithFile[]> {
     const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
 
     const { originDirectory, fileNames } = inputFiles;
@@ -115,8 +115,8 @@ export class IngestionManager {
     this.logger.debug({ msg: 'validated sources', logContext: logCtx });
 
     //validate new ingestion payload against gpkg data for each part
-    const infoData: InfoData[] = await this.getInfoData(inputFiles);
-    this.polygonPartGeometryValidator.validate(partData, infoData);
+    const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
+    this.polygonPartValidator.validate(partData, infoData);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
 
     //catalog ,mapproxy, jobmanager validation

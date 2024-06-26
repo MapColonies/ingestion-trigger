@@ -5,11 +5,11 @@ import { IngestionManager } from '../../../../src/ingestion/models/ingestionMana
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
 import { jobResponse, newJobRequest, newLayerRequest, runningJobResponse } from '../../../mocks/newIngestionRequestMockData';
-import { FileNotFoundError, GdalInfoError } from '../../../../src/ingestion/errors/ingestionErrors';
+import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { GpkgError } from '../../../../src/serviceClients/database/errors';
 import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
 import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
-import { PolygonPartGeometryValidator } from '../../../../src/ingestion/validators/polygonPartGeometryValidator';
+import { PolygonPartValidator } from '../../../../src/ingestion/validators/polygonPartValidator';
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../../mocks/configMock';
 import { CatalogClient } from '../../../../src/serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
@@ -29,7 +29,7 @@ describe('IngestionManager', () => {
     validateInfoData: jest.fn(),
   };
 
-  const polygonPartGeometryValidatorMock = {
+  const polygonPartValidatorMock = {
     validate: jest.fn(),
   };
 
@@ -61,7 +61,7 @@ describe('IngestionManager', () => {
       configMock,
       sourceValidator as unknown as SourceValidator,
       gdalInfoManagerMock as unknown as GdalInfoManager,
-      polygonPartGeometryValidatorMock as unknown as PolygonPartGeometryValidator,
+      polygonPartValidatorMock as unknown as PolygonPartValidator,
       catalogClient,
       jobManagerWrapper,
       mapProxyClient
@@ -81,7 +81,7 @@ describe('IngestionManager', () => {
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
-      polygonPartGeometryValidatorMock.validate.mockReturnValue(() => void 0);
+      polygonPartValidatorMock.validate.mockReturnValue(() => void 0);
 
       const getJobsParams = {
         resourceId: layerRequest.metadata.productId,
@@ -108,7 +108,7 @@ describe('IngestionManager', () => {
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
-      polygonPartGeometryValidatorMock.validate.mockReturnValue(() => void 0);
+      polygonPartValidatorMock.validate.mockReturnValue(() => void 0);
 
       const getJobsParams = {
         resourceId: layerRequest.metadata.productId,
@@ -133,7 +133,7 @@ describe('IngestionManager', () => {
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
-      polygonPartGeometryValidatorMock.validate.mockReturnValue(() => void 0);
+      polygonPartValidatorMock.validate.mockReturnValue(() => void 0);
 
       nock(mapProxyApiServiceUrl)
         .get(`/layer/${encodeURIComponent(layerName)}`)
@@ -151,7 +151,7 @@ describe('IngestionManager', () => {
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
-      polygonPartGeometryValidatorMock.validate.mockReturnValue(() => void 0);
+      polygonPartValidatorMock.validate.mockReturnValue(() => void 0);
 
       nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(200, ['1']);
       nock(mapProxyApiServiceUrl)
@@ -162,7 +162,19 @@ describe('IngestionManager', () => {
         await ingestionManager.validateIngestion(layerRequest);
       };
       await expect(action()).rejects.toThrow(ConflictError);
-    }, 1000000);
+    });
+
+    it('should throw unsupported entity error when sources validation fails', async () => {
+      const layerRequest = newLayerRequest.valid;
+      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
+      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.reject(new FileNotFoundError(layerRequest.inputFiles.fileNames[0])));
+
+      const action = async () => {
+        await ingestionManager.validateIngestion(layerRequest);
+      };
+      await expect(action()).rejects.toThrow(UnsupportedEntityError);
+    });
   });
 
   describe('validateSources', () => {

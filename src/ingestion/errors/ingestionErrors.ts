@@ -32,3 +32,10 @@ export class GeometryValidationError extends ValidationError {
     super(message);
   }
 }
+
+export class PixelSizeError extends ValidationError {
+  public constructor(partDataName: string, index: number, description: string) {
+    const message = `error in part: ${partDataName} at index ${index}. ${description}`;
+    super(message);
+  }
+}
