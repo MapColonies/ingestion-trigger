@@ -29,18 +29,24 @@
     "layerSourceDir": "/layerSources",
     "displayNameDir": "\\layerSources",
     "watchDirectory": "watch",
-    "validFileExtensions": ["gpkg"]
+    "validFileExtensions": [
+      "gpkg"
+    ]
   },
   "validationValuesByInfo": {
-    "crs": [4326],
-    "fileFormat": ["GPKG"],
+    "crs": [
+      4326
+    ],
+    "fileFormat": [
+      "GPKG"
+    ],
     "tileSize": 256,
     "resolutionFixedPointTolerance": 12,
     "extentBufferInMeters": 50
   },
-  "jobManagerURL": "https://common-job-manager-route-raster-dev.apps.j1lk3njp.eastus.aroapp.io",
-  "mapProxyApiServiceUrl": "https://raster-ingestion-dev-mapproxy-api-route-raster-dev.apps.j1lk3njp.eastus.aroapp.io",
-  "catalogServiceURL": "https://raster-core-dev-raster-catalog-manager-route-raster-dev.apps.j1lk3njp.eastus.aroapp.io",
+  "jobManagerURL": "",
+  "mapProxyApiServiceUrl": "",
+  "catalogServiceURL": "",
   "jobDomain": "RASTER",
   "ingestionNewJobType": "Ingestion_New",
   "ingestionUpdateJobType": "Ingestion_Update",
