@@ -2,7 +2,7 @@ import jsLogger from '@map-colonies/js-logger';
 import { IConfig } from 'config';
 import { GeometryValidationError, PixelSizeError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { PolygonPartValidator } from '../../../../src/ingestion/validators/polygonPartValidator';
-import { configMock, setValue, init as initConfig, registerDefaultConfig } from '../../../mocks/configMock';
+import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { infoDataMock, polygonPartsMock } from '../../../mocks/polygonPartsMock';
 
 describe('PolygonPartValidator', () => {
@@ -10,7 +10,6 @@ describe('PolygonPartValidator', () => {
 
   beforeEach(() => {
     registerDefaultConfig();
-    //setValue('validationValuesByInfo.extentBufferInMeters', 50);
     polygonPartValidator = new PolygonPartValidator(jsLogger({ enabled: false }), configMock as unknown as IConfig);
   });
   afterEach(() => {

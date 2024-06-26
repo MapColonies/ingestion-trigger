@@ -9,7 +9,7 @@ import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../err
 import { SourcesValidationResponse } from '../interfaces';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { LogContext } from '../../utils/logger/logContext';
-import { InfoData, InfoDataWithFile } from '../schemas/infoDataSchema';
+import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import { PolygonPartValidator } from '../validators/polygonPartValidator';
 import { CatalogClient } from '../../serviceClients/catalogClient';
 import { IConfig } from '../../common/interfaces';
