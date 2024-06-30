@@ -6,7 +6,7 @@ import { IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { SERVICES } from '../common/constants';
 import { IConfig } from '../common/interfaces';
 import { ITaskParameters } from '../ingestion/interfaces';
-import { JobAction, TaskAction } from '../common/enums';
+import { TaskAction } from '../common/enums';
 import { LogContext } from '../utils/logger/logContext';
 
 @injectable()

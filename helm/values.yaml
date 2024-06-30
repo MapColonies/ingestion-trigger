@@ -17,7 +17,6 @@ global:
         jobType: ""
       update: 
         jobType: ""
-        mergeTilesTaskType: ""
       updateSwap:
         jobType: ""
   storage:
@@ -51,10 +50,9 @@ jobManagement:
   jobDomain: ""
   ingestion:
     new: 
-      jobType: "Ingestion_New"
+      jobType: ""
     update: 
       jobType: ""
-      mergeTilesTaskType: ""
     updateSwap:
       jobType: ""
   seed: 

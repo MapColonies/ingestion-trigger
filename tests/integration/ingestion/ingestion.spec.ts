@@ -63,7 +63,7 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.OK);
         expect(response.body).toHaveProperty('isValid', true);
         expect(response.body).toHaveProperty('message', 'Sources are valid');
-      }, 400000000);
+      });
 
       it('should return 200 status code and sources invalid response - file does not exist', async function () {
         const invalidSources: InputFiles = fakeIngestionSources.invalidSources.filesNotExist;
