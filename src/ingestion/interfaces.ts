@@ -7,7 +7,7 @@ export interface SourcesValidationResponse {
 }
 
 export interface ResponseStatus {
-  message: string;
+  status: string;
 }
 
 export interface PixelRange {

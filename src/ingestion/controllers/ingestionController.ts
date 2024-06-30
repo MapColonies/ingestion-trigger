@@ -27,7 +27,7 @@ export class IngestionController {
       const validNewLayerRequestBody: NewRasterLayer = await this.schemasValidator.validateNewLayerRequest(newLayerRequestBody);
       await this.ingestionManager.validateIngestion(validNewLayerRequestBody);
 
-      res.status(StatusCodes.OK).send({ message: 'success' });
+      res.status(StatusCodes.OK).send({ status: 'success' });
     } catch (error) {
       if (error instanceof ValidationError) {
         (error as HttpError).status = StatusCodes.BAD_REQUEST; //400

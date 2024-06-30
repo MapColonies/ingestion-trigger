@@ -189,32 +189,6 @@ paths:
                 $ref: '#/components/schemas/errorMessage'
 components:
   schemas:
-    validateSourcesResponse:
-      type: object
-      properties:
-        isValid:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: Files are valid
-      required:
-        - message
-    successMessage:
-      type: object
-      properties:
-        status:
-          type: string
-          example: success
-      required:
-        - message
-    errorMessage:
-      type: object
-      properties:
-        message:
-          type: string
-      required:
-        - message
     updateRasterLayerMetadata:
       type: object
       required:
@@ -224,6 +198,7 @@ components:
         classification:
           type: string
           description: Permitted roles
+          pattern: ^[0-9]$|^[1-9][0-9]$|^(100)$
     productType:
       type: string
       enum:
@@ -510,6 +485,21 @@ components:
             $ref: '#/components/schemas/polygonPartMetadata'
         inputFiles:
           $ref: '#/components/schemas/InputFiles'
+    successMessage:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+      required:
+        - status
+    errorMessage:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
     UpdateRasterLayer:
       type: object
       properties:
@@ -521,6 +511,17 @@ components:
             $ref: '#/components/schemas/polygonPartMetadata'
         inputFiles:
           $ref: '#/components/schemas/InputFiles'
+    validateSourcesResponse:
+      type: object
+      properties:
+        isValid:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Files are valid
+      required:
+        - isValid
     sourcesInfoResponse:
       type: array
       items:
