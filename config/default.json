@@ -29,17 +29,11 @@
     "layerSourceDir": "/layerSources",
     "displayNameDir": "\\layerSources",
     "watchDirectory": "watch",
-    "validFileExtensions": [
-      "gpkg"
-    ]
+    "validFileExtensions": ["gpkg"]
   },
   "validationValuesByInfo": {
-    "crs": [
-      4326
-    ],
-    "fileFormat": [
-      "GPKG"
-    ],
+    "crs": [4326],
+    "fileFormat": ["GPKG"],
     "tileSize": 256,
     "resolutionFixedPointTolerance": 12,
     "extentBufferInMeters": 50
