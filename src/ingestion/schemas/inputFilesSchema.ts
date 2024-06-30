@@ -2,7 +2,8 @@
 import { IConfig } from 'config';
 import { z } from 'zod';
 import { DependencyContainer } from 'tsyringe';
-import { SERVICES, GPKG_REGEX } from '../../common/constants';
+import { SERVICES } from '../../common/constants';
+import { GPKG_REGEX } from './constants';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const createInputFilesSchema = (container: DependencyContainer) => {

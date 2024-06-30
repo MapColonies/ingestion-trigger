@@ -6,7 +6,6 @@ import { IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { SERVICES } from '../common/constants';
 import { IConfig } from '../common/interfaces';
 import { ITaskParameters } from '../ingestion/interfaces';
-import { TaskAction } from '../common/enums';
 import { LogContext } from '../utils/logger/logContext';
 
 @injectable()
@@ -14,6 +13,7 @@ export class JobManagerWrapper extends JobManagerClient {
   private readonly jobDomain: string;
   private readonly logContext: LogContext;
   private readonly ingestionNewJobType: string;
+  private readonly initTaskType: string;
   private readonly ingestionUpdateJobType: string;
   private readonly ingestionSwapUpdateJobType: string;
 
@@ -27,6 +27,7 @@ export class JobManagerWrapper extends JobManagerClient {
     );
     this.jobDomain = config.get<string>('jobManager.jobDomain');
     this.ingestionNewJobType = config.get<string>('jobManager.ingestionNewJobType');
+    this.initTaskType = config.get<string>('jobManager.initTaskType');
     this.ingestionUpdateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
     this.ingestionSwapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
     this.logContext = {
@@ -39,7 +40,7 @@ export class JobManagerWrapper extends JobManagerClient {
     const logCtx: LogContext = { ...this.logContext, function: this.createInitJob.name };
     const taskParams: ITaskParameters[] = [{ rasterIngestionLayer: data, blockDuplication: true }];
     try {
-      const jobResponse = await this.createNewJob(data, this.ingestionNewJobType, TaskAction.INIT, taskParams);
+      const jobResponse = await this.createNewJob(data, this.ingestionNewJobType, this.initTaskType, taskParams);
       return jobResponse;
     } catch (err) {
       const message = 'failed to create a new init job ';
@@ -50,15 +51,8 @@ export class JobManagerWrapper extends JobManagerClient {
 
   private async createNewJob(data: NewRasterLayer, jobType: string, taskType: string, taskParams?: ITaskParameters[]): Promise<ICreateJobResponse> {
     const createLayerTasksUrl = `/jobs`;
-    let createJobRequest: CreateJobBody = {
-      resourceId: '',
-      version: '',
-      parameters: {},
-      type: '',
-    };
-    const resourceId = data.metadata.productId;
-    createJobRequest = {
-      resourceId: resourceId,
+    const createJobRequest: CreateJobBody = {
+      resourceId: data.metadata.productId,
       version: '1.0',
       type: jobType,
       status: OperationStatus.PENDING,

@@ -97,7 +97,7 @@ describe('IngestionManager', () => {
         .reply(404);
 
       const action = async () => {
-        await ingestionManager.validateIngestion(layerRequest);
+        await ingestionManager.ingestNewLayer(layerRequest);
       };
       await expect(action()).resolves.not.toThrow();
     });
@@ -122,7 +122,7 @@ describe('IngestionManager', () => {
         .get(`/layer/${encodeURIComponent(layerName)}`)
         .reply(404);
 
-      const action = async () => ingestionManager.validateIngestion(layerRequest);
+      const action = async () => ingestionManager.ingestNewLayer(layerRequest);
 
       await expect(action()).rejects.toThrow(ConflictError);
     });
@@ -140,7 +140,7 @@ describe('IngestionManager', () => {
         .reply(200, []);
 
       const action = async () => {
-        await ingestionManager.validateIngestion(layerRequest);
+        await ingestionManager.ingestNewLayer(layerRequest);
       };
       await expect(action()).rejects.toThrow(ConflictError);
     });
@@ -159,7 +159,7 @@ describe('IngestionManager', () => {
         .reply(404);
 
       const action = async () => {
-        await ingestionManager.validateIngestion(layerRequest);
+        await ingestionManager.ingestNewLayer(layerRequest);
       };
       await expect(action()).rejects.toThrow(ConflictError);
     });
@@ -171,7 +171,7 @@ describe('IngestionManager', () => {
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.reject(new FileNotFoundError(layerRequest.inputFiles.fileNames[0])));
 
       const action = async () => {
-        await ingestionManager.validateIngestion(layerRequest);
+        await ingestionManager.ingestNewLayer(layerRequest);
       };
       await expect(action()).rejects.toThrow(UnsupportedEntityError);
     });

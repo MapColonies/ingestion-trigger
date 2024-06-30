@@ -25,7 +25,7 @@ export class IngestionController {
     try {
       const newLayerRequestBody: unknown = req.body;
       const validNewLayerRequestBody: NewRasterLayer = await this.schemasValidator.validateNewLayerRequest(newLayerRequestBody);
-      await this.ingestionManager.validateIngestion(validNewLayerRequestBody);
+      await this.ingestionManager.ingestNewLayer(validNewLayerRequestBody);
 
       res.status(StatusCodes.OK).send({ status: 'success' });
     } catch (error) {

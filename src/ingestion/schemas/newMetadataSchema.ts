@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { z } from 'zod';
 import { ProductType, Transparency } from '@map-colonies/mc-model-types';
-import { PRODUCT_ID_REGEX, scaleRange, CLASSIFICATION_REGEX } from '../../common/constants';
+import { PRODUCT_ID_REGEX, scaleRange, CLASSIFICATION_REGEX } from './constants';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const createNewMetadataSchema = () => {

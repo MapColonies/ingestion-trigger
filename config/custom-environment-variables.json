@@ -78,6 +78,7 @@
   "jobManager": {
     "jobDomain": "JOB_DOMAIN",
     "ingestionNewJobType": "INGESTION_NEW_JOB_TYPE",
+    "initTaskType": "INIT_TASK_TYPE",
     "ingestionUpdateJobType": "INGESTION_UPDATE_JOB_TYPE",
     "ingestionSwapUpdateJobType": "INGESTION_SWAP_UPDATE_JOB_TYPE"
   },

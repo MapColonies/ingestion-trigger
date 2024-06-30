@@ -143,16 +143,3 @@ Returns the metrics url from global if exists or from the chart's values
     {{- .Values.env.metrics.url -}}
 {{- end -}}
 {{- end -}}
-
-{{/*
-Returns the metrics buckets from global if exists or from the chart's values
-*/}}
-{{- define "ingestion-trigger.metricsBuckets" -}}
-{{- if .Values.global.metrics.buckets }}
-    {{- .Values.global.metrics.buckets -}}
-{{- else -}}
-    {{- .Values.env.metrics.buckets -}}
-{{- end -}}
-{{- end -}}
-
-

@@ -2,7 +2,7 @@
 import { GeoJSON } from 'geojson';
 import { z } from 'zod';
 import { getUTCDate } from '@map-colonies/mc-utils';
-import { horizontalAccuracyCE90Range, resolutionDegRange, resolutionMeterRange, PRODUCT_ID_REGEX } from '../../common/constants';
+import { horizontalAccuracyCE90Range, resolutionDegRange, resolutionMeterRange, PRODUCT_ID_REGEX } from './constants';
 
 //eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const partSchema = z.object({

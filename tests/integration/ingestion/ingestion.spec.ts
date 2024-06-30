@@ -380,17 +380,18 @@ describe('Ingestion', function () {
           .get(`/layer/${encodeURIComponent(layerName)}`)
           .reply(404);
 
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
       });
     });
+
     describe('Bad Path', () => {
       it('should return 400 status code when the validation of the metadata fails', async () => {
         const layerRequest = newLayerRequest.invalid.metadata;
 
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
@@ -399,7 +400,7 @@ describe('Ingestion', function () {
       it('should return 400 status code when partData geometry isnt a valid geometry', async () => {
         const layerRequest = newLayerRequest.invalid.invalidBeginDate;
 
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
@@ -408,7 +409,7 @@ describe('Ingestion', function () {
       it('should return 400 status code when partData BeginTime is after EndTime', async () => {
         const layerRequest = newLayerRequest.invalid.invalidPartDataGeometry;
 
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
@@ -417,7 +418,7 @@ describe('Ingestion', function () {
       it('should return 400 status code when partData BeginTime is after currentTime', async () => {
         const layerRequest = newLayerRequest.invalid.invalidBeginDateAfterCurrent;
 
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
@@ -426,7 +427,7 @@ describe('Ingestion', function () {
       it('should return 400 status code when partData EndTime is after currentTime', async () => {
         const layerRequest = newLayerRequest.invalid.invalidEndDateAfterCurrent;
 
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
@@ -435,7 +436,7 @@ describe('Ingestion', function () {
       it('should return 400 status code when partData geometry type is wrong', async () => {
         const layerRequest = newLayerRequest.invalid.invalidGeometryType;
 
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
@@ -443,7 +444,7 @@ describe('Ingestion', function () {
 
       it('should return 400 status code when partData polygon geometry isnt contained by extent', async () => {
         const layerRequest = newLayerRequest.invalid.notContainedPolygon;
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
@@ -451,7 +452,7 @@ describe('Ingestion', function () {
 
       it('should return 400 status code when partData resolutionDeg isnt greater than pixel size', async () => {
         const layerRequest = newLayerRequest.invalid.invalidResolutionDeg;
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
@@ -459,7 +460,7 @@ describe('Ingestion', function () {
 
       it('should return 400 status code when partData MultiPolygon geometry isnt contained by extent', async () => {
         const layerRequest = newLayerRequest.invalid.notContainedMultiPolygon;
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
@@ -471,7 +472,7 @@ describe('Ingestion', function () {
         nock(mapProxyApiServiceUrl)
           .get(`/layer/${encodeURIComponent(layerName)}`)
           .reply(200, []);
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.CONFLICT);
@@ -483,12 +484,13 @@ describe('Ingestion', function () {
         nock(mapProxyApiServiceUrl)
           .get(`/layer/${encodeURIComponent(layerName)}`)
           .reply(200, []);
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
       });
     });
+
     describe('Sad Path', () => {
       beforeEach(() => {});
 
@@ -503,7 +505,7 @@ describe('Ingestion', function () {
           throw new SqliteError('failed read sqlite file', 'SQLITE_ERROR');
         });
 
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
@@ -525,7 +527,7 @@ describe('Ingestion', function () {
           .get(`/layer/${encodeURIComponent(layerName)}`)
           .reply(404);
 
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
@@ -538,7 +540,7 @@ describe('Ingestion', function () {
           .get(`/layer/${encodeURIComponent(layerName)}`)
           .reply(504);
 
-        const response = await requestSender.validateIngestion(layerRequest);
+        const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);

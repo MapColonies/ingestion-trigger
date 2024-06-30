@@ -7,11 +7,10 @@ global:
     mapproxyApi: ""
     catalogManager: ""
     jobManager: ""
-  ingestion:
-    watchDirectoryOptions:
-      directory: 'watch'
   jobManagement:
     jobDomain: RASTER
+    tasks:
+      initTaskType: ""
     ingestion:
       new: 
         jobType: ""
@@ -20,7 +19,6 @@ global:
       updateSwap:
         jobType: ""
   storage:
-    tilesStorageProvider: ""
     fs:
       ingestionSourcePvc:
         enabled: false
@@ -48,6 +46,8 @@ serviceUrls:
   jobManager: ""
 jobManagement:
   jobDomain: ""
+  tasks:
+      initTaskType: ""
   ingestion:
     new: 
       jobType: ""
@@ -55,21 +55,14 @@ jobManagement:
       jobType: ""
     updateSwap:
       jobType: ""
-  seed: 
-    jobType: ""
-    taskType: ""
 
 storage:
-  tilesStorageProvider: ""
   fs:
     ingestionSourcePvc:
       enabled: false
       name: ""
       subPath: ""
 
-ingestion:
-  watchDirectoryOptions:
-    directory: 'watch'    
 
 cloudProvider:
   dockerRegistryUrl: my-registry-url.io
@@ -79,10 +72,6 @@ cloudProvider:
 image:
   repository: ingestion-trigger
   tag: 'latest'
-
-enableWMS: true
-
-
 
 nameOverride: ""
 fullnameOverride: ""
@@ -147,9 +136,6 @@ env:
     - 4326
     fileFormat: 
     - 'GPKG'
-    pixelSizeRange:
-      min: 0.000000335276
-      max: 0.703125
     tileSize : 256
     resolutionFixedPointTolerance: 12
     extentBufferInMeters: 50   

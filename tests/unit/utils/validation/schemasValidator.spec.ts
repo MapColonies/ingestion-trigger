@@ -5,15 +5,15 @@ import { ProductType, Transparency } from '@map-colonies/mc-model-types';
 import { getApp } from '../../../../src/app';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
 import { fakeDataToValidate, mockMetadata, mockPart } from '../../../mocks/schemasValidatorMockData';
+import { SERVICES } from '../../../../src/common/constants';
 import {
-  SERVICES,
   GPKG_REGEX,
   PRODUCT_ID_REGEX,
   CLASSIFICATION_REGEX,
   horizontalAccuracyCE90Range,
   resolutionDegRange,
   resolutionMeterRange,
-} from '../../../../src/common/constants';
+} from '../../../../src/ingestion/schemas/constants';
 import { pixelSizeRange } from '../../../../src/ingestion/schemas/infoDataSchema';
 
 let schemasValidator: SchemasValidator;

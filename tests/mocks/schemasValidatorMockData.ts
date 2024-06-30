@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 
 import { ProductType, Transparency } from '@map-colonies/mc-model-types';
-import { scaleRange, horizontalAccuracyCE90Range, resolutionDegRange, resolutionMeterRange } from '../../src/common/constants';
+import { scaleRange, horizontalAccuracyCE90Range, resolutionDegRange, resolutionMeterRange } from '../../src/ingestion/schemas/constants';
 
 export const fakeDataToValidate = {
   inputFiles: {

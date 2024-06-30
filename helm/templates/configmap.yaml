@@ -33,10 +33,9 @@ data:
   INGESTION_NEW_JOB_TYPE: {{ $jobManagement.ingestion.new.jobType | quote }}
   INGESTION_UPDATE_JOB_TYPE: {{ $jobManagement.ingestion.update.jobType | quote }}
   INGESTION_SWAP_UPDATE_JOB_TYPE: {{ $jobManagement.ingestion.updateSwap.jobType | quote }}
+  INIT_TASK_TYPE: {{ $jobManagement.tasks.initTaskType | quote }}
   CRS: {{ .Values.env.validationValuesByInfo.crs | toJson | quote}}
   FILE_FORMAT: {{ .Values.env.validationValuesByInfo.fileFormat | toJson | quote}}
-  PIXEL_SIZE_RANGE_MIN: {{ .Values.env.validationValuesByInfo.pixelSizeRange.min | quote}}
-  PIXEL_SIZE_RANGE_MAX: {{ .Values.env.validationValuesByInfo.pixelSizeRange.max | quote}}
   TILE_SIZE: {{ .Values.env.validationValuesByInfo.tileSize | quote}}
   RESOLUTION_FIXED_POINT_TOLERANCE: {{ .Values.env.validationValuesByInfo.resolutionFixedPointTolerance | quote }}
   EXTENT_BUFFER_IN_METERS: {{ .Values.env.validationValuesByInfo.extentBufferInMeters | quote }}

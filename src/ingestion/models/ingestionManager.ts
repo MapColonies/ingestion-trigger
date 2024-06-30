@@ -93,8 +93,18 @@ export class IngestionManager {
     }
   }
 
-  public async validateIngestion(rasterIngestionLayer: NewRasterLayer): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateIngestion.name };
+  public async ingestNewLayer(rasterIngestionLayer: NewRasterLayer): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.ingestNewLayer.name };
+    await this.validateNewLayer(rasterIngestionLayer);
+    this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
+
+    //create one job with one task
+    const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(rasterIngestionLayer);
+    this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
+  }
+
+  private async validateNewLayer(rasterIngestionLayer: NewRasterLayer): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateNewLayer.name };
     const { metadata, partData, inputFiles } = rasterIngestionLayer;
     this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, partData, inputFiles }, logCtx: logCtx });
     this.logger.info({
@@ -124,10 +134,6 @@ export class IngestionManager {
     await this.isInCatalog(metadata.productId, metadata.productType);
     await this.validateJobNotRunning(metadata.productId, metadata.productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
-
-    //create one job with one task
-    const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(rasterIngestionLayer);
-    this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
   }
 
   private async validateJobNotRunning(productId: string, productType: ProductType): Promise<void> {
@@ -158,10 +164,11 @@ export class IngestionManager {
     const layerName = getMapServingLayerName(productId, productType);
     const existsInMapServer = await this.mapProxyClient.exists(layerName);
     if (existsInMapServer) {
-      const message = `Failed to create new ingestion job for layer: '${productId}-${productType}', already exists on MapProxy`;
+      const message = `Failed to create new ingestion job for layer: '${layerName} ', already exists on MapProxy`;
       this.logger.error({
         productId: productId,
         productType: productType,
+        mapProxyLayerName: layerName,
         msg: message,
         logCtx: logCtx,
       });
