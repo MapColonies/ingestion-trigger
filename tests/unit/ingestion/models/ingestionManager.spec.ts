@@ -45,9 +45,9 @@ describe('IngestionManager', () => {
 
   beforeEach(() => {
     registerDefaultConfig();
-    catalogServiceURL = configMock.get<string>('catalogServiceURL');
-    mapProxyApiServiceUrl = configMock.get<string>('mapProxyApiServiceUrl');
-    jobManagerURL = configMock.get<string>('jobManagerURL');
+    catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
+    mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
+    jobManagerURL = configMock.get<string>('services.jobManagerURL');
 
     layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
     catalogPostBody = { metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType } };

@@ -29,22 +29,32 @@
     "layerSourceDir": "/layerSources",
     "displayNameDir": "\\layerSources",
     "watchDirectory": "watch",
-    "validFileExtensions": ["gpkg"]
+    "validFileExtensions": [
+      "gpkg"
+    ]
   },
   "validationValuesByInfo": {
-    "crs": [4326],
-    "fileFormat": ["GPKG"],
+    "crs": [
+      4326
+    ],
+    "fileFormat": [
+      "GPKG"
+    ],
     "tileSize": 256,
     "resolutionFixedPointTolerance": 12,
     "extentBufferInMeters": 50
   },
-  "jobManagerURL": "",
-  "mapProxyApiServiceUrl": "",
-  "catalogServiceURL": "",
-  "jobDomain": "RASTER",
-  "ingestionNewJobType": "Ingestion_New",
-  "ingestionUpdateJobType": "Ingestion_Update",
-  "ingestionSwapUpdateJobType": "Ingestion_Swap_Update",
+  "services": {
+    "jobManagerURL": "",
+    "mapProxyApiServiceUrl": "",
+    "catalogServiceURL": ""
+  },
+  "jobManager": {
+    "jobDomain": "RASTER",
+    "ingestionNewJobType": "Ingestion_New",
+    "ingestionUpdateJobType": "Ingestion_Update",
+    "ingestionSwapUpdateJobType": "Ingestion_Swap_Update"
+  },
   "httpRetry": {
     "attempts": 5,
     "delay": "exponential",

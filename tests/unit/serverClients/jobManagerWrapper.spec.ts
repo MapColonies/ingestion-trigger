@@ -10,7 +10,7 @@ describe('jobManagerWrapper', () => {
 
   beforeEach(() => {
     registerDefaultConfig();
-    jobManagerURL = configMock.get<string>('jobManagerURL');
+    jobManagerURL = configMock.get<string>('services.jobManagerURL');
 
     jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }));
   });

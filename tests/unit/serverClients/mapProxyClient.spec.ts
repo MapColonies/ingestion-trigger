@@ -12,7 +12,7 @@ describe('mapProxyClient', () => {
 
   beforeEach(() => {
     registerDefaultConfig();
-    mapProxyApiServiceUrl = configMock.get<string>('mapProxyApiServiceUrl');
+    mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
     layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
 
     mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }));

@@ -12,7 +12,7 @@ describe('CatalogClient', () => {
 
   beforeEach(() => {
     registerDefaultConfig();
-    catalogServiceURL = configMock.get<string>('catalogServiceURL');
+    catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
     catalogPostBody = { metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType } };
 
     catalogClient = new CatalogClient(configMock as unknown as IConfig, jsLogger({ enabled: false }));

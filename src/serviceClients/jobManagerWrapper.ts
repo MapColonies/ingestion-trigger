@@ -13,16 +13,22 @@ import { LogContext } from '../utils/logger/logContext';
 export class JobManagerWrapper extends JobManagerClient {
   private readonly jobDomain: string;
   private readonly logContext: LogContext;
+  private readonly ingestionNewJobType: string;
+  private readonly ingestionUpdateJobType: string;
+  private readonly ingestionSwapUpdateJobType: string;
 
   public constructor(@inject(SERVICES.CONFIG) private readonly config: IConfig, @inject(SERVICES.LOGGER) protected readonly logger: Logger) {
     super(
       logger,
-      config.get<string>('jobManagerURL'),
+      config.get<string>('services.jobManagerURL'),
       config.get<IHttpRetryConfig>('httpRetry'),
       'jobManagerClient',
       config.get<boolean>('disableHttpClientLogs')
     );
-    this.jobDomain = config.get<string>('jobDomain');
+    this.jobDomain = config.get<string>('jobManager.jobDomain');
+    this.ingestionNewJobType = config.get<string>('jobManager.ingestionNewJobType');
+    this.ingestionUpdateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
+    this.ingestionSwapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
     this.logContext = {
       fileName: __filename,
       class: JobManagerWrapper.name,
@@ -33,7 +39,7 @@ export class JobManagerWrapper extends JobManagerClient {
     const logCtx: LogContext = { ...this.logContext, function: this.createInitJob.name };
     const taskParams: ITaskParameters[] = [{ rasterIngestionLayer: data, blockDuplication: true }];
     try {
-      const jobResponse = await this.createNewJob(data, JobAction.NEW, TaskAction.INIT, taskParams);
+      const jobResponse = await this.createNewJob(data, this.ingestionNewJobType, TaskAction.INIT, taskParams);
       return jobResponse;
     } catch (err) {
       const message = 'failed to create a new init job ';

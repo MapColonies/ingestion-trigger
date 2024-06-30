@@ -10,7 +10,7 @@ export class MapProxyClient extends HttpClient {
   public constructor(@inject(SERVICES.CONFIG) private readonly config: IConfig, @inject(SERVICES.LOGGER) protected readonly logger: Logger) {
     super(
       logger,
-      config.get<string>('mapProxyApiServiceUrl'),
+      config.get<string>('services.mapProxyApiServiceUrl'),
       'LayerPublisher',
       config.get<IHttpRetryConfig>('httpRetry'),
       config.get<boolean>('disableHttpClientLogs')

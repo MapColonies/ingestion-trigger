@@ -9,7 +9,7 @@ export class CatalogClient extends HttpClient {
   public constructor(@inject(SERVICES.CONFIG) private readonly config: IConfig, @inject(SERVICES.LOGGER) protected readonly logger: Logger) {
     super(
       logger,
-      config.get<string>('catalogServiceURL'),
+      config.get<string>('services.catalogServiceURL'),
       'CatalogClient',
       config.get<IHttpRetryConfig>('httpRetry'),
       config.get<boolean>('disableHttpClientLogs')

@@ -70,12 +70,17 @@
       "__format": "number"
     }
   },
-  "jobDomain": "JOB_DOMAIN",
-  "ingestionNewJobType": "INGESTION_NEW_JOB_TYPE",
-  "ingestionUpdateJobType": "INGESTION_UPDATE_JOB_TYPE",
-  "jobManagerURL": "JOB_MANAGER_URL",
-  "mapProxyApiServiceUrl": "MAP_PROXY_API_SERVICE_URL",
-  "catalogServiceURL": "CATALOG_SERVICE_URL",
+  "services": {
+    "jobManagerURL": "JOB_MANAGER_URL",
+    "mapProxyApiServiceUrl": "MAP_PROXY_API_SERVICE_URL",
+    "catalogServiceURL": "CATALOG_SERVICE_URL"
+  },
+  "jobManager": {
+    "jobDomain": "JOB_DOMAIN",
+    "ingestionNewJobType": "INGESTION_NEW_JOB_TYPE",
+    "ingestionUpdateJobType": "INGESTION_UPDATE_JOB_TYPE",
+    "ingestionSwapUpdateJobType": "INGESTION_SWAP_UPDATE_JOB_TYPE"
+  },
   "httpRetry": {
     "attempts": {
       "__name": "HTTP_RETRY_ATTEMPTS",
