@@ -390,7 +390,7 @@ export const mockMetadata = {
 export const mockPart = {
   id: {
     valid: 'part_123',
-    invalid: 'invalid part id!',
+    invalid: 3,
   },
   name: {
     valid: 'Valid Part Name',
