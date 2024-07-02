@@ -1,12 +1,21 @@
 import { DependencyContainer } from 'tsyringe';
 import { z } from 'zod';
-import { InputFiles, NewRasterLayer, NewRasterLayerMetadata, PolygonPart } from '@map-colonies/mc-model-types';
+import {
+  InputFiles,
+  NewRasterLayer,
+  NewRasterLayerMetadata,
+  PolygonPart,
+  UpdateRasterLayer,
+  UpdateRasterLayerMetadata,
+} from '@map-colonies/mc-model-types';
 import { createInputFilesSchema } from '../../ingestion/schemas/inputFilesSchema';
 import { InfoData, createInfoDataSchema } from '../../ingestion/schemas/infoDataSchema';
 import { gdalInfoSchema } from '../../ingestion/schemas/gdalDataSchema';
 import { createNewIngestionLayerSchema } from '../../ingestion/schemas/ingestionLayerSchema';
 import { createNewMetadataSchema } from '../../ingestion/schemas/newMetadataSchema';
 import { createPartDataSchema } from '../../ingestion/schemas/partDataSchema';
+import { createUpdateMetadataSchema } from '../../ingestion/schemas/updateMetadataSchema';
+import { createUpdateLayerSchema } from '../../ingestion/schemas/updateLayerSchema';
 import { ZodValidator } from './zodValidator';
 
 //
@@ -19,6 +28,8 @@ export function schemasValidationsFactory(container: DependencyContainer) {
   const rasterIngestionLayerSchema = createNewIngestionLayerSchema(container);
   const newMetadataSchema = createNewMetadataSchema();
   const partDataSchema = createPartDataSchema();
+  const rasterUpdateLayerSchema = createUpdateLayerSchema(container);
+  const updateMetadataSchema = createUpdateMetadataSchema();
 
   return {
     validateInputFilesRequestBody: async (value: unknown): Promise<InputFiles> => validator.validate(inputFilesSchema, value),
@@ -27,6 +38,8 @@ export function schemasValidationsFactory(container: DependencyContainer) {
     validateNewLayerRequest: async (value: unknown): Promise<NewRasterLayer> => validator.validate(rasterIngestionLayerSchema, value),
     validateNewMetadata: async (value: unknown): Promise<NewRasterLayerMetadata> => validator.validate(newMetadataSchema, value),
     validatePartData: async (value: unknown): Promise<PolygonPart[]> => validator.validate(partDataSchema, value),
+    validateUpdateMetadata: async (value: unknown): Promise<UpdateRasterLayerMetadata> => validator.validate(updateMetadataSchema, value),
+    validateUpdateLayerRequest: async (value: unknown): Promise<UpdateRasterLayer> => validator.validate(rasterUpdateLayerSchema, value),
   };
 }
 

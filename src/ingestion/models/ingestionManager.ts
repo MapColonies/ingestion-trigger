@@ -1,6 +1,6 @@
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
-import { InputFiles, ProductType, NewRasterLayer } from '@map-colonies/mc-model-types';
+import { InputFiles, ProductType, NewRasterLayer, UpdateRasterLayer } from '@map-colonies/mc-model-types';
 import { ConflictError } from '@map-colonies/error-types';
 import { ICreateJobResponse, IFindJobsRequest, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { SERVICES } from '../../common/constants';
@@ -101,6 +101,16 @@ export class IngestionManager {
     //create one job with one task
     const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(rasterIngestionLayer);
     this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
+  }
+
+  public async updateLayer(layerId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.updateLayer.name };
+    const { metadata, partData, inputFiles } = rasterUpdateLayer;
+    //check that layer exists in catalog
+    //await this.isInCatalog(metadata.productId, metadata.productType);
+    //validate sources
+
+    //validate polygonParts
   }
 
   private async validateNewLayer(rasterIngestionLayer: NewRasterLayer): Promise<void> {
