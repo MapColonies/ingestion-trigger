@@ -189,55 +189,16 @@ paths:
                 $ref: '#/components/schemas/errorMessage'
 components:
   schemas:
-    validateSourcesResponse:
-      type: object
-      properties:
-        isValid:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: Files are valid
-      required:
-        - message
-    successMessage:
-      type: object
-      properties:
-        status:
-          type: string
-          example: success
-      required:
-        - message
-    errorMessage:
-      type: object
-      properties:
-        message:
-          type: string
-      required:
-        - message
     updateRasterLayerMetadata:
       type: object
       required:
-        - region
         - classification
-      description: layer meta data that will override
+      description: layer metadata that will override
       properties:
-        productSubType:
-          type: string
-          description: Layer's sub type
-        description:
-          type: string
-          description: layer's description
-        region:
-          type: string
-          description: region of record
         classification:
           type: string
           description: Permitted roles
-        scale:
-          type: integer
-          minimum: 0
-          maximum: 100000000
+          pattern: ^[0-9]$|^[1-9][0-9]$|^(100)$
     productType:
       type: string
       enum:
@@ -253,6 +214,14 @@ components:
       description: layer's type might be derived from the first letter
     newRasterLayerMetadata:
       type: object
+      required:
+        - productId
+        - productName
+        - productType
+        - srs
+        - srsName
+        - transparency
+        - region
       allOf:
         - $ref: '#/components/schemas/updateRasterLayerMetadata'
         - properties:
@@ -265,11 +234,23 @@ components:
               description: Layer's external name
             productType:
               $ref: '#/components/schemas/productType'
+            productSubType:
+              type: string
+              description: Layer's sub type
+            region:
+              type: array
+              items:
+                type: string
+              description: region of record
             srs:
               type: string
+              enum:
+                - '4326'
               description: geo system id
             srsName:
               type: string
+              enum:
+                - WGS84Geo
               description: geo system name
             transparency:
               type: string
@@ -280,6 +261,13 @@ components:
             producerName:
               type: string
               description: creator name default IDFMU
+            scale:
+              type: integer
+              minimum: 0
+              maximum: 100000000
+            description:
+              type: string
+              description: layer's description
     GeometryBase:
       type: object
       description: GeoJSon geometry
@@ -433,13 +421,13 @@ components:
         resolutionMeter:
           type: number
           minimum: 0.0185
-          maximum: 78273
+          maximum: 78271.52
           format: double
           description: min resolution of layer in meters
         sourceResolutionMeter:
           type: number
           minimum: 0.0185
-          maximum: 78273
+          maximum: 78271.52
           format: double
           description: min resolution of layer in meters
         horizontalAccuracyCE90:
@@ -492,18 +480,48 @@ components:
         metadata:
           $ref: '#/components/schemas/newRasterLayerMetadata'
         partData:
-          $ref: '#/components/schemas/polygonPartMetadata'
+          type: array
+          items:
+            $ref: '#/components/schemas/polygonPartMetadata'
         inputFiles:
           $ref: '#/components/schemas/InputFiles'
+    successMessage:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+      required:
+        - status
+    errorMessage:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
     UpdateRasterLayer:
       type: object
       properties:
         metadata:
           $ref: '#/components/schemas/updateRasterLayerMetadata'
         partData:
-          $ref: '#/components/schemas/polygonPartMetadata'
+          type: array
+          items:
+            $ref: '#/components/schemas/polygonPartMetadata'
         inputFiles:
           $ref: '#/components/schemas/InputFiles'
+    validateSourcesResponse:
+      type: object
+      properties:
+        isValid:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Files are valid
+      required:
+        - isValid
     sourcesInfoResponse:
       type: array
       items:
@@ -547,20 +565,21 @@ components:
     NewRasterLayerExample:
       value:
         metadata:
-          productId: string
+          productId: some-name
           productName: string
           productType: Orthophoto
           productSubType: string
           description: string
           srs: '4326'
-          srsName: WGS84GEO
+          srsName: WGS84Geo
           transparency: TRANSPARENT
-          region: string
+          region:
+            - string
           classification: '6'
           producerName: string
           scale: 100000000
         partData:
-          - id: string
+          - id: avi
             name: string
             imagingTimeBeginUTC: '2024-01-28T13:47:43.427Z'
             imagingTimeEndUTC: '2024-01-28T13:47:43.427Z'
@@ -606,8 +625,8 @@ components:
             imagingTimeBeginUTC: '2024-01-28T13:47:43.427Z'
             imagingTimeEndUTC: '2024-01-28T13:47:43.427Z'
             resolutionDegree: 0.703125
-            resolutionMeter: 78273
-            sourceResolutionMeter: 78273
+            resolutionMeter: 78271.52
+            sourceResolutionMeter: 78271.52
             horizontalAccuracyCE90: 10
             sensors:
               - string

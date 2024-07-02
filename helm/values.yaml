@@ -3,13 +3,75 @@ global:
   tracing: {}
   metrics: {}
   environment: ''
+  serviceUrls:
+    mapproxyApi: ""
+    catalogManager: ""
+    jobManager: ""
+  jobManagement:
+    jobDomain: RASTER
+    tasks:
+      initTaskType: ""
+    ingestion:
+      new: 
+        jobType: ""
+      update: 
+        jobType: ""
+      updateSwap:
+        jobType: ""
+  storage:
+    fs:
+      ingestionSourcePvc:
+        enabled: false
+        name: ""
+        subPath: ""
+  ca:
+    secretName: ''
+    path: '/usr/local/share/ca-certificates'
+    key: 'ca.crt'
+  ingress:
+    domain: 'apps.aroapp.io'        
 
 enabled: true
 environment: development
 replicaCount: 1
 revisionHistoryLimit: 5 # Amount of revisions we keep
+initialDelaySeconds: 60
 nodePort: 30030 #for minikube deployment only
-resetOnConfigChange: false
+resetOnConfigChange: true
+imagePullPolicy: Always
+
+serviceUrls:
+  mapproxyApi: ""
+  catalogManager: ""
+  jobManager: ""
+jobManagement:
+  jobDomain: ""
+  tasks:
+      initTaskType: ""
+  ingestion:
+    new: 
+      jobType: ""
+    update: 
+      jobType: ""
+    updateSwap:
+      jobType: ""
+
+storage:
+  fs:
+    ingestionSourcePvc:
+      enabled: false
+      name: ""
+      subPath: ""
+
+
+cloudProvider:
+  dockerRegistryUrl: my-registry-url.io
+  imagePullSecretName: 'my-registry-secret'
+  flavor: openshift
+
+image:
+  repository: ingestion-trigger
+  tag: 'latest'
 
 nameOverride: ""
 fullnameOverride: ""
@@ -43,19 +105,11 @@ args: []
 
 sidecars: []
 
-cloudProvider:
-  dockerRegistryUrl: 
-  imagePullSecretName: ''
-  flavor: openshift
 
 caSecretName: ''
 caPath: '/usr/local/share/ca-certificates'
 caKey: 'ca.crt'
 
-image:
-  repository: ts-server-boilerplate
-  tag: 'latest'
-  pullPolicy: IfNotPresent
 
 env:
   port: 8080
@@ -84,7 +138,13 @@ env:
     - 'GPKG'
     tileSize : 256
     resolutionFixedPointTolerance: 12
-    extentBufferInMeters: 50        
+    extentBufferInMeters: 50   
+  disableHttpClientLogs: false     
+  httpRetry:
+    attempts: 5
+    delay: exponential
+    resetTimeout: true  
+     
 
 resources:
   enabled: true
@@ -99,22 +159,13 @@ resources:
 route:
   enabled: true
   path: /
-  host: 
   timeout:
     enabled: false # defaults to 30s by openshift
     duration: 60s # supported units (us, ms, s, m, h, d)
-  rewriteTarget: ''
-  tls:
-    enabled: true
-    termination: edge
-    insecureEdgeTerminationPolicy: Redirect
-    useCerts: false
-    certificate: ''
-    key: ''
-    caCertificate: ''
 
 ingress:
   enabled: false
+  type: 'nginx-org' # supported values: 'nginx-org' | 'nginx-kubernetes'
   path: /
   host: 'localhost'
   cors:

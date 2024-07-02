@@ -38,7 +38,7 @@ describe('GdalInfoManager', () => {
 
   afterEach(() => {
     container.clearInstances();
-    jest.resetAllMocks();
+    jest.restoreAllMocks();
   });
 
   afterAll(() => {
@@ -119,7 +119,6 @@ describe('GdalInfoManager', () => {
 
       jest.spyOn(nodePath, 'join').mockReturnValue(`${sourceMount}/${originDirectory}/${fileNames[0]}`);
       jest.spyOn(GdalUtilities.prototype, 'getInfoData').mockRejectedValue(new Error('Unknown Error'));
-
       await expect(gdalInfoManager.getInfoData(originDirectory, fileNames)).rejects.toThrow(GdalInfoError);
     });
   });

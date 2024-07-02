@@ -1,34 +1,24 @@
 {{- $releaseName := .Release.Name -}}
-{{- $chartName := include "ts-server-boilerplate.name" . -}}
-{{- $cloudProviderFlavor := include "ts-server-boilerplate.cloudProviderFlavor" . -}}
+{{- $chartName := include "ingestion-trigger.name" . -}}
+{{- $cloudProviderFlavor := include "ingestion-trigger.cloudProviderFlavor" . -}}
+{{- $serviceName := include "service.fullname" . -}}
+{{- $routeName := include "route.fullname" . }}
 {{- if and (and (.Values.enabled) (eq $cloudProviderFlavor "openshift")) (.Values.route.enabled) -}}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ $releaseName }}-{{ $chartName }}-route
+  name: {{ $routeName }}
   annotations:
-    {{- if .Values.route.rewriteTarget }}
-    haproxy.router.openshift.io/rewrite-target: {{ .Values.route.rewriteTarget }}
-    {{- end }}
+    haproxy.router.openshift.io/rewrite-target: /
     {{- if .Values.route.timeout.enabled }}
-    haproxy.router.openshift.io/timeout: {{ .Values.route.timeout.durationSeconds }}
+    haproxy.router.openshift.io/timeout: {{ .Values.route.timeout.duration }}
     {{- end }}
 spec:
-  {{- if .Values.route.host }}
-  host: {{ .Values.route.host }}
-  {{- end }}
-  path: {{ .Values.route.path | default "/" }}
+  path:  {{ .Values.route.path | default "/" }}
   to:
     kind: Service
-    name: {{ printf "%s-service" (include "ts-server-boilerplate.fullname" .) }}
-  {{- if .Values.route.tls.enabled }}
+    name: {{ $serviceName }}
   tls:
-    termination: {{ .Values.route.tls.termination | quote }}
-    insecureEdgeTerminationPolicy: {{ .Values.route.tls.insecureEdgeTerminationPolicy | quote }}
-    {{- if .Values.route.tls.useCerts }}
-    certificate: {{ .Values.route.tls.certificate | quote }}
-    key: {{ .Values.route.tls.key | quote }}
-    caCertificate: {{ .Values.route.tls.caCertificate | quote }}
-    {{- end }}
-  {{- end -}}
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
 {{- end -}}

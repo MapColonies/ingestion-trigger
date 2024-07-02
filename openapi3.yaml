@@ -29,7 +29,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/successMessage'
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/successMessage
         '400':
           description: Bad request
           content:
@@ -89,7 +90,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/successMessage'
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/successMessage
         '400':
           description: Bad request
           content:
@@ -142,19 +144,22 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/validateSourcesResponse'
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/validateSourcesResponse
         '400':
           description: Invalid request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/errorMessage'
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/errorMessage'
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
 
   /ingestion/sourcesInfo:
     post:
@@ -206,32 +211,3 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
-
-components:
-  schemas:
-    validateSourcesResponse:
-      type: object
-      properties:
-        isValid:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: 'Files are valid'
-      required:
-        - message
-    successMessage:
-      type: object
-      properties:
-        status:
-          type: string
-          example: 'success'
-      required:
-        - message
-    errorMessage:
-      type: object
-      properties:
-        message:
-          type: string
-      required:
-        - message

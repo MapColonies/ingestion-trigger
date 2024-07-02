@@ -1,41 +1,37 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "ts-server-boilerplate.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
+{{- define "ingestion-trigger.name" -}}
+{{- default .Chart.Name | trunc 63 | trimSuffix "-" }}
+{{- end }}
 
 {{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "ts-server-boilerplate.fullname" -}}
-{{- if .Values.fullnameOverride -}}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- $name := default .Chart.Name .Values.nameOverride -}}
-{{- if contains $name .Release.Name -}}
-{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
+{{- define "ingestion-trigger.fullname" -}}
+{{- $name := default .Chart.Name }}
+{{- if contains $name .Release.Name }}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
 
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "ts-server-boilerplate.chart" -}}
+{{- define "ingestion-trigger.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "ts-server-boilerplate.labels" -}}
-helm.sh/chart: {{ include "ts-server-boilerplate.chart" . }}
-{{ include "ts-server-boilerplate.selectorLabels" . }}
+{{- define "ingestion-trigger.labels" -}}
+helm.sh/chart: {{ include "ingestion-trigger.chart" . }}
+{{ include "ingestion-trigger.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,22 +41,22 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Returns the tag of the chart.
 */}}
-{{- define "ts-server-boilerplate.tag" -}}
+{{- define "ingestion-trigger.tag" -}}
 {{- default (printf "v%s" .Chart.AppVersion) .Values.image.tag }}
 {{- end }}
 
 {{/*
 Selector labels
 */}}
-{{- define "ts-server-boilerplate.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "ts-server-boilerplate.name" . }}
+{{- define "ingestion-trigger.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "ingestion-trigger.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Returns the environment from global if exists or from the chart's values, defaults to development
 */}}
-{{- define "ts-server-boilerplate.environment" -}}
+{{- define "ingestion-trigger.environment" -}}
 {{- if .Values.global.environment }}
     {{- .Values.global.environment -}}
 {{- else -}}
@@ -71,7 +67,7 @@ Returns the environment from global if exists or from the chart's values, defaul
 {{/*
 Returns the cloud provider name from global if exists or from the chart's values, defaults to minikube
 */}}
-{{- define "ts-server-boilerplate.cloudProviderFlavor" -}}
+{{- define "ingestion-trigger.cloudProviderFlavor" -}}
 {{- if .Values.global.cloudProvider.flavor }}
     {{- .Values.global.cloudProvider.flavor -}}
 {{- else if .Values.cloudProvider -}}
@@ -84,7 +80,7 @@ Returns the cloud provider name from global if exists or from the chart's values
 {{/*
 Returns the cloud provider docker registry url from global if exists or from the chart's values
 */}}
-{{- define "ts-server-boilerplate.cloudProviderDockerRegistryUrl" -}}
+{{- define "ingestion-trigger.cloudProviderDockerRegistryUrl" -}}
 {{- if .Values.global.cloudProvider.dockerRegistryUrl }}
     {{- printf "%s/" .Values.global.cloudProvider.dockerRegistryUrl -}}
 {{- else if .Values.cloudProvider.dockerRegistryUrl -}}
@@ -96,7 +92,7 @@ Returns the cloud provider docker registry url from global if exists or from the
 {{/*
 Returns the cloud provider image pull secret name from global if exists or from the chart's values
 */}}
-{{- define "ts-server-boilerplate.cloudProviderImagePullSecretName" -}}
+{{- define "ingestion-trigger.cloudProviderImagePullSecretName" -}}
 {{- if .Values.global.cloudProvider.imagePullSecretName }}
     {{- .Values.global.cloudProvider.imagePullSecretName -}}
 {{- else if .Values.cloudProvider.imagePullSecretName -}}
@@ -105,20 +101,42 @@ Returns the cloud provider image pull secret name from global if exists or from 
 {{- end -}}
 
 {{/*
-Returns the tracing url from global if exists or from the chart's values
+Returns if tracing is enabled from global if exists or from the chart's values
 */}}
-{{- define "ts-server-boilerplate.tracingUrl" -}}
-{{- if .Values.global.tracing.url }}
-    {{- .Values.global.tracing.url -}}
-{{- else if .Values.cloudProvider -}}
-    {{- .Values.env.tracing.url -}}
+{{- define "ingestion-trigger.tracingEnabled" -}}
+{{- if .Values.global.tracing.enabled }}
+    {{- .Values.global.tracing.enabled -}}
+{{- else -}}
+    {{- .Values.env.tracing.enabled -}}
 {{- end -}}
 {{- end -}}
 
 {{/*
 Returns the tracing url from global if exists or from the chart's values
 */}}
-{{- define "ts-server-boilerplate.metricsUrl" -}}
+{{- define "ingestion-trigger.tracingUrl" -}}
+{{- if .Values.global.tracing.url }}
+    {{- .Values.global.tracing.url -}}
+{{- else -}}
+    {{- .Values.env.tracing.url -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Returns if metrics is enabled from global if exists or from the chart's values
+*/}}
+{{- define "ingestion-trigger.metricsEnabled" -}}
+{{- if .Values.global.metrics.enabled }}
+    {{- .Values.global.metrics.enabled -}}
+{{- else -}}
+    {{- .Values.env.metrics.enabled -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Returns the metrics url from global if exists or from the chart's values
+*/}}
+{{- define "ingestion-trigger.metricsUrl" -}}
 {{- if .Values.global.metrics.url }}
     {{- .Values.global.metrics.url -}}
 {{- else -}}

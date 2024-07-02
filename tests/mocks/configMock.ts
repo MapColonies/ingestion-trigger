@@ -81,6 +81,18 @@ const registerDefaultConfig = (): void => {
       resolutionFixedPointTolerance: 12,
       extentBufferInMeters: 50,
     },
+    services: {
+      jobManagerURL: 'http://jobmanagerurl',
+      mapProxyApiServiceUrl: 'http://mapproxyapiserviceurl',
+      catalogServiceURL: 'http://catalogserviceurl',
+    },
+    jobManager: {
+      jobDomain: 'RASTER',
+      ingestionNewJobType: 'Ingestion_New',
+      ingestionUpdateJobType: 'Ingestion_Update',
+      ingestionSwapUpdateJobType: 'Ingestion_Swap_Update',
+      initTaskType: 'init',
+    },
   };
 
   setConfigValues(config);

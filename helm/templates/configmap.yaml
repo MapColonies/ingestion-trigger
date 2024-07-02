@@ -1,19 +1,44 @@
-{{- $tracingUrl := include "ts-server-boilerplate.tracingUrl" . -}}
-{{- $metricsUrl := include "ts-server-boilerplate.metricsUrl" . -}}
+{{- $chartName := include "ingestion-trigger.name" . -}}
+{{- $tracingUrl := include "ingestion-trigger.tracingUrl" . -}}
+{{- $metricsUrl := include "ingestion-trigger.metricsUrl" . -}}
+{{- $tracingEnabled := include "ingestion-trigger.tracingEnabled" . -}}
+{{- $metricsEnabled := include "ingestion-trigger.metricsEnabled" . -}}
+{{- $configmapName := include "configmap.fullname" . }}
+{{- $serviceUrls := (include "common.serviceUrls.merged" .) | fromYaml }}
+{{- $jobManagement := (include "common.jobManagement.merged" .) | fromYaml }}
+{{- $storage := (include "common.storage.merged" .) | fromYaml }}
+{{- $ingestion := (include "common.ingestion.merged" .) | fromYaml }}
 {{- if .Values.enabled -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ printf "%s-configmap" (include "ts-server-boilerplate.fullname" .) }}
+  name: {{ $configmapName  }}
 data:
   REQUEST_PAYLOAD_LIMIT: {{ .Values.env.requestPayloadLimit | quote }}
   RESPONSE_COMPRESSION_ENABLED: {{ .Values.env.responseCompressionEnabled | quote }}
   LOG_LEVEL: {{ .Values.env.logLevel | quote }}
   LOG_PRETTY_PRINT_ENABLED: {{ .Values.env.logPrettyPrintEnabled | quote }}
+  JOB_DOMAIN: {{ $jobManagement.jobDomain | quote }}
+  JOB_MANAGER_URL: {{ $serviceUrls.jobManager | quote }}
+  MAP_PROXY_API_SERVICE_URL: {{ $serviceUrls.mapproxyApi | quote }}
+  CATALOG_SERVICE_URL: {{ $serviceUrls.catalogManager | quote }}
   STORAGE_EXPLORER_DISPLAY_NAME_DIR: {{ .Values.env.storageExplorer.displayNameDir | quote }}
   STORAGE_EXPLORER_LAYER_SOURCE_DIR: {{ .Values.env.storageExplorer.layerSourceDir | quote }}
   STORAGE_EXPLORER_WATCH_DIRECTORY: {{ .Values.env.storageExplorer.watchDirectory | quote }}
   STORAGE_EXPLORER_VALID_FILE_EXTENSIONS: {{ .Values.env.storageExplorer.validFileExtensions | toJson | quote }}
+  HTTP_RETRY_ATTEMPTS: {{ .Values.env.httpRetry.attempts | quote }}
+  HTTP_RETRY_DELAY: {{ .Values.env.httpRetry.delay | quote }}
+  HTTP_RETRY_RESET_TIMEOUT: {{ .Values.env.httpRetry.resetTimeout | quote }}
+  DISABLE_HTTP_CLIENT_LOGS: {{ .Values.env.disableHttpClientLogs | quote }}
+  INGESTION_NEW_JOB_TYPE: {{ $jobManagement.ingestion.new.jobType | quote }}
+  INGESTION_UPDATE_JOB_TYPE: {{ $jobManagement.ingestion.update.jobType | quote }}
+  INGESTION_SWAP_UPDATE_JOB_TYPE: {{ $jobManagement.ingestion.updateSwap.jobType | quote }}
+  INIT_TASK_TYPE: {{ $jobManagement.tasks.initTaskType | quote }}
+  CRS: {{ .Values.env.validationValuesByInfo.crs | toJson | quote}}
+  FILE_FORMAT: {{ .Values.env.validationValuesByInfo.fileFormat | toJson | quote}}
+  TILE_SIZE: {{ .Values.env.validationValuesByInfo.tileSize | quote}}
+  RESOLUTION_FIXED_POINT_TOLERANCE: {{ .Values.env.validationValuesByInfo.resolutionFixedPointTolerance | quote }}
+  EXTENT_BUFFER_IN_METERS: {{ .Values.env.validationValuesByInfo.extentBufferInMeters | quote }}
   {{ if .Values.env.tracing.enabled }}
   TELEMETRY_TRACING_ENABLED: 'true'
   TELEMETRY_TRACING_URL: {{ $tracingUrl }}
