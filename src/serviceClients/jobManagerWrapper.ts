@@ -38,7 +38,7 @@ export class JobManagerWrapper extends JobManagerClient {
 
   public async createInitJob(data: NewRasterLayer): Promise<ICreateJobResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.createInitJob.name };
-    const taskParams: ITaskParameters[] = [{ rasterIngestionLayer: data, blockDuplication: true }];
+    const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
     try {
       const jobResponse = await this.createNewJob(data, this.ingestionNewJobType, this.initTaskType, taskParams);
       return jobResponse;
