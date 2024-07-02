@@ -10,9 +10,9 @@ import { IngestionManager } from '../models/ingestionManager';
 import { InfoData } from '../schemas/infoDataSchema';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
 
-type SourcesValidationHandler = RequestHandler<undefined, SourcesValidationResponse, InputFiles>;
-type SourcesInfoHandler = RequestHandler<undefined, InfoData[], InputFiles>;
-type NewLayerHandler = RequestHandler<undefined, ResponseStatus, NewRasterLayer>;
+type SourcesValidationHandler = RequestHandler<undefined, SourcesValidationResponse, unknown>;
+type SourcesInfoHandler = RequestHandler<undefined, InfoData[], unknown>;
+type NewLayerHandler = RequestHandler<undefined, ResponseStatus, unknown>;
 
 @injectable()
 export class IngestionController {
@@ -23,8 +23,7 @@ export class IngestionController {
 
   public createLayer: NewLayerHandler = async (req, res, next) => {
     try {
-      const newLayerRequestBody: unknown = req.body;
-      const validNewLayerRequestBody: NewRasterLayer = await this.schemasValidator.validateNewLayerRequest(newLayerRequestBody);
+      const validNewLayerRequestBody: NewRasterLayer = await this.schemasValidator.validateNewLayerRequest(req.body);
       await this.ingestionManager.ingestNewLayer(validNewLayerRequestBody);
 
       res.status(StatusCodes.OK).send({ status: 'success' });
@@ -48,8 +47,7 @@ export class IngestionController {
 
   public validateSources: SourcesValidationHandler = async (req, res, next): Promise<void> => {
     try {
-      const inputFilesRequestBody: unknown = req.body;
-      const validInputFilesRequestBody: InputFiles = await this.schemasValidator.validateInputFilesRequestBody(inputFilesRequestBody);
+      const validInputFilesRequestBody: InputFiles = await this.schemasValidator.validateInputFilesRequestBody(req.body);
 
       const validationResponse = await this.ingestionManager.validateSources(validInputFilesRequestBody);
 
@@ -61,8 +59,7 @@ export class IngestionController {
 
   public getSourcesGdalInfo: SourcesInfoHandler = async (req, res, next): Promise<void> => {
     try {
-      const inputFilesRequestBody: unknown = req.body;
-      const validInputFilesRequestBody: InputFiles = await this.schemasValidator.validateInputFilesRequestBody(inputFilesRequestBody);
+      const validInputFilesRequestBody: InputFiles = await this.schemasValidator.validateInputFilesRequestBody(req.body);
       const filesGdalInfoData = await this.ingestionManager.getInfoData(validInputFilesRequestBody);
 
       res.status(StatusCodes.OK).send(filesGdalInfoData);

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { NewRasterLayer, UpdateRasterLayer } from '@map-colonies/mc-model-types';
 
 export interface SourcesValidationResponse {
   isValid: boolean;
@@ -42,6 +41,5 @@ export interface TileSize {
 }
 
 export interface ITaskParameters {
-  rasterIngestionLayer: NewRasterLayer | UpdateRasterLayer;
   blockDuplication?: boolean;
 }
