@@ -194,12 +194,10 @@ components:
       required:
         - classification
       description: layer metadata that will override
-      description: layer metadata that will override
       properties:
         classification:
           type: string
           description: Permitted roles
-          pattern: ^[0-9]$|^[1-9][0-9]$|^(100)$
           pattern: ^[0-9]$|^[1-9][0-9]$|^(100)$
     productType:
       type: string
@@ -216,14 +214,6 @@ components:
       description: layer's type might be derived from the first letter
     newRasterLayerMetadata:
       type: object
-      required:
-        - productId
-        - productName
-        - productType
-        - srs
-        - srsName
-        - transparency
-        - region
       required:
         - productId
         - productName
@@ -252,18 +242,8 @@ components:
               items:
                 type: string
               description: region of record
-            productSubType:
-              type: string
-              description: Layer's sub type
-            region:
-              type: array
-              items:
-                type: string
-              description: region of record
             srs:
               type: string
-              enum:
-                - '4326'
               enum:
                 - '4326'
               description: geo system id
@@ -281,13 +261,6 @@ components:
             producerName:
               type: string
               description: creator name default IDFMU
-            scale:
-              type: integer
-              minimum: 0
-              maximum: 100000000
-            description:
-              type: string
-              description: layer's description
             scale:
               type: integer
               minimum: 0
@@ -449,13 +422,11 @@ components:
           type: number
           minimum: 0.0185
           maximum: 78271.52
-          maximum: 78271.52
           format: double
           description: min resolution of layer in meters
         sourceResolutionMeter:
           type: number
           minimum: 0.0185
-          maximum: 78271.52
           maximum: 78271.52
           format: double
           description: min resolution of layer in meters
@@ -512,26 +483,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/polygonPartMetadata'
-          type: array
-          items:
-            $ref: '#/components/schemas/polygonPartMetadata'
         inputFiles:
           $ref: '#/components/schemas/InputFiles'
-    successMessage:
-      type: object
-      properties:
-        status:
-          type: string
-          example: success
-      required:
-        - status
-    errorMessage:
-      type: object
-      properties:
-        message:
-          type: string
-      required:
-        - message
     successMessage:
       type: object
       properties:
@@ -556,22 +509,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/polygonPartMetadata'
-          type: array
-          items:
-            $ref: '#/components/schemas/polygonPartMetadata'
         inputFiles:
           $ref: '#/components/schemas/InputFiles'
-    validateSourcesResponse:
-      type: object
-      properties:
-        isValid:
-          type: boolean
-          example: true
-        message:
-          type: string
-          example: Files are valid
-      required:
-        - isValid
     validateSourcesResponse:
       type: object
       properties:
@@ -627,13 +566,12 @@ components:
       value:
         metadata:
           productId: some-name
-          productId: some-name
           productName: string
           productType: Orthophoto
           productSubType: string
           description: string
           srs: '4326'
-          srsName: WGS84Geo
+          srsName: WGS84GEO
           transparency: TRANSPARENT
           region:
             - string
@@ -641,7 +579,6 @@ components:
           producerName: string
           scale: 100000000
         partData:
-          - id: avi
           - id: avi
             name: string
             imagingTimeBeginUTC: '2024-01-28T13:47:43.427Z'
@@ -684,8 +621,6 @@ components:
             imagingTimeBeginUTC: '2024-01-28T13:47:43.427Z'
             imagingTimeEndUTC: '2024-01-28T13:47:43.427Z'
             resolutionDegree: 0.703125
-            resolutionMeter: 78271.52
-            sourceResolutionMeter: 78271.52
             resolutionMeter: 78271.52
             sourceResolutionMeter: 78271.52
             horizontalAccuracyCE90: 10
