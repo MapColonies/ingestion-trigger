@@ -54,7 +54,7 @@ export class GdalInfoManager {
 
   public async validateInfoData(infoDataArray: InfoDataWithFile[]): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateInfoData.name };
-    this.logger.debug({ msg: 'Validating GDAL info data', logContext: logCtx, metadata: { infoDataArray } });
+    this.logger.info({ msg: 'Validating GDAL info data', logContext: logCtx, metadata: { infoDataArray } });
     let currentFile = '';
 
     try {

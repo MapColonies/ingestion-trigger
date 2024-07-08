@@ -69,5 +69,32 @@
       "__name": "EXTENT_BUFFER_IN_METERS",
       "__format": "number"
     }
+  },
+  "services": {
+    "jobManagerURL": "JOB_MANAGER_URL",
+    "mapProxyApiServiceUrl": "MAP_PROXY_API_SERVICE_URL",
+    "catalogServiceURL": "CATALOG_SERVICE_URL"
+  },
+  "jobManager": {
+    "jobDomain": "JOB_DOMAIN",
+    "ingestionNewJobType": "INGESTION_NEW_JOB_TYPE",
+    "initTaskType": "INIT_TASK_TYPE",
+    "ingestionUpdateJobType": "INGESTION_UPDATE_JOB_TYPE",
+    "ingestionSwapUpdateJobType": "INGESTION_SWAP_UPDATE_JOB_TYPE"
+  },
+  "httpRetry": {
+    "attempts": {
+      "__name": "HTTP_RETRY_ATTEMPTS",
+      "__format": "number"
+    },
+    "delay": "HTTP_RETRY_DELAY",
+    "shouldResetTimeout": {
+      "__name": "HTTP_RETRY_RESET_TIMEOUT",
+      "__format": "boolean"
+    }
+  },
+  "disableHttpClientLogs": {
+    "__name": "DISABLE_HTTP_CLIENT_LOGS",
+    "__format": "boolean"
   }
 }

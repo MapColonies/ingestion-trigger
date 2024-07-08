@@ -1,3 +1,5 @@
+import { IRasterCatalogUpsertRequestBody } from '@map-colonies/mc-model-types';
+
 export interface IConfig {
   get: <T>(setting: string) => T;
   has: (setting: string) => boolean;
@@ -8,4 +10,15 @@ export interface OpenApiConfig {
   basePath: string;
   jsonPath: string;
   uiPath: string;
+}
+
+export interface IFindResponseRecord extends IRasterCatalogUpsertRequestBody {
+  id: string;
+}
+
+export type FindRecordResponse = IFindResponseRecord[];
+
+export interface IUpdateRecordResponse {
+  id: string;
+  status: string;
 }

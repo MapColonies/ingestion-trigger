@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
+
 export interface SourcesValidationResponse {
   isValid: boolean;
   message: string;
+}
+
+export interface ResponseStatus {
+  status: string;
 }
 
 export interface PixelRange {
@@ -33,4 +38,8 @@ export const matrixRatioToGrid = new Map([
 export interface TileSize {
   width: number;
   height: number;
+}
+
+export interface ITaskParameters {
+  blockDuplication?: boolean;
 }

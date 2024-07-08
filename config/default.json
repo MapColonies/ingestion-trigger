@@ -37,5 +37,23 @@
     "tileSize": 256,
     "resolutionFixedPointTolerance": 12,
     "extentBufferInMeters": 50
-  }
+  },
+  "services": {
+    "jobManagerURL": "",
+    "mapProxyApiServiceUrl": "",
+    "catalogServiceURL": ""
+  },
+  "jobManager": {
+    "jobDomain": "RASTER",
+    "ingestionNewJobType": "Ingestion_New",
+    "ingestionUpdateJobType": "Ingestion_Update",
+    "ingestionSwapUpdateJobType": "Ingestion_Swap_Update",
+    "initTaskType": "init"
+  },
+  "httpRetry": {
+    "attempts": 5,
+    "delay": "exponential",
+    "shouldResetTimeout": true
+  },
+  "disableHttpClientLogs": false
 }

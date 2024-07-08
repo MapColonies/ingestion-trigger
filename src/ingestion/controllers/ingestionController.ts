@@ -1,16 +1,18 @@
 import { RequestHandler } from 'express';
-import { InputFiles } from '@map-colonies/mc-model-types';
+import { InputFiles, NewRasterLayer } from '@map-colonies/mc-model-types';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
 import { HttpError } from 'express-openapi-validator/dist/framework/types';
+import { ConflictError } from '@map-colonies/error-types';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
-import { SourcesValidationResponse } from '../interfaces';
+import { SourcesValidationResponse, ResponseStatus } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 import { InfoData } from '../schemas/infoDataSchema';
-import { FileNotFoundError, GdalInfoError } from '../errors/ingestionErrors';
+import { FileNotFoundError, GdalInfoError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
 
-type SourcesValidationHandler = RequestHandler<undefined, SourcesValidationResponse, InputFiles>;
-type SourcesInfoHandler = RequestHandler<undefined, InfoData[], InputFiles>;
+type SourcesValidationHandler = RequestHandler<undefined, SourcesValidationResponse, unknown>;
+type SourcesInfoHandler = RequestHandler<undefined, InfoData[], unknown>;
+type NewLayerHandler = RequestHandler<undefined, ResponseStatus, unknown>;
 
 @injectable()
 export class IngestionController {
@@ -19,8 +21,24 @@ export class IngestionController {
     private readonly ingestionManager: IngestionManager
   ) {}
 
-  public createLayer: RequestHandler = (req, res, next) => {
-    throw new Error('Method not implemented.');
+  public createLayer: NewLayerHandler = async (req, res, next) => {
+    try {
+      const validNewLayerRequestBody: NewRasterLayer = await this.schemasValidator.validateNewLayerRequest(req.body);
+      await this.ingestionManager.ingestNewLayer(validNewLayerRequestBody);
+
+      res.status(StatusCodes.OK).send({ status: 'success' });
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
+      }
+      if (error instanceof ConflictError) {
+        (error as HttpError).status = StatusCodes.CONFLICT; //409
+      }
+      if (error instanceof UnsupportedEntityError) {
+        (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
+      }
+      next(error);
+    }
   };
 
   public updateLayer: RequestHandler = (req, res, next) => {
@@ -29,8 +47,7 @@ export class IngestionController {
 
   public validateSources: SourcesValidationHandler = async (req, res, next): Promise<void> => {
     try {
-      const inputFilesRequestBody: unknown = req.body;
-      const validInputFilesRequestBody: InputFiles = await this.schemasValidator.validateInputFilesRequestBody(inputFilesRequestBody);
+      const validInputFilesRequestBody: InputFiles = await this.schemasValidator.validateInputFilesRequestBody(req.body);
 
       const validationResponse = await this.ingestionManager.validateSources(validInputFilesRequestBody);
 
@@ -42,8 +59,7 @@ export class IngestionController {
 
   public getSourcesGdalInfo: SourcesInfoHandler = async (req, res, next): Promise<void> => {
     try {
-      const inputFilesRequestBody: unknown = req.body;
-      const validInputFilesRequestBody: InputFiles = await this.schemasValidator.validateInputFilesRequestBody(inputFilesRequestBody);
+      const validInputFilesRequestBody: InputFiles = await this.schemasValidator.validateInputFilesRequestBody(req.body);
       const filesGdalInfoData = await this.ingestionManager.getInfoData(validInputFilesRequestBody);
 
       res.status(StatusCodes.OK).send(filesGdalInfoData);

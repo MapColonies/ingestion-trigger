@@ -2,6 +2,7 @@ import httpStatusCodes from 'http-status-codes';
 import { InputFiles } from '@map-colonies/mc-model-types';
 import gdal from 'gdal-async';
 import { SqliteError } from 'better-sqlite3';
+import nock from 'nock';
 import { getApp } from '../../../src/app';
 import { infoDataSchemaArray } from '../../../src/ingestion/schemas/infoDataSchema';
 import { SourceValidator } from '../../../src/ingestion/validators/sourceValidator';
@@ -10,6 +11,8 @@ import { ZodValidator } from '../../../src/utils/validation/zodValidator';
 import { Grid } from '../../../src/ingestion/interfaces';
 import { GpkgManager } from '../../../src/ingestion/models/gpkgManager';
 import { fakeIngestionSources } from '../../mocks/sourcesRequestBody';
+import { jobResponse, newJobRequest, newLayerRequest } from '../../mocks/newIngestionRequestMockData';
+import { getMapServingLayerName } from '../../../src/utils/layerNameGenerator';
 import { IngestionRequestSender } from './helpers/ingestionRequestSender';
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
 
@@ -27,7 +30,7 @@ describe('Ingestion', function () {
 
   afterEach(function () {
     resetContainer();
-    jest.resetAllMocks();
+    jest.restoreAllMocks();
   });
 
   describe('validateSources', function () {
@@ -207,7 +210,7 @@ describe('Ingestion', function () {
 
     describe('Bad Path', function () {
       let zodValidatorSpy: jest.SpyInstance;
-      beforeAll(function () {
+      beforeEach(function () {
         zodValidatorSpy = jest.spyOn(ZodValidator.prototype, 'validate');
       });
       afterEach(function () {
@@ -343,6 +346,203 @@ describe('Ingestion', function () {
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
+      });
+    });
+  });
+
+  describe('Ingestion Validation', () => {
+    const jobManagerURL = 'http://jobmanagerurl';
+    const mapProxyApiServiceUrl = 'http://mapproxyapiserviceurl';
+    const catalogServiceURL = 'http://catalogserviceurl';
+    const layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
+    const catalogPostBody = {
+      metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType },
+    };
+
+    describe('Happy Path', () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+        nock.cleanAll();
+      });
+      it('should return 200 status code', async () => {
+        const layerRequest = newLayerRequest.valid;
+        const getJobsParams = {
+          resourceId: layerRequest.metadata.productId,
+          productType: layerRequest.metadata.productType,
+          isCleaned: false,
+          shouldReturnTasks: false,
+        };
+        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+        nock(jobManagerURL).post('/jobs', newJobRequest).reply(200, jobResponse);
+        nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(200, []);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(layerName)}`)
+          .reply(404);
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
+    });
+
+    describe('Bad Path', () => {
+      it('should return 400 status code when the validation of the metadata fails', async () => {
+        const layerRequest = newLayerRequest.invalid.metadata;
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when partData geometry isnt a valid geometry', async () => {
+        const layerRequest = newLayerRequest.invalid.invalidBeginDate;
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when partData BeginTime is after EndTime', async () => {
+        const layerRequest = newLayerRequest.invalid.invalidPartDataGeometry;
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when partData BeginTime is after currentTime', async () => {
+        const layerRequest = newLayerRequest.invalid.invalidBeginDateAfterCurrent;
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when partData EndTime is after currentTime', async () => {
+        const layerRequest = newLayerRequest.invalid.invalidEndDateAfterCurrent;
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when partData geometry type is wrong', async () => {
+        const layerRequest = newLayerRequest.invalid.invalidGeometryType;
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when partData polygon geometry isnt contained by extent', async () => {
+        const layerRequest = newLayerRequest.invalid.notContainedPolygon;
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when partData resolutionDeg isnt greater than pixel size', async () => {
+        const layerRequest = newLayerRequest.invalid.invalidResolutionDeg;
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when partData MultiPolygon geometry isnt contained by extent', async () => {
+        const layerRequest = newLayerRequest.invalid.notContainedMultiPolygon;
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should throw 409 status when the ingested layer is in mapProxy', async () => {
+        const layerRequest = newLayerRequest.valid;
+
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(layerName)}`)
+          .reply(200, []);
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+      });
+
+      it('should throw 422 status when invalid gdal info', async () => {
+        const layerRequest = newLayerRequest.invalid.gdalInfo;
+
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(layerName)}`)
+          .reply(200, []);
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+      });
+    });
+
+    describe('Sad Path', () => {
+      beforeEach(() => {});
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+        nock.cleanAll();
+      });
+
+      it('should return 500 status code when failed to read sqlite file', async () => {
+        const layerRequest = newLayerRequest.valid;
+        jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
+          throw new SqliteError('failed read sqlite file', 'SQLITE_ERROR');
+        });
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+      });
+
+      it('should return 500 status code when failed to create new init job', async () => {
+        const layerRequest = newLayerRequest.valid;
+
+        const getJobsParams = {
+          resourceId: layerRequest.metadata.productId,
+          productType: layerRequest.metadata.productType,
+          isCleaned: false,
+          shouldReturnTasks: false,
+        };
+        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+        nock(jobManagerURL).post('/jobs', newJobRequest).reply(504);
+        nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(200, []);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(layerName)}`)
+          .reply(404);
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+      });
+
+      it('should return 500 status code when unexpected error from mapproxy occurs', async () => {
+        const layerRequest = newLayerRequest.valid;
+
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(layerName)}`)
+          .reply(504);
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
       });
     });
   });
