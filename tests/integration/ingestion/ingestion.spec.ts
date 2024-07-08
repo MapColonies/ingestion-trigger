@@ -1,5 +1,5 @@
 import httpStatusCodes from 'http-status-codes';
-import { InputFiles } from '@map-colonies/mc-model-types';
+import { InputFiles, ProductType } from '@map-colonies/mc-model-types';
 import gdal from 'gdal-async';
 import { SqliteError } from 'better-sqlite3';
 import nock from 'nock';
@@ -13,6 +13,14 @@ import { GpkgManager } from '../../../src/ingestion/models/gpkgManager';
 import { fakeIngestionSources } from '../../mocks/sourcesRequestBody';
 import { jobResponse, newJobRequest, newLayerRequest } from '../../mocks/newIngestionRequestMockData';
 import { getMapServingLayerName } from '../../../src/utils/layerNameGenerator';
+import {
+  updateJobRequest,
+  updateLayerRequest,
+  updateRunningJobResponse,
+  updateSwapJobRequest,
+  updatedLayer,
+  updatedSwapLayer,
+} from '../../mocks/updateRequestMockData';
 import { IngestionRequestSender } from './helpers/ingestionRequestSender';
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
 
@@ -397,7 +405,7 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when partData geometry isnt a valid geometry', async () => {
+      it('should return 400 status code when partData BeginTime is after EndTime', async () => {
         const layerRequest = newLayerRequest.invalid.invalidBeginDate;
 
         const response = await requestSender.ingestNewLayer(layerRequest);
@@ -406,7 +414,7 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when partData BeginTime is after EndTime', async () => {
+      it('should return 400 status code when partData geometry isnt a valid geometry', async () => {
         const layerRequest = newLayerRequest.invalid.invalidPartDataGeometry;
 
         const response = await requestSender.ingestNewLayer(layerRequest);
@@ -481,9 +489,6 @@ describe('Ingestion', function () {
       it('should throw 422 status when invalid gdal info', async () => {
         const layerRequest = newLayerRequest.invalid.gdalInfo;
 
-        nock(mapProxyApiServiceUrl)
-          .get(`/layer/${encodeURIComponent(layerName)}`)
-          .reply(200, []);
         const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
@@ -492,8 +497,6 @@ describe('Ingestion', function () {
     });
 
     describe('Sad Path', () => {
-      beforeEach(() => {});
-
       afterEach(() => {
         jest.restoreAllMocks();
         nock.cleanAll();
@@ -541,6 +544,238 @@ describe('Ingestion', function () {
           .reply(504);
 
         const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+      });
+    });
+  });
+
+  describe('Update Validation', () => {
+    const jobManagerURL = 'http://jobmanagerurl';
+    const mapProxyApiServiceUrl = 'http://mapproxyapiserviceurl';
+    const catalogServiceURL = 'http://catalogserviceurl';
+
+    describe('Happy Path', () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+        nock.cleanAll();
+      });
+
+      it('should return 200 status code with update request', async () => {
+        const layerRequest = updateLayerRequest.valid;
+        const updatedLayerMetadata = updatedLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+
+        const getJobsParams = {
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
+          isCleaned: false,
+          shouldReturnTasks: false,
+        };
+
+        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+        nock(jobManagerURL).post('/jobs', updateJobRequest).reply(200, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(200);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
+
+      it('should return 200 status code with swap update request', async () => {
+        const layerRequest = updateLayerRequest.valid;
+        const updatedLayerMetadata = updatedSwapLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+
+        const getJobsParams = {
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
+          isCleaned: false,
+          shouldReturnTasks: false,
+        };
+
+        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+        nock(jobManagerURL).post('/jobs', updateSwapJobRequest).reply(200, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedSwapLayer]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(200);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
+    });
+
+    describe('Bad Path', () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+        nock.cleanAll();
+      });
+
+      it('should return 400 status code when the validation of the metadata fails', async () => {
+        const layerRequest = updateLayerRequest.invalid.metadata;
+
+        const response = await requestSender.updateLayer('14460cdd-44ae-4a04-944f-29e907b6cd2a', layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 409 status code when there is more than one layer in the catalog', async () => {
+        const layerRequest = updateLayerRequest.valid;
+        const updatedLayerMetadata = updatedLayer.metadata;
+
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer, updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+      });
+
+      it('should return 400 status code when there is no such layer in the catalog', async () => {
+        const layerRequest = updateLayerRequest.valid;
+        const updatedLayerMetadata = updatedLayer.metadata;
+
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, []);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when there is a validation error', async () => {
+        const layerRequest = updateLayerRequest.invalid.notContainedPolygon;
+        const updatedLayerMetadata = updatedLayer.metadata;
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when the layer is not in mapProxy', async () => {
+        const layerRequest = updateLayerRequest.valid;
+        const updatedLayerMetadata = updatedLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(404);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 409 status code when there are conflicting jobs ', async () => {
+        const layerRequest = updateLayerRequest.valid;
+        const updatedLayerMetadata = updatedLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+
+        const getJobsParams = {
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
+          isCleaned: false,
+          shouldReturnTasks: false,
+        };
+
+        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, updateRunningJobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(200);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+      });
+
+      it('should throw 422 status when invalid gdal info', async () => {
+        const layerRequest = updateLayerRequest.invalid.gdalInfo;
+
+        const response = await requestSender.updateLayer('14460cdd-44ae-4a04-944f-29e907b6cd2a', layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+      });
+    });
+
+    describe('Sad Path', () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+        nock.cleanAll();
+      });
+
+      it('should return 500 status code when failed to read sqlite file', async () => {
+        const layerRequest = updateLayerRequest.valid;
+        const updatedLayerMetadata = updatedLayer.metadata;
+        jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
+          throw new SqliteError('failed read sqlite file', 'SQLITE_ERROR');
+        });
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+      });
+
+      it('should return 500 status code when failed to create new init update job', async () => {
+        const layerRequest = updateLayerRequest.valid;
+        const updatedLayerMetadata = updatedLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+
+        const getJobsParams = {
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
+          isCleaned: false,
+          shouldReturnTasks: false,
+        };
+
+        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+        nock(jobManagerURL).post('/jobs', updateJobRequest).reply(504);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(200);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+      });
+
+      it('should return 500 status code when unexpected error from mapproxy occurs', async () => {
+        const layerRequest = updateLayerRequest.valid;
+        const updatedLayerMetadata = updatedLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+
+        const getJobsParams = {
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
+          isCleaned: false,
+          shouldReturnTasks: false,
+        };
+
+        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+        nock(jobManagerURL).post('/jobs', updateJobRequest).reply(504);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(500);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);

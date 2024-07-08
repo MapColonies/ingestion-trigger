@@ -96,5 +96,13 @@
   "disableHttpClientLogs": {
     "__name": "DISABLE_HTTP_CLIENT_LOGS",
     "__format": "boolean"
+  },
+  "supportedIngestionSwapTypes": {
+    "__name": "SUPPORTED_INGESTION_SWAP_TYPES",
+    "__format": "json"
+  },
+  "forbiddenTypesForParallelIngestion": {
+    "__name": "FORBIDDEN_TYPES_FOR_PARALLEL_INGESTION",
+    "__format": "json"
   }
 }

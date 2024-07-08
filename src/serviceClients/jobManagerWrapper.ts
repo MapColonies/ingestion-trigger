@@ -1,12 +1,13 @@
 import { Logger } from '@map-colonies/js-logger';
 import { inject, injectable } from 'tsyringe';
-import { NewRasterLayer } from '@map-colonies/mc-model-types';
+import { NewRasterLayer, UpdateRasterLayer } from '@map-colonies/mc-model-types';
 import { ICreateJobBody, ICreateJobResponse, IJobResponse, OperationStatus, ITaskResponse, JobManagerClient } from '@map-colonies/mc-priority-queue';
 import { IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { SERVICES } from '../common/constants';
 import { IConfig } from '../common/interfaces';
 import { ITaskParameters } from '../ingestion/interfaces';
 import { LogContext } from '../utils/logger/logContext';
+import { JobAction } from '../common/enums';
 
 @injectable()
 export class JobManagerWrapper extends JobManagerClient {
@@ -49,6 +50,26 @@ export class JobManagerWrapper extends JobManagerClient {
     }
   }
 
+  public async createInitUpdateJob(
+    id: string,
+    version: string,
+    internalId: string,
+    data: UpdateRasterLayer,
+    jobAction: JobAction
+  ): Promise<ICreateJobResponse> {
+    const logCtx: LogContext = { ...this.logContext, function: this.createUpdateJob.name };
+    const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
+    try {
+      const jobType = jobAction === JobAction.UPDATE ? this.ingestionUpdateJobType : this.ingestionSwapUpdateJobType;
+      const jobResponse = await this.createUpdateJob(id, version, internalId, data, jobType, this.initTaskType, taskParams);
+      return jobResponse;
+    } catch (err) {
+      const message = 'failed to create a new init job ';
+      this.logger.error({ msg: message, err, logContext: logCtx, layer: data });
+      throw err;
+    }
+  }
+
   private async createNewJob(data: NewRasterLayer, jobType: string, taskType: string, taskParams?: ITaskParameters[]): Promise<ICreateJobResponse> {
     const createLayerTasksUrl = `/jobs`;
     const createJobRequest: CreateJobBody = {
@@ -67,7 +88,35 @@ export class JobManagerWrapper extends JobManagerClient {
         };
       }),
     };
+    const res = await this.post<ICreateJobResponse>(createLayerTasksUrl, createJobRequest);
+    return res;
+  }
 
+  private async createUpdateJob(
+    id: string,
+    version: string,
+    internalId: string,
+    data: UpdateRasterLayer,
+    jobType: string,
+    taskType: string,
+    taskParams?: ITaskParameters[]
+  ): Promise<ICreateJobResponse> {
+    const createLayerTasksUrl = `/jobs`;
+    const createJobRequest: CreateJobBody = {
+      resourceId: id,
+      version: version,
+      internalId: internalId,
+      type: jobType,
+      status: OperationStatus.PENDING,
+      parameters: { ...data } as unknown as Record<string, unknown>,
+      domain: this.jobDomain,
+      tasks: taskParams?.map((params) => {
+        return {
+          type: taskType,
+          parameters: params,
+        };
+      }),
+    };
     const res = await this.post<ICreateJobResponse>(createLayerTasksUrl, createJobRequest);
     return res;
   }

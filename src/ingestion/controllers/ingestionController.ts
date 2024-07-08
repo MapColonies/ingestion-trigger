@@ -13,7 +13,7 @@ import { FileNotFoundError, GdalInfoError, UnsupportedEntityError, ValidationErr
 type SourcesValidationHandler = RequestHandler<undefined, SourcesValidationResponse, unknown>;
 type SourcesInfoHandler = RequestHandler<undefined, InfoData[], unknown>;
 type NewLayerHandler = RequestHandler<undefined, ResponseStatus, unknown>;
-type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseStatus, UpdateRasterLayer>;
+type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseStatus, unknown>;
 
 @injectable()
 export class IngestionController {
@@ -44,10 +44,10 @@ export class IngestionController {
 
   public updateLayer: UpdateLayerHandler = async (req, res, next) => {
     try {
-      const layerId: string = req.params.id;
+      const resourceId = req.params.id;
       const updateLayerRequestBody: unknown = req.body;
       const validUpdateLayerRequestBody: UpdateRasterLayer = await this.schemasValidator.validateUpdateLayerRequest(updateLayerRequestBody);
-      await this.ingestionManager.updateLayer(layerId, validUpdateLayerRequestBody);
+      await this.ingestionManager.updateLayer(resourceId, validUpdateLayerRequestBody);
 
       res.status(StatusCodes.OK).send({ status: 'success' });
     } catch (error) {

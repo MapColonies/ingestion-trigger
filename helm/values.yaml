@@ -18,6 +18,7 @@ global:
         jobType: ""
       updateSwap:
         jobType: ""
+        supportedIngestionSwapTypes: {}
   storage:
     fs:
       ingestionSourcePvc:
@@ -55,6 +56,7 @@ jobManagement:
       jobType: ""
     updateSwap:
       jobType: ""
+      supportedIngestionSwapTypes: {}
 
 storage:
   fs:
@@ -144,7 +146,10 @@ env:
     attempts: 5
     delay: exponential
     resetTimeout: true  
-     
+  forbiddenTypesForParallelIngestion:
+    - Ingestion_New
+    - Ingestion_Update
+    - Ingestion_Swap_Update  
 
 resources:
   enabled: true
