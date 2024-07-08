@@ -42,7 +42,9 @@ describe('IngestionManager', () => {
   const catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
   const mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
   const layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
-  const catalogPostBody = { metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType } };
+  const catalogPostBody = {
+    metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType },
+  };
 
   beforeEach(() => {
     registerDefaultConfig();
