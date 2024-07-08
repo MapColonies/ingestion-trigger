@@ -37,20 +37,15 @@ describe('IngestionManager', () => {
   let mapProxyClient: MapProxyClient;
   let jobManagerWrapper: JobManagerWrapper;
 
-  let jobManagerURL = '';
-  let catalogServiceURL = '';
-  let mapProxyApiServiceUrl = '';
-  let layerName = '';
-  let catalogPostBody = {};
+  registerDefaultConfig();
+  const jobManagerURL = configMock.get<string>('services.jobManagerURL');
+  const catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
+  const mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
+  const layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
+  const catalogPostBody = { metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType } };
 
   beforeEach(() => {
     registerDefaultConfig();
-    catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
-    mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
-    jobManagerURL = configMock.get<string>('services.jobManagerURL');
-
-    layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
-    catalogPostBody = { metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType } };
 
     mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }));
     catalogClient = new CatalogClient(configMock, jsLogger({ enabled: false }));
