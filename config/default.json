@@ -29,17 +29,11 @@
     "layerSourceDir": "/layerSources",
     "displayNameDir": "\\layerSources",
     "watchDirectory": "watch",
-    "validFileExtensions": [
-      "gpkg"
-    ]
+    "validFileExtensions": ["gpkg"]
   },
   "validationValuesByInfo": {
-    "crs": [
-      4326
-    ],
-    "fileFormat": [
-      "GPKG"
-    ],
+    "crs": [4326],
+    "fileFormat": ["GPKG"],
     "tileSize": 256,
     "resolutionFixedPointTolerance": 12,
     "extentBufferInMeters": 50
@@ -68,9 +62,5 @@
       "productSubType": "testProductSubType"
     }
   ],
-  "forbiddenTypesForParallelIngestion": [
-    "Ingestion_New",
-    "Ingestion_Update",
-    "Ingestion_Swap_Update"
-  ]
+  "forbiddenTypesForParallelIngestion": ["Ingestion_New", "Ingestion_Update", "Ingestion_Swap_Update"]
 }

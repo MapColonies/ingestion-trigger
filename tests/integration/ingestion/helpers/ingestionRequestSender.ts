@@ -1,6 +1,5 @@
 import supertest from 'supertest';
 import { InputFiles, NewRasterLayer, UpdateRasterLayer } from '@map-colonies/mc-model-types';
-import { IRecordRequestParams } from '../../../../src/ingestion/interfaces';
 
 export class IngestionRequestSender {
   public constructor(private readonly app: Express.Application) {}

@@ -678,7 +678,7 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 409 status code when there are conflicting jobs ', async () => {
+      it('should return 409 status code when there are conflicting jobs', async () => {
         const layerRequest = updateLayerRequest.valid;
         const updatedLayerMetadata = updatedLayer.metadata;
         const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
