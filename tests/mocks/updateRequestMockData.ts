@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { InputFiles, ProductType, Transparency, PolygonPart, UpdateRasterLayerMetadata } from '@map-colonies/mc-model-types';
-import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
+import { InputFiles, PolygonPart, UpdateRasterLayerMetadata } from '@map-colonies/mc-model-types';
+import { OperationStatus } from '@map-colonies/mc-priority-queue';
 
 export const updateLayerRequest = {
   valid: {

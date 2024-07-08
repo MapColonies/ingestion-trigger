@@ -38,23 +38,4 @@ describe('CatalogClient', () => {
       expect(result).toBe(false);
     });
   });
-
-  // describe('check findByInternalId function', () => {
-  //   it('should return an array with one object', async () => {
-  //     const internalId = '14460cdd-44ae-4a04-944f-29e907b6cd2a';
-  //     const req = {
-  //       id: internalId,
-  //     };
-  //     nock(catalogServiceURL).post('/records/find', req).reply(200, ['1']);
-  //     const result = await catalogClient.findByInternalId(internalId);
-  //     expect(result.length).toBe(1);
-  //     expect(result).toBe(true);
-  //   });
-
-  //   it('should return false when there isnt a record in the catalog with same id and type', async () => {
-  //     nock(catalogServiceURL).post('/records/find', catalogPostIdAndType).reply(200, []);
-  //     const result = await catalogClient.exists(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
-  //     expect(result).toBe(false);
-  //   });
-  // });
 });
