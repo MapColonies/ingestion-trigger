@@ -46,22 +46,17 @@ describe('IngestionManager', () => {
   let mapProxyClient: MapProxyClient;
   let jobManagerWrapper: JobManagerWrapper;
 
-  let jobManagerURL = '';
-  let catalogServiceURL = '';
-  let mapProxyApiServiceUrl = '';
-  let layerName = '';
-  let catalogPostIdAndType = {};
+  registerDefaultConfig();
+  const jobManagerURL = configMock.get<string>('services.jobManagerURL');
+  const catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
+  const mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
+  const layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
+  const catalogPostIdAndType = {
+    metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType },
+  };
 
   beforeEach(() => {
     registerDefaultConfig();
-    catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
-    mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
-    jobManagerURL = configMock.get<string>('services.jobManagerURL');
-
-    layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
-    catalogPostIdAndType = {
-      metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType },
-    };
 
     mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }));
     catalogClient = new CatalogClient(configMock, jsLogger({ enabled: false }));
@@ -136,7 +131,7 @@ describe('IngestionManager', () => {
       const action = async () => ingestionManager.ingestNewLayer(layerRequest);
 
       await expect(action()).rejects.toThrow(ConflictError);
-    }, 4000000);
+    });
 
     it('should throw conflict error when the layer is in mapProxy', async () => {
       const layerRequest = newLayerRequest.valid;

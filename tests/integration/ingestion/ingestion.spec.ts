@@ -362,17 +362,16 @@ describe('Ingestion', function () {
     const jobManagerURL = 'http://jobmanagerurl';
     const mapProxyApiServiceUrl = 'http://mapproxyapiserviceurl';
     const catalogServiceURL = 'http://catalogserviceurl';
-    let layerName = '';
-    let catalogPostBody = {};
-
-    beforeEach(() => {
-      layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
-      catalogPostBody = {
-        metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType },
-      };
-    });
+    const layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
+    const catalogPostBody = {
+      metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType },
+    };
 
     describe('Happy Path', () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+        nock.cleanAll();
+      });
       it('should return 200 status code', async () => {
         const layerRequest = newLayerRequest.valid;
         const getJobsParams = {
