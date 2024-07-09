@@ -12,7 +12,7 @@ import { LogContext } from '../../utils/logger/logContext';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import { PolygonPartValidator } from '../validators/polygonPartValidator';
 import { CatalogClient } from '../../serviceClients/catalogClient';
-import { FindRecordResponse, IConfig, ISupportedIngestionSwapTypes, LayerDetails } from '../../common/interfaces';
+import { IConfig, IFindResponseRecord, ISupportedIngestionSwapTypes, LayerDetails } from '../../common/interfaces';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
 import { ITaskParameters } from '../interfaces';
 import { getMapServingLayerName } from '../../utils/layerNameGenerator';
@@ -145,10 +145,10 @@ export class IngestionManager {
       msg: 'started validation on update layer request',
       logCtx: logCtx,
     });
-    await this.isValidRequestInputs(partData, inputFiles);
+    await this.validateRequestInputs(partData, inputFiles);
     //catalog call must be before map proxy to get productId and Type
     const layerDetails = await this.getLayer(resourceId);
-    const { productId, productVersion, productType, productSubType = '' } = layerDetails[0].metadata as LayerDetails;
+    const { productId, productVersion, productType, productSubType = '' } = layerDetails.metadata as LayerDetails;
 
     await this.validateLayerExistsInMapProxy(productId, productType);
     await this.validateNoRunningParallelJobs(productId, productType);
@@ -169,7 +169,7 @@ export class IngestionManager {
       logCtx: logCtx,
     });
 
-    await this.isValidRequestInputs(partData, inputFiles);
+    await this.validateRequestInputs(partData, inputFiles);
 
     //catalog ,mapproxy, jobmanager validation
     await this.validateLayerDoesntExistInMapProxy(metadata.productId, metadata.productType);
@@ -274,7 +274,7 @@ export class IngestionManager {
     }
   }
 
-  private async getLayer(resourceId: string): Promise<FindRecordResponse> {
+  private async getLayer(resourceId: string): Promise<IFindResponseRecord> {
     const layerDetails = await this.catalogClient.findByInternalId(resourceId);
     if (layerDetails.length === 0) {
       const message = `there isnt a layer with id of ${resourceId}`;
@@ -283,11 +283,11 @@ export class IngestionManager {
       const message = `found more than one Layer with id of ${resourceId} . Please check the catalog Layers`;
       throw new ConflictError(message);
     }
-    return layerDetails;
+    return layerDetails[0];
   }
 
-  private async isValidRequestInputs(partData: PolygonPart[], inputFiles: InputFiles): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.isValidRequestInputs.name };
+  private async validateRequestInputs(partData: PolygonPart[], inputFiles: InputFiles): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateRequestInputs.name };
 
     //validate files exist, gdal info and GPKG data
     const isValidSources: SourcesValidationResponse = await this.validateSources(inputFiles);
