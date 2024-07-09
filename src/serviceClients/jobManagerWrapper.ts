@@ -7,7 +7,7 @@ import { SERVICES } from '../common/constants';
 import { IConfig } from '../common/interfaces';
 import { ITaskParameters } from '../ingestion/interfaces';
 import { LogContext } from '../utils/logger/logContext';
-import { JobAction } from '../common/enums';
+import { UpdateJobAction } from '../common/enums';
 
 @injectable()
 export class JobManagerWrapper extends JobManagerClient {
@@ -55,12 +55,12 @@ export class JobManagerWrapper extends JobManagerClient {
     version: string,
     internalId: string,
     data: UpdateRasterLayer,
-    jobAction: JobAction
+    updateJobAction: UpdateJobAction
   ): Promise<ICreateJobResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.createUpdateJob.name };
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
     try {
-      const jobType = jobAction === JobAction.UPDATE ? this.ingestionUpdateJobType : this.ingestionSwapUpdateJobType;
+      const jobType = updateJobAction === UpdateJobAction.UPDATE ? this.ingestionUpdateJobType : this.ingestionSwapUpdateJobType;
       const jobResponse = await this.createUpdateJob(id, version, internalId, data, jobType, this.initTaskType, taskParams);
       return jobResponse;
     } catch (err) {

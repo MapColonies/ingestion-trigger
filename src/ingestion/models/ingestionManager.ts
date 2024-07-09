@@ -2,7 +2,7 @@ import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import { InputFiles, ProductType, NewRasterLayer, UpdateRasterLayer, PolygonPart } from '@map-colonies/mc-model-types';
 import { ConflictError, BadRequestError } from '@map-colonies/error-types';
-import { ICreateJobResponse, IFindJobsRequest, OperationStatus } from '@map-colonies/mc-priority-queue';
+import { ICreateJobResponse, IFindJobsRequest, IJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { SERVICES } from '../../common/constants';
 import { SourceValidator } from '../validators/sourceValidator';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
@@ -17,12 +17,13 @@ import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
 import { ITaskParameters } from '../interfaces';
 import { getMapServingLayerName } from '../../utils/layerNameGenerator';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
-import { JobAction, RequestType } from '../../common/enums';
+import { UpdateJobAction } from '../../common/enums';
 import { GdalInfoManager } from './gdalInfoManager';
 
 @injectable()
 export class IngestionManager {
   private readonly logContext: LogContext;
+  private readonly ingestionJobTypes: string[];
 
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
@@ -38,6 +39,7 @@ export class IngestionManager {
       fileName: __filename,
       class: IngestionManager.name,
     };
+    this.ingestionJobTypes = this.config.get<string[]>('forbiddenTypesForParallelIngestion');
   }
 
   public async getInfoData(inputFiles: InputFiles): Promise<InfoDataWithFile[]> {
@@ -99,7 +101,6 @@ export class IngestionManager {
     await this.validateNewLayer(rasterIngestionLayer);
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
 
-    //create one job with one task
     const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(rasterIngestionLayer);
     this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
   }
@@ -107,9 +108,13 @@ export class IngestionManager {
   public async updateLayer(internalId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayer.name };
     const layerDetails: LayerDetails = await this.validateUpdateLayer(internalId, rasterUpdateLayer);
+    this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
 
     const response = await this.setAndCreateUpdateJob(internalId, layerDetails, rasterUpdateLayer);
-    this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
+    this.logger.info({
+      msg: `new update job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `,
+      logContext: logCtx,
+    });
   }
 
   private async setAndCreateUpdateJob(
@@ -121,8 +126,14 @@ export class IngestionManager {
     const isSwapUpdate = supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === layerDetails.productType && supportedSwapObj.productSubType === layerDetails.productSubType;
     });
-    const jobAction = isSwapUpdate ? JobAction.UPDATE_SWAP : JobAction.UPDATE;
-    return this.jobManagerWrapper.createInitUpdateJob(layerDetails.productId, layerDetails.productVersion, internalId, rasterUpdateLayer, jobAction);
+    const updateJobAction = isSwapUpdate ? UpdateJobAction.UPDATE_SWAP : UpdateJobAction.UPDATE;
+    return this.jobManagerWrapper.createInitUpdateJob(
+      layerDetails.productId,
+      layerDetails.productVersion,
+      internalId,
+      rasterUpdateLayer,
+      updateJobAction
+    );
   }
 
   private async validateUpdateLayer(resourceId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<LayerDetails> {
@@ -139,8 +150,9 @@ export class IngestionManager {
     const layerDetails = await this.getLayer(resourceId);
     const { productId, productVersion, productType, productSubType = '' } = layerDetails[0].metadata as LayerDetails;
 
-    await this.isInMapProxy(productId, productType, RequestType.UPDATE);
-    await this.validateJobNotRunning(productId, productType, RequestType.UPDATE);
+    await this.validateLayerExistsInMapProxy(productId, productType);
+    await this.validateNoRunningParallelJobs(productId, productType);
+    this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
 
     return { productId, productVersion, productType, productSubType };
   }
@@ -160,14 +172,47 @@ export class IngestionManager {
     await this.isValidRequestInputs(partData, inputFiles);
 
     //catalog ,mapproxy, jobmanager validation
-    await this.isInMapProxy(metadata.productId, metadata.productType, RequestType.NEW);
+    await this.validateLayerDoesntExistInMapProxy(metadata.productId, metadata.productType);
     await this.isInCatalog(metadata.productId, metadata.productType);
-    await this.validateJobNotRunning(metadata.productId, metadata.productType, RequestType.NEW);
+    await this.validateNoRunningJobs(metadata.productId, metadata.productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
   }
 
-  private async validateJobNotRunning(productId: string, productType: ProductType, requestType: RequestType): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateJobNotRunning.name };
+  private async validateNoRunningJobs(productId: string, productType: ProductType): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateNoRunningJobs.name };
+    const jobs = await this.getRunningJobs(productId, productType);
+    jobs.forEach((job) => {
+      if (job.status == OperationStatus.IN_PROGRESS || job.status == OperationStatus.PENDING) {
+        const message = `Layer id: ${productId} product type: ${productType}, conflicting job ${job.type} is already running for that layer`;
+        this.logger.error({
+          productId: productId,
+          productType: productType,
+          msg: message,
+          logCtx: logCtx,
+        });
+        throw new ConflictError(message);
+      }
+    });
+  }
+
+  private async validateNoRunningParallelJobs(productId: string, productType: ProductType): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateNoRunningParallelJobs.name };
+    const jobs = await this.getRunningJobs(productId, productType);
+    jobs.forEach((job) => {
+      if ((job.status == OperationStatus.IN_PROGRESS || job.status == OperationStatus.PENDING) && this.ingestionJobTypes.includes(job.type)) {
+        const message = `Layer id: ${productId} product type: ${productType}, conflicting job ${job.type} is already running for that layer`;
+        this.logger.error({
+          productId: productId,
+          productType: productType,
+          msg: message,
+          logCtx: logCtx,
+        });
+        throw new ConflictError(message);
+      }
+    });
+  }
+
+  private async getRunningJobs(productId: string, productType: ProductType): Promise<IJobResponse<Record<string, unknown>, ITaskParameters>[]> {
     const findJobParameters: IFindJobsRequest = {
       resourceId: productId,
       productType,
@@ -175,61 +220,43 @@ export class IngestionManager {
       shouldReturnTasks: false,
     };
     const jobs = await this.jobManagerWrapper.getJobs<Record<string, unknown>, ITaskParameters>(findJobParameters);
-    if (requestType === RequestType.NEW) {
-      jobs.forEach((job) => {
-        if (job.status == OperationStatus.IN_PROGRESS || job.status == OperationStatus.PENDING) {
-          const message = `Layer id: ${productId} product type: ${productType}, conflicting job ${job.type} is already running for that layer`;
-          this.logger.error({
-            productId: productId,
-            productType: productType,
-            msg: message,
-            logCtx: logCtx,
-          });
-          throw new ConflictError(message);
-        }
-      });
-    } else {
-      const ingestionJobTypes = this.config.get<string[]>('forbiddenTypesForParallelIngestion');
-      jobs.forEach((job) => {
-        if ((job.status == OperationStatus.IN_PROGRESS || job.status == OperationStatus.PENDING) && ingestionJobTypes.includes(job.type)) {
-          const message = `Layer id: ${productId} product type: ${productType}, conflicting job ${job.type} is already running for that layer`;
-          this.logger.error({
-            productId: productId,
-            productType: productType,
-            msg: message,
-            logCtx: logCtx,
-          });
-          throw new ConflictError(message);
-        }
-      });
-    }
+    return jobs;
   }
 
-  private async isInMapProxy(productId: string, productType: ProductType, requestType: RequestType): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.isInMapProxy.name };
-    const layerName = getMapServingLayerName(productId, productType);
-    const existsInMapServer = await this.mapProxyClient.exists(layerName);
-    if (existsInMapServer && requestType === RequestType.NEW) {
-      const message = `Failed to create new ingestion job for layer: '${layerName} ', already exists on MapProxy`;
+  private async validateLayerDoesntExistInMapProxy(productId: string, productType: ProductType): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateLayerDoesntExistInMapProxy.name };
+    const exists = await this.getlLayerExistanceInMapProxy(productId, productType);
+    if (exists) {
+      const message = `Failed to create new ingestion job for layer: ${productId}-${productType}, already exists on MapProxy`;
       this.logger.error({
         productId: productId,
         productType: productType,
-        mapProxyLayerName: layerName,
         msg: message,
         logCtx: logCtx,
       });
       throw new ConflictError(message);
-    } else if (!existsInMapServer && requestType === RequestType.UPDATE) {
-      const message = `Failed to create update job for layer: '${layerName} ', layer doesnt exist on MapProxy`;
+    }
+  }
+
+  private async validateLayerExistsInMapProxy(productId: string, productType: ProductType): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateLayerExistsInMapProxy.name };
+    const exists = await this.getlLayerExistanceInMapProxy(productId, productType);
+    if (!exists) {
+      const message = `Failed to create update job for layer: ${productId}-${productType}, layer doesnt exist on MapProxy`;
       this.logger.error({
         productId: productId,
         productType: productType,
-        mapProxyLayerName: layerName,
         msg: message,
         logCtx: logCtx,
       });
       throw new BadRequestError(message);
     }
+  }
+
+  private async getlLayerExistanceInMapProxy(productId: string, productType: ProductType): Promise<boolean> {
+    const layerName = getMapServingLayerName(productId, productType);
+    const existanceInMapServer = await this.mapProxyClient.exists(layerName);
+    return existanceInMapServer;
   }
 
   private async isInCatalog(productId: string, productType: ProductType): Promise<void> {

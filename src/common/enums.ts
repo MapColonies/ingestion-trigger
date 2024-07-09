@@ -1,9 +1,4 @@
-export enum RequestType {
-  NEW = 'NEW',
-  UPDATE = 'UPDATE',
-}
-
-export enum JobAction {
+export enum UpdateJobAction {
   UPDATE = 'UPDATE',
   UPDATE_SWAP = 'UPDATE_SWAP',
 }
