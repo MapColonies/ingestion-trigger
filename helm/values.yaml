@@ -69,6 +69,14 @@ cloudProvider:
   imagePullSecretName: 'my-registry-secret'
   flavor: openshift
 
+tracing:
+  enabled: false
+  url: ''
+
+metrics:
+  enabled: false
+  url: ''
+
 image:
   repository: ingestion-trigger
   tag: 'latest'
@@ -119,6 +127,7 @@ env:
   logPrettyPrintEnabled: false
   responseCompressionEnabled: true
   requestPayloadLimit: 1mb
+  #maybe delete this? - check against raster-helm
   tracing:
     enabled: false
     url: http://localhost:55681/v1/trace
