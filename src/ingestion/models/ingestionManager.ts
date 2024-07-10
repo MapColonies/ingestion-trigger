@@ -12,7 +12,7 @@ import { LogContext } from '../../utils/logger/logContext';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import { PolygonPartValidator } from '../validators/polygonPartValidator';
 import { CatalogClient } from '../../serviceClients/catalogClient';
-import { IConfig, IFindResponseRecord, ISupportedIngestionSwapTypes, LayerDetails } from '../../common/interfaces';
+import { FindRecordResponse, IConfig, ISupportedIngestionSwapTypes, LayerDetails } from '../../common/interfaces';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
 import { ITaskParameters } from '../interfaces';
 import { getMapServingLayerName } from '../../utils/layerNameGenerator';
@@ -148,7 +148,7 @@ export class IngestionManager {
     await this.validateRequestInputs(partData, inputFiles);
     //catalog call must be before map proxy to get productId and Type
     const layerDetails = await this.getLayer(resourceId);
-    const { productId, productVersion, productType, productSubType = '' } = layerDetails.metadata as LayerDetails;
+    const { productId, productVersion, productType, productSubType = '' } = layerDetails[0].metadata as LayerDetails;
 
     await this.validateLayerExistsInMapProxy(productId, productType);
     await this.validateNoRunningParallelJobs(productId, productType);
@@ -274,7 +274,7 @@ export class IngestionManager {
     }
   }
 
-  private async getLayer(resourceId: string): Promise<IFindResponseRecord> {
+  private async getLayer(resourceId: string): Promise<FindRecordResponse> {
     const layerDetails = await this.catalogClient.findByInternalId(resourceId);
     if (layerDetails.length === 0) {
       const message = `there isnt a layer with id of ${resourceId}`;
@@ -283,7 +283,7 @@ export class IngestionManager {
       const message = `found more than one Layer with id of ${resourceId} . Please check the catalog Layers`;
       throw new ConflictError(message);
     }
-    return layerDetails[0];
+    return layerDetails;
   }
 
   private async validateRequestInputs(partData: PolygonPart[], inputFiles: InputFiles): Promise<void> {
