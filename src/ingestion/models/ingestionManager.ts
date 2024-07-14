@@ -107,7 +107,7 @@ export class IngestionManager {
 
   public async updateLayer(internalId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayer.name };
-    const layerDetails: LayerDetails = await this.validateUpdateLayer(internalId, rasterUpdateLayer);
+    const layerDetails: LayerDetails = await this.validateAndGetUpdatedLayerParams(internalId, rasterUpdateLayer);
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
 
     const response = await this.setAndCreateUpdateJob(internalId, layerDetails, rasterUpdateLayer);
@@ -136,8 +136,8 @@ export class IngestionManager {
     );
   }
 
-  private async validateUpdateLayer(resourceId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<LayerDetails> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateUpdateLayer.name };
+  private async validateAndGetUpdatedLayerParams(resourceId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<LayerDetails> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateAndGetUpdatedLayerParams.name };
     const { metadata, partData, inputFiles } = rasterUpdateLayer;
     this.logger.debug({ msg: 'started update layer validation', requestBody: { metadata, partData, inputFiles }, logCtx: logCtx });
     this.logger.info({
