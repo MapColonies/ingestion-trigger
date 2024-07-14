@@ -26,7 +26,7 @@ data:
   STORAGE_EXPLORER_LAYER_SOURCE_DIR: {{ .Values.env.storageExplorer.layerSourceDir | quote }}
   STORAGE_EXPLORER_WATCH_DIRECTORY: {{ .Values.env.storageExplorer.watchDirectory | quote }}
   STORAGE_EXPLORER_VALID_FILE_EXTENSIONS: {{ .Values.env.storageExplorer.validFileExtensions | toJson | quote }}
-  FORBIDDEN_TYPES_FOR_PARALLEL_INGESTION: {{ .Values.env.forbiddenTypesForParallelIngestion | toJson | quote }}
+  FORBIDDEN_TYPES_FOR_PARALLEL_INGESTION: {{ .Values.env.forbiddenJobTypesForParallelIngestion | toJson | quote }}
   SUPPORTED_INGESTION_SWAP_TYPES: {{ $jobManagement.ingestion.updateSwap.supportedIngestionSwapTypes | toJson | quote }}
   HTTP_RETRY_ATTEMPTS: {{ .Values.env.httpRetry.attempts | quote }}
   HTTP_RETRY_DELAY: {{ .Values.env.httpRetry.delay | quote }}

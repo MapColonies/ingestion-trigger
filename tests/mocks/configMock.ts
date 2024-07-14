@@ -92,14 +92,14 @@ const registerDefaultConfig = (): void => {
       ingestionUpdateJobType: 'Ingestion_Update',
       ingestionSwapUpdateJobType: 'Ingestion_Swap_Update',
       initTaskType: 'init',
+      supportedIngestionSwapTypes: [
+        {
+          productType: 'RasterVectorBest',
+          productSubType: 'testProductSubType',
+        },
+      ],
+      forbiddenJobTypesForParallelIngestion: ['Ingestion_New', 'Ingestion_Update'],
     },
-    supportedIngestionSwapTypes: [
-      {
-        productType: 'RasterVectorBest',
-        productSubType: 'testProductSubType',
-      },
-    ],
-    forbiddenTypesForParallelIngestion: ['Ingestion_New', 'Ingestion_Update'],
   };
 
   setConfigValues(config);

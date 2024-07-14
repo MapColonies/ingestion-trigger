@@ -59,13 +59,14 @@ export class JobManagerWrapper extends JobManagerClient {
   ): Promise<ICreateJobResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.createUpdateJob.name };
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
+    let jobType = '';
     try {
-      const jobType = updateJobAction === UpdateJobAction.UPDATE ? this.ingestionUpdateJobType : this.ingestionSwapUpdateJobType;
+      jobType = updateJobAction === UpdateJobAction.UPDATE ? this.ingestionUpdateJobType : this.ingestionSwapUpdateJobType;
       const jobResponse = await this.createUpdateJob(id, version, internalId, data, jobType, this.initTaskType, taskParams);
       return jobResponse;
     } catch (err) {
-      const message = 'failed to create a new init job ';
-      this.logger.error({ msg: message, err, logContext: logCtx, layer: data });
+      const message = 'failed to create a new init update job ';
+      this.logger.error({ msg: message, jobType: jobType, taskType: this.initTaskType, err, logContext: logCtx, layer: data });
       throw err;
     }
   }

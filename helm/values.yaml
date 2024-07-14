@@ -146,7 +146,7 @@ env:
     attempts: 5
     delay: exponential
     resetTimeout: true  
-  forbiddenTypesForParallelIngestion:
+  forbiddenJobTypesForParallelIngestion:
     - Ingestion_New
     - Ingestion_Update
     - Ingestion_Swap_Update  

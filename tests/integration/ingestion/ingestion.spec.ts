@@ -3,6 +3,7 @@ import { InputFiles, ProductType } from '@map-colonies/mc-model-types';
 import gdal from 'gdal-async';
 import { SqliteError } from 'better-sqlite3';
 import nock from 'nock';
+import { OperationStatus } from '@map-colonies/mc-priority-queue';
 import { getApp } from '../../../src/app';
 import { infoDataSchemaArray } from '../../../src/ingestion/schemas/infoDataSchema';
 import { SourceValidator } from '../../../src/ingestion/validators/sourceValidator';
@@ -379,8 +380,9 @@ describe('Ingestion', function () {
           productType: layerRequest.metadata.productType,
           isCleaned: false,
           shouldReturnTasks: false,
+          statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
         };
-        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+        nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
         nock(jobManagerURL).post('/jobs', newJobRequest).reply(200, jobResponse);
         nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(200, []);
         nock(mapProxyApiServiceUrl)
@@ -521,8 +523,9 @@ describe('Ingestion', function () {
           productType: layerRequest.metadata.productType,
           isCleaned: false,
           shouldReturnTasks: false,
+          statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
         };
-        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+        nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
         nock(jobManagerURL).post('/jobs', newJobRequest).reply(504);
         nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(200, []);
         nock(mapProxyApiServiceUrl)
@@ -554,6 +557,7 @@ describe('Ingestion', function () {
     const jobManagerURL = 'http://jobmanagerurl';
     const mapProxyApiServiceUrl = 'http://mapproxyapiserviceurl';
     const catalogServiceURL = 'http://catalogserviceurl';
+    const forbiddenJobTypesForParallelIngestion = ['Ingestion_New', 'Ingestion_Update'];
 
     describe('Happy Path', () => {
       afterEach(() => {
@@ -571,9 +575,11 @@ describe('Ingestion', function () {
           productType: updatedLayerMetadata.productType,
           isCleaned: false,
           shouldReturnTasks: false,
+          statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
+          types: forbiddenJobTypesForParallelIngestion,
         };
 
-        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+        nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
         nock(jobManagerURL).post('/jobs', updateJobRequest).reply(200, jobResponse);
         nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
         nock(mapProxyApiServiceUrl)
@@ -596,9 +602,11 @@ describe('Ingestion', function () {
           productType: updatedLayerMetadata.productType,
           isCleaned: false,
           shouldReturnTasks: false,
+          statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
+          types: forbiddenJobTypesForParallelIngestion,
         };
 
-        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+        nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
         nock(jobManagerURL).post('/jobs', updateSwapJobRequest).reply(200, jobResponse);
         nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedSwapLayer]);
         nock(mapProxyApiServiceUrl)
@@ -687,9 +695,11 @@ describe('Ingestion', function () {
           productType: updatedLayerMetadata.productType,
           isCleaned: false,
           shouldReturnTasks: false,
+          statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
+          types: forbiddenJobTypesForParallelIngestion,
         };
 
-        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, updateRunningJobResponse);
+        nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, updateRunningJobResponse);
         nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
         nock(mapProxyApiServiceUrl)
           .get(`/layer/${encodeURIComponent(updateLayerName)}`)
@@ -740,9 +750,11 @@ describe('Ingestion', function () {
           productType: updatedLayerMetadata.productType,
           isCleaned: false,
           shouldReturnTasks: false,
+          statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
+          types: forbiddenJobTypesForParallelIngestion,
         };
 
-        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+        nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
         nock(jobManagerURL).post('/jobs', updateJobRequest).reply(504);
         nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
         nock(mapProxyApiServiceUrl)
@@ -765,9 +777,11 @@ describe('Ingestion', function () {
           productType: updatedLayerMetadata.productType,
           isCleaned: false,
           shouldReturnTasks: false,
+          statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
+          types: forbiddenJobTypesForParallelIngestion,
         };
 
-        nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+        nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
         nock(jobManagerURL).post('/jobs', updateJobRequest).reply(504);
         nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
         nock(mapProxyApiServiceUrl)
