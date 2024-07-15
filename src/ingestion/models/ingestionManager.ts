@@ -154,7 +154,8 @@ export class IngestionManager {
     const layerDetails = await this.getLayer(resourceId);
     const { productId, productVersion, productType, productSubType = '' } = layerDetails.metadata as LayerDetails;
 
-    await this.validateLayerExistsInMapProxy(productId, productType);
+    const layerName = getMapServingLayerName(productId, productType);
+    await this.validateLayerExistsInMapProxy(layerName);
     await this.validateNoParallelJobs(productId, productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
 
@@ -176,7 +177,8 @@ export class IngestionManager {
     await this.validateRequestInputs(partData, inputFiles);
 
     //catalog ,mapproxy, jobmanager validation
-    await this.validateLayerDoesntExistInMapProxy(metadata.productId, metadata.productType);
+    const layerName = getMapServingLayerName(metadata.productId, metadata.productType);
+    await this.validateLayerDoesntExistInMapProxy(layerName);
     await this.isInCatalog(metadata.productId, metadata.productType);
     await this.validateNoConflictingJobs(metadata.productId, metadata.productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
@@ -229,15 +231,13 @@ export class IngestionManager {
     return jobs;
   }
 
-  private async validateLayerDoesntExistInMapProxy(productId: string, productType: ProductType): Promise<void> {
+  private async validateLayerDoesntExistInMapProxy(layerName: string): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateLayerDoesntExistInMapProxy.name };
-    const layerName = getMapServingLayerName(productId, productType);
     const exists = await this.mapProxyClient.exists(layerName);
     if (exists) {
-      const message = `Failed to create new ingestion job for layer: ${productId}-${productType}, already exists on MapProxy`;
+      const message = `Failed to create new ingestion job for layer: ${layerName}, already exists on MapProxy`;
       this.logger.error({
-        productId: productId,
-        productType: productType,
+        layerName: layerName,
         msg: message,
         logCtx: logCtx,
       });
@@ -245,15 +245,13 @@ export class IngestionManager {
     }
   }
 
-  private async validateLayerExistsInMapProxy(productId: string, productType: ProductType): Promise<void> {
+  private async validateLayerExistsInMapProxy(layerName: string): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateLayerExistsInMapProxy.name };
-    const layerName = getMapServingLayerName(productId, productType);
     const exists = await this.mapProxyClient.exists(layerName);
     if (!exists) {
-      const message = `Failed to create update job for layer: ${productId}-${productType}, layer doesnt exist on MapProxy`;
+      const message = `Failed to create update job for layer: ${layerName}, layer doesnt exist on MapProxy`;
       this.logger.error({
-        productId: productId,
-        productType: productType,
+        layerName: layerName,
         msg: message,
         logCtx: logCtx,
       });
