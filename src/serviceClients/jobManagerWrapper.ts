@@ -57,11 +57,10 @@ export class JobManagerWrapper extends JobManagerClient {
     data: UpdateRasterLayer,
     updateJobAction: UpdateJobAction
   ): Promise<ICreateJobResponse> {
-    const logCtx: LogContext = { ...this.logContext, function: this.createUpdateJob.name };
+    const logCtx: LogContext = { ...this.logContext, function: this.createInitUpdateJob.name };
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
-    let jobType = '';
+    const jobType = updateJobAction === UpdateJobAction.UPDATE ? this.ingestionUpdateJobType : this.ingestionSwapUpdateJobType;
     try {
-      jobType = updateJobAction === UpdateJobAction.UPDATE ? this.ingestionUpdateJobType : this.ingestionSwapUpdateJobType;
       const jobResponse = await this.createUpdateJob(id, version, internalId, data, jobType, this.initTaskType, taskParams);
       return jobResponse;
     } catch (err) {

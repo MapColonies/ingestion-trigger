@@ -222,14 +222,14 @@ export class IngestionManager {
       statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
       types: forbiddenParallel,
     };
-    //const jobs = await this.jobManagerWrapper.getJobs<Record<string, unknown>, ITaskParameters>(findJobParameters);
     const jobs = await this.jobManagerWrapper.findJobs<Record<string, unknown>, ITaskParameters>(findJobParameters);
     return jobs;
   }
 
   private async validateLayerDoesntExistInMapProxy(productId: string, productType: ProductType): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateLayerDoesntExistInMapProxy.name };
-    const exists = await this.getlLayerExistanceInMapProxy(productId, productType);
+    const layerName = getMapServingLayerName(productId, productType);
+    const exists = await this.mapProxyClient.exists(layerName);
     if (exists) {
       const message = `Failed to create new ingestion job for layer: ${productId}-${productType}, already exists on MapProxy`;
       this.logger.error({
@@ -244,7 +244,8 @@ export class IngestionManager {
 
   private async validateLayerExistsInMapProxy(productId: string, productType: ProductType): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateLayerExistsInMapProxy.name };
-    const exists = await this.getlLayerExistanceInMapProxy(productId, productType);
+    const layerName = getMapServingLayerName(productId, productType);
+    const exists = await this.mapProxyClient.exists(layerName);
     if (!exists) {
       const message = `Failed to create update job for layer: ${productId}-${productType}, layer doesnt exist on MapProxy`;
       this.logger.error({
@@ -255,12 +256,6 @@ export class IngestionManager {
       });
       throw new BadRequestError(message);
     }
-  }
-
-  private async getlLayerExistanceInMapProxy(productId: string, productType: ProductType): Promise<boolean> {
-    const layerName = getMapServingLayerName(productId, productType);
-    const existanceInMapServer = await this.mapProxyClient.exists(layerName);
-    return existanceInMapServer;
   }
 
   private async isInCatalog(productId: string, productType: ProductType): Promise<void> {
