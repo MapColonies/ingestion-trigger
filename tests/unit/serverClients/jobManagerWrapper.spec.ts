@@ -4,11 +4,11 @@ import { JobManagerWrapper } from '../../../src/serviceClients/jobManagerWrapper
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
 import { newLayerRequest, jobResponse, newJobRequest } from '../../mocks/newIngestionRequestMockData';
 import { updateJobRequest, updateLayerRequest, updatedLayer } from '../../mocks/updateRequestMockData';
-import { UpdateJobAction } from '../../../src/common/enums';
 
 describe('jobManagerWrapper', () => {
   let jobManagerWrapper: JobManagerWrapper;
   let jobManagerURL = '';
+  const updateJobType = 'Ingestion_Update';
 
   beforeEach(() => {
     registerDefaultConfig();
@@ -48,7 +48,7 @@ describe('jobManagerWrapper', () => {
           updatedLayerMetadata.productVersion,
           updatedLayerMetadata.id,
           layerRequest,
-          UpdateJobAction.UPDATE
+          updateJobType
         );
       await expect(action()).resolves.toEqual(jobResponse);
     });
@@ -65,7 +65,7 @@ describe('jobManagerWrapper', () => {
           updatedLayerMetadata.productVersion,
           updatedLayerMetadata.id,
           layerRequest,
-          UpdateJobAction.UPDATE
+          updateJobType
         );
       await expect(action()).rejects.toThrow();
     });

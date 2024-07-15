@@ -17,7 +17,6 @@ import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
 import { ITaskParameters } from '../interfaces';
 import { getMapServingLayerName } from '../../utils/layerNameGenerator';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
-import { UpdateJobAction } from '../../common/enums';
 import { GdalInfoManager } from './gdalInfoManager';
 
 @injectable()
@@ -25,6 +24,8 @@ export class IngestionManager {
   private readonly logContext: LogContext;
   private readonly forbiddenJobTypes: string[];
   private readonly supportedIngestionSwapTypes: ISupportedIngestionSwapTypes[];
+  private readonly updateJobType: string;
+  private readonly swapUpdateJobType: string;
 
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
@@ -42,6 +43,8 @@ export class IngestionManager {
     };
     this.forbiddenJobTypes = this.config.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
     this.supportedIngestionSwapTypes = this.config.get<ISupportedIngestionSwapTypes[]>('jobManager.supportedIngestionSwapTypes');
+    this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
+    this.swapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
   }
 
   public async getInfoData(inputFiles: InputFiles): Promise<InfoDataWithFile[]> {
@@ -127,7 +130,7 @@ export class IngestionManager {
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === layerDetails.productType && supportedSwapObj.productSubType === layerDetails.productSubType;
     });
-    const updateJobAction = isSwapUpdate ? UpdateJobAction.UPDATE_SWAP : UpdateJobAction.UPDATE;
+    const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
     return this.jobManagerWrapper.createInitUpdateJob(
       layerDetails.productId,
       layerDetails.productVersion,

@@ -7,7 +7,6 @@ import { SERVICES } from '../common/constants';
 import { IConfig } from '../common/interfaces';
 import { ITaskParameters } from '../ingestion/interfaces';
 import { LogContext } from '../utils/logger/logContext';
-import { UpdateJobAction } from '../common/enums';
 
 @injectable()
 export class JobManagerWrapper extends JobManagerClient {
@@ -15,8 +14,6 @@ export class JobManagerWrapper extends JobManagerClient {
   private readonly logContext: LogContext;
   private readonly ingestionNewJobType: string;
   private readonly initTaskType: string;
-  private readonly ingestionUpdateJobType: string;
-  private readonly ingestionSwapUpdateJobType: string;
 
   public constructor(@inject(SERVICES.CONFIG) private readonly config: IConfig, @inject(SERVICES.LOGGER) protected readonly logger: Logger) {
     super(
@@ -29,8 +26,6 @@ export class JobManagerWrapper extends JobManagerClient {
     this.jobDomain = config.get<string>('jobManager.jobDomain');
     this.ingestionNewJobType = config.get<string>('jobManager.ingestionNewJobType');
     this.initTaskType = config.get<string>('jobManager.initTaskType');
-    this.ingestionUpdateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
-    this.ingestionSwapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
     this.logContext = {
       fileName: __filename,
       class: JobManagerWrapper.name,
@@ -55,11 +50,10 @@ export class JobManagerWrapper extends JobManagerClient {
     version: string,
     internalId: string,
     data: UpdateRasterLayer,
-    updateJobAction: UpdateJobAction
+    jobType: string
   ): Promise<ICreateJobResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.createInitUpdateJob.name };
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
-    const jobType = updateJobAction === UpdateJobAction.UPDATE ? this.ingestionUpdateJobType : this.ingestionSwapUpdateJobType;
     try {
       const jobResponse = await this.createUpdateJob(id, version, internalId, data, jobType, this.initTaskType, taskParams);
       return jobResponse;
