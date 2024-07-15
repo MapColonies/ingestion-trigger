@@ -18,6 +18,8 @@ import { ITaskParameters } from '../interfaces';
 import { getMapServingLayerName } from '../../utils/layerNameGenerator';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
 import { GdalInfoManager } from './gdalInfoManager';
+import { Tracer } from '@opentelemetry/api';
+import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 
 @injectable()
 export class IngestionManager {
@@ -26,6 +28,7 @@ export class IngestionManager {
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     private readonly sourceValidator: SourceValidator,
     private readonly gdalInfoManager: GdalInfoManager,
     private readonly polygonPartValidator: PolygonPartValidator,
@@ -39,6 +42,7 @@ export class IngestionManager {
     };
   }
 
+  @withSpanAsyncV4
   public async getInfoData(inputFiles: InputFiles): Promise<InfoDataWithFile[]> {
     const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
 
@@ -53,6 +57,7 @@ export class IngestionManager {
     return filesGdalInfoData;
   }
 
+  @withSpanAsyncV4
   public async validateSources(inputFiles: InputFiles): Promise<SourcesValidationResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateSources.name };
     const { originDirectory, fileNames } = inputFiles;
@@ -93,6 +98,7 @@ export class IngestionManager {
     }
   }
 
+  @withSpanAsyncV4
   public async ingestNewLayer(rasterIngestionLayer: NewRasterLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.ingestNewLayer.name };
     await this.validateNewLayer(rasterIngestionLayer);
@@ -103,6 +109,7 @@ export class IngestionManager {
     this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
   }
 
+  @withSpanAsyncV4
   private async validateNewLayer(rasterIngestionLayer: NewRasterLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateNewLayer.name };
     const { metadata, partData, inputFiles } = rasterIngestionLayer;
@@ -136,6 +143,7 @@ export class IngestionManager {
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
   }
 
+  @withSpanAsyncV4
   private async validateJobNotRunning(productId: string, productType: ProductType): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateJobNotRunning.name };
     const findJobParameters: IFindJobsRequest = {
@@ -159,6 +167,7 @@ export class IngestionManager {
     });
   }
 
+  @withSpanAsyncV4
   private async isInMapProxy(productId: string, productType: ProductType): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.isInMapProxy.name };
     const layerName = getMapServingLayerName(productId, productType);
@@ -176,6 +185,7 @@ export class IngestionManager {
     }
   }
 
+  @withSpanAsyncV4
   private async isInCatalog(productId: string, productType: ProductType): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.isInCatalog.name };
     const existsInCatalog = await this.catalogClient.exists(productId, productType);

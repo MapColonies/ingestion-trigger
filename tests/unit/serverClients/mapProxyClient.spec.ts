@@ -4,6 +4,7 @@ import { MapProxyClient } from '../../../src/serviceClients/mapProxyClient';
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
 import { newLayerRequest } from '../../mocks/newIngestionRequestMockData';
 import { getMapServingLayerName } from '../../../src/utils/layerNameGenerator';
+import { trace } from '@opentelemetry/api';
 
 describe('mapProxyClient', () => {
   let mapProxyClient: MapProxyClient;
@@ -15,7 +16,7 @@ describe('mapProxyClient', () => {
     mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
     layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
 
-    mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }));
+    mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
   });
   afterEach(() => {
     nock.cleanAll();

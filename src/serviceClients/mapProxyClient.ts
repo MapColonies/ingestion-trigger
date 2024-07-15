@@ -4,10 +4,12 @@ import { HttpClient, IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { inject, injectable } from 'tsyringe';
 import { IConfig } from '../common/interfaces';
 import { SERVICES } from '../common/constants';
+import { Tracer } from '@opentelemetry/api';
+import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 
 @injectable()
 export class MapProxyClient extends HttpClient {
-  public constructor(@inject(SERVICES.CONFIG) private readonly config: IConfig, @inject(SERVICES.LOGGER) protected readonly logger: Logger) {
+  public constructor(@inject(SERVICES.CONFIG) private readonly config: IConfig, @inject(SERVICES.LOGGER) protected readonly logger: Logger , @inject(SERVICES.TRACER) public readonly tracer: Tracer) {
     super(
       logger,
       config.get<string>('services.mapProxyApiServiceUrl'),
@@ -17,6 +19,7 @@ export class MapProxyClient extends HttpClient {
     );
   }
 
+  @withSpanAsyncV4
   public async exists(name: string): Promise<boolean> {
     const saveMetadataUrl = `/layer/${encodeURIComponent(name)}`;
     try {

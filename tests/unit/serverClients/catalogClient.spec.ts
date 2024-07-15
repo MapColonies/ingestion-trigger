@@ -4,6 +4,7 @@ import nock from 'nock';
 import { CatalogClient } from '../../../src/serviceClients/catalogClient';
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
 import { newLayerRequest } from '../../mocks/newIngestionRequestMockData';
+import { trace } from '@opentelemetry/api';
 
 describe('CatalogClient', () => {
   let catalogClient: CatalogClient;
@@ -15,7 +16,7 @@ describe('CatalogClient', () => {
     catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
     catalogPostBody = { metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType } };
 
-    catalogClient = new CatalogClient(configMock as unknown as IConfig, jsLogger({ enabled: false }));
+    catalogClient = new CatalogClient(configMock as unknown as IConfig, jsLogger({ enabled: false }),trace.getTracer('testTracer'));
   });
   afterEach(() => {
     nock.cleanAll();

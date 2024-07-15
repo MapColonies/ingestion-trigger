@@ -6,12 +6,18 @@ import { SQLiteClient } from '../../serviceClients/database/SQLiteClient';
 import { InvalidIndexError, UnsupportedGridError, UnsupportedTileSizeError } from '../../serviceClients/database/errors';
 import { LogContext } from '../../utils/logger/logContext';
 import { Grid } from '../interfaces';
+import { Tracer } from '@opentelemetry/api';
+import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 
 @injectable()
 export class GpkgManager {
   private readonly logContext: LogContext;
   private readonly validTileSize: number;
-  public constructor(@inject(SERVICES.CONFIG) private readonly config: IConfig, @inject(SERVICES.LOGGER) private readonly logger: Logger) {
+  public constructor(
+    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.LOGGER) private readonly logger: Logger,
+    @inject(SERVICES.TRACER) public readonly tracer: Tracer
+  ) {
     this.logContext = {
       fileName: __filename,
       class: GpkgManager.name,
@@ -19,6 +25,7 @@ export class GpkgManager {
     this.validTileSize = this.config.get<number>('validationValuesByInfo.tileSize');
   }
 
+  @withSpanV4
   public validateGpkgFiles(originDirectory: string, files: string[]): void {
     const logCtx = { ...this.logContext, function: this.validateGpkgFiles.name };
     this.logger.debug({ msg: 'Validating GPKG files', logContext: logCtx, metadata: { originDirectory, files } });
@@ -28,6 +35,7 @@ export class GpkgManager {
     this.logger.debug({ msg: 'GPKG files are valid', logContext: logCtx, metadata: { originDirectory, files } });
   }
 
+  @withSpanV4
   private validateGpkgIndex(originDirectory: string, files: string[]): void {
     const logCtx = { ...this.logContext, function: this.validateGpkgIndex.name };
     this.readGpkgFiles(originDirectory, files, (file, sqlClient) => {

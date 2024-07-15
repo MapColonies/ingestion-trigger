@@ -15,6 +15,7 @@ import { CatalogClient } from '../../../../src/serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 import { getMapServingLayerName } from '../../../../src/utils/layerNameGenerator';
+import { trace } from '@opentelemetry/api';
 
 describe('IngestionManager', () => {
   let ingestionManager: IngestionManager;
@@ -49,13 +50,14 @@ describe('IngestionManager', () => {
   beforeEach(() => {
     registerDefaultConfig();
 
-    mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }));
-    catalogClient = new CatalogClient(configMock, jsLogger({ enabled: false }));
-    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }));
+    mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }) ,trace.getTracer('testTracer'));
+    catalogClient = new CatalogClient(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
+    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }),  trace.getTracer('testTracer'));
 
     ingestionManager = new IngestionManager(
       jsLogger({ enabled: false }),
       configMock,
+      trace.getTracer('testTracer'),
       sourceValidator as unknown as SourceValidator,
       gdalInfoManagerMock as unknown as GdalInfoManager,
       polygonPartValidatorMock as unknown as PolygonPartValidator,

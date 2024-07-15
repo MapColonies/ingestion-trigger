@@ -3,6 +3,7 @@ import nock from 'nock';
 import { JobManagerWrapper } from '../../../src/serviceClients/jobManagerWrapper';
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
 import { newLayerRequest, jobResponse, newJobRequest } from '../../mocks/newIngestionRequestMockData';
+import { trace } from '@opentelemetry/api';
 
 describe('jobManagerWrapper', () => {
   let jobManagerWrapper: JobManagerWrapper;
@@ -12,7 +13,7 @@ describe('jobManagerWrapper', () => {
     registerDefaultConfig();
     jobManagerURL = configMock.get<string>('services.jobManagerURL');
 
-    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }));
+    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }),trace.getTracer('testTracer'));
   });
   afterEach(() => {
     nock.cleanAll();

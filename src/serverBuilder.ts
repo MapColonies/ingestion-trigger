@@ -8,7 +8,7 @@ import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import httpLogger from '@map-colonies/express-access-log-middleware';
 import getStorageExplorerMiddleware from '@map-colonies/storage-explorer-middleware';
-import {collectMetricsExpressMiddleware, getTraceContexHeaderMiddleware } from '@map-colonies/telemetry';
+import { collectMetricsExpressMiddleware, getTraceContexHeaderMiddleware } from '@map-colonies/telemetry';
 import { SERVICES } from './common/constants';
 import { IConfig } from './common/interfaces';
 import { makeInsensitive } from './utils/stringCapitalizationPermutations';

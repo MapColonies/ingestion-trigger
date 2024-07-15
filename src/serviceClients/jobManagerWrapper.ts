@@ -7,6 +7,8 @@ import { SERVICES } from '../common/constants';
 import { IConfig } from '../common/interfaces';
 import { ITaskParameters } from '../ingestion/interfaces';
 import { LogContext } from '../utils/logger/logContext';
+import { Tracer } from '@opentelemetry/api';
+import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 
 @injectable()
 export class JobManagerWrapper extends JobManagerClient {
@@ -17,7 +19,7 @@ export class JobManagerWrapper extends JobManagerClient {
   private readonly ingestionUpdateJobType: string;
   private readonly ingestionSwapUpdateJobType: string;
 
-  public constructor(@inject(SERVICES.CONFIG) private readonly config: IConfig, @inject(SERVICES.LOGGER) protected readonly logger: Logger) {
+  public constructor(@inject(SERVICES.CONFIG) private readonly config: IConfig, @inject(SERVICES.LOGGER) protected readonly logger: Logger , @inject(SERVICES.TRACER) public readonly tracer: Tracer) {
     super(
       logger,
       config.get<string>('services.jobManagerURL'),
@@ -36,6 +38,7 @@ export class JobManagerWrapper extends JobManagerClient {
     };
   }
 
+  @withSpanAsyncV4
   public async createInitJob(data: NewRasterLayer): Promise<ICreateJobResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.createInitJob.name };
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
@@ -49,6 +52,7 @@ export class JobManagerWrapper extends JobManagerClient {
     }
   }
 
+  @withSpanAsyncV4
   private async createNewJob(data: NewRasterLayer, jobType: string, taskType: string, taskParams?: ITaskParameters[]): Promise<ICreateJobResponse> {
     const createLayerTasksUrl = `/jobs`;
     const createJobRequest: CreateJobBody = {

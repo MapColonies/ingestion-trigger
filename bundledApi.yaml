@@ -250,7 +250,7 @@ components:
             srsName:
               type: string
               enum:
-                - WGS84Geo
+                - WGS84GEO
               description: geo system name
             transparency:
               type: string
@@ -571,7 +571,7 @@ components:
           productSubType: string
           description: string
           srs: '4326'
-          srsName: WGS84Geo
+          srsName: WGS84GEO
           transparency: TRANSPARENT
           region:
             - string
@@ -614,11 +614,7 @@ components:
     UpdateRasterLayerExample:
       value:
         metadata:
-          productSubType: string
-          description: string
-          region: string
           classification: '6'
-          scale: 100000000
         partData:
           - id: string
             name: string
