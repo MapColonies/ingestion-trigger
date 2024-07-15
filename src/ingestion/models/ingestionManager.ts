@@ -24,6 +24,7 @@ import { GdalInfoManager } from './gdalInfoManager';
 export class IngestionManager {
   private readonly logContext: LogContext;
   private readonly forbiddenJobTypes: string[];
+  private readonly supportedIngestionSwapTypes: ISupportedIngestionSwapTypes[];
 
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
@@ -40,6 +41,7 @@ export class IngestionManager {
       class: IngestionManager.name,
     };
     this.forbiddenJobTypes = this.config.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
+    this.supportedIngestionSwapTypes = this.config.get<ISupportedIngestionSwapTypes[]>('jobManager.supportedIngestionSwapTypes');
   }
 
   public async getInfoData(inputFiles: InputFiles): Promise<InfoDataWithFile[]> {
@@ -122,8 +124,8 @@ export class IngestionManager {
     layerDetails: LayerDetails,
     rasterUpdateLayer: UpdateRasterLayer
   ): Promise<ICreateJobResponse> {
-    const supportedIngestionSwapTypes = this.config.get<ISupportedIngestionSwapTypes[]>('jobManager.supportedIngestionSwapTypes');
-    const isSwapUpdate = supportedIngestionSwapTypes.find((supportedSwapObj) => {
+    
+    const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === layerDetails.productType && supportedSwapObj.productSubType === layerDetails.productSubType;
     });
     const updateJobAction = isSwapUpdate ? UpdateJobAction.UPDATE_SWAP : UpdateJobAction.UPDATE;
