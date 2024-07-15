@@ -124,7 +124,6 @@ export class IngestionManager {
     layerDetails: LayerDetails,
     rasterUpdateLayer: UpdateRasterLayer
   ): Promise<ICreateJobResponse> {
-    
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === layerDetails.productType && supportedSwapObj.productSubType === layerDetails.productSubType;
     });
