@@ -80,7 +80,15 @@
     "ingestionNewJobType": "INGESTION_NEW_JOB_TYPE",
     "initTaskType": "INIT_TASK_TYPE",
     "ingestionUpdateJobType": "INGESTION_UPDATE_JOB_TYPE",
-    "ingestionSwapUpdateJobType": "INGESTION_SWAP_UPDATE_JOB_TYPE"
+    "ingestionSwapUpdateJobType": "INGESTION_SWAP_UPDATE_JOB_TYPE",
+    "supportedIngestionSwapTypes": {
+      "__name": "SUPPORTED_INGESTION_SWAP_TYPES",
+      "__format": "json"
+    },
+    "forbiddenJobTypesForParallelIngestion": {
+      "__name": "FORBIDDEN_TYPES_FOR_PARALLEL_INGESTION",
+      "__format": "json"
+    }
   },
   "httpRetry": {
     "attempts": {

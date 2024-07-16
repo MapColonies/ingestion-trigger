@@ -9,6 +9,10 @@ export interface ResponseStatus {
   status: string;
 }
 
+export interface IRecordRequestParams {
+  id: string;
+}
+
 export interface PixelRange {
   min: number;
   max: number;

@@ -1,11 +1,11 @@
 import { RequestHandler } from 'express';
-import { InputFiles, NewRasterLayer } from '@map-colonies/mc-model-types';
+import { InputFiles, NewRasterLayer, UpdateRasterLayer } from '@map-colonies/mc-model-types';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
 import { HttpError } from 'express-openapi-validator/dist/framework/types';
 import { ConflictError } from '@map-colonies/error-types';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
-import { SourcesValidationResponse, ResponseStatus } from '../interfaces';
+import { SourcesValidationResponse, ResponseStatus, IRecordRequestParams } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 import { InfoData } from '../schemas/infoDataSchema';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
@@ -13,6 +13,7 @@ import { FileNotFoundError, GdalInfoError, UnsupportedEntityError, ValidationErr
 type SourcesValidationHandler = RequestHandler<undefined, SourcesValidationResponse, unknown>;
 type SourcesInfoHandler = RequestHandler<undefined, InfoData[], unknown>;
 type NewLayerHandler = RequestHandler<undefined, ResponseStatus, unknown>;
+type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseStatus, unknown>;
 
 @injectable()
 export class IngestionController {
@@ -41,8 +42,26 @@ export class IngestionController {
     }
   };
 
-  public updateLayer: RequestHandler = (req, res, next) => {
-    throw new Error('Method not implemented.');
+  public updateLayer: UpdateLayerHandler = async (req, res, next) => {
+    try {
+      const resourceId = req.params.id;
+      const updateLayerRequestBody: unknown = req.body;
+      const validUpdateLayerRequestBody: UpdateRasterLayer = await this.schemasValidator.validateUpdateLayerRequest(updateLayerRequestBody);
+      await this.ingestionManager.updateLayer(resourceId, validUpdateLayerRequestBody);
+
+      res.status(StatusCodes.OK).send({ status: 'success' });
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
+      }
+      if (error instanceof ConflictError) {
+        (error as HttpError).status = StatusCodes.CONFLICT; //409
+      }
+      if (error instanceof UnsupportedEntityError) {
+        (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
+      }
+      next(error);
+    }
   };
 
   public validateSources: SourcesValidationHandler = async (req, res, next): Promise<void> => {

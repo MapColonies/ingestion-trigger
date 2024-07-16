@@ -11,7 +11,7 @@ export const createNewMetadataSchema = () => {
       productName: z.string().min(1),
       productType: z.nativeEnum(ProductType),
       srs: z.literal('4326'),
-      srsName: z.literal('WGS84Geo'),
+      srsName: z.literal('WGS84GEO'),
       transparency: z.nativeEnum(Transparency),
       region: z.array(z.string().min(1)).min(1),
       classification: z.string().regex(CLASSIFICATION_REGEX),

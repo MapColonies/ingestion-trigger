@@ -20,13 +20,24 @@ export class CatalogClient extends HttpClient {
 
   @withSpanAsyncV4
   public async exists(productId: string, productType: string): Promise<boolean> {
+    const res = await this.findByProductIdAndType(productId, productType);
+    return res.length > 0;
+  }
+
+  public async findByInternalId(internalId: string): Promise<FindRecordResponse> {
+    const req = {
+      id: internalId,
+    };
+    return this.post<FindRecordResponse>('/records/find', req);
+  }
+
+  private async findByProductIdAndType(productId: string, productType: string): Promise<FindRecordResponse> {
     const req = {
       metadata: {
         productId,
         productType,
       },
     };
-    const res = await this.post<FindRecordResponse>('/records/find', req);
-    return res.length > 0;
+    return this.post<FindRecordResponse>('/records/find', req);
   }
 }

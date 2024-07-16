@@ -1,6 +1,8 @@
 import jsLogger from '@map-colonies/js-logger';
 import nock from 'nock';
-import { ConflictError } from '@map-colonies/error-types';
+import { ConflictError, BadRequestError } from '@map-colonies/error-types';
+import { ProductType } from '@map-colonies/mc-model-types';
+import { OperationStatus } from '@map-colonies/mc-priority-queue';
 import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
@@ -16,6 +18,14 @@ import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrap
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 import { getMapServingLayerName } from '../../../../src/utils/layerNameGenerator';
 import { trace } from '@opentelemetry/api';
+import {
+  updateJobRequest,
+  updateLayerRequest,
+  updateRunningJobResponse,
+  updateSwapJobRequest,
+  updatedLayer,
+  updatedSwapLayer,
+} from '../../../mocks/updateRequestMockData';
 
 describe('IngestionManager', () => {
   let ingestionManager: IngestionManager;
@@ -43,9 +53,10 @@ describe('IngestionManager', () => {
   const catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
   const mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
   const layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
-  const catalogPostBody = {
+  const catalogPostIdAndType = {
     metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType },
   };
+  const forbiddenJobTypesForParallelIngestion = configMock.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
 
   beforeEach(() => {
     registerDefaultConfig();
@@ -73,7 +84,7 @@ describe('IngestionManager', () => {
     jest.resetAllMocks();
   });
 
-  describe('validateNewLayerIngestion', () => {
+  describe('validateNewLayer', () => {
     it('should not throw any errors when the request is valid', async () => {
       const layerRequest = newLayerRequest.valid;
 
@@ -87,10 +98,12 @@ describe('IngestionManager', () => {
         productType: layerRequest.metadata.productType,
         isCleaned: false,
         shouldReturnTasks: false,
+        statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
+        types: undefined,
       };
-      nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, []);
+      nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
       nock(jobManagerURL).post('/jobs', newJobRequest).reply(200, jobResponse);
-      nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(200, []);
+      nock(catalogServiceURL).post('/records/find', catalogPostIdAndType).reply(200, []);
       nock(mapProxyApiServiceUrl)
         .get(`/layer/${encodeURIComponent(layerName)}`)
         .reply(404);
@@ -114,9 +127,10 @@ describe('IngestionManager', () => {
         productType: layerRequest.metadata.productType,
         isCleaned: false,
         shouldReturnTasks: false,
+        statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
       };
-      nock(jobManagerURL).get('/jobs').query(getJobsParams).reply(200, runningJobResponse);
-      nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(200, []);
+      nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, runningJobResponse);
+      nock(catalogServiceURL).post('/records/find', catalogPostIdAndType).reply(200, []);
       nock(mapProxyApiServiceUrl)
         .get(`/layer/${encodeURIComponent(layerName)}`)
         .reply(404);
@@ -152,7 +166,7 @@ describe('IngestionManager', () => {
       sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
       polygonPartValidatorMock.validate.mockReturnValue(() => void 0);
 
-      nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(200, ['1']);
+      nock(catalogServiceURL).post('/records/find', catalogPostIdAndType).reply(200, ['1']);
       nock(mapProxyApiServiceUrl)
         .get(`/layer/${encodeURIComponent(layerName)}`)
         .reply(404);
@@ -173,6 +187,172 @@ describe('IngestionManager', () => {
         await ingestionManager.ingestNewLayer(layerRequest);
       };
       await expect(action()).rejects.toThrow(UnsupportedEntityError);
+    });
+  });
+
+  describe('validateUpdateLayer', () => {
+    it('should not throw any errors when the request is valid and create update job', async () => {
+      const layerRequest = updateLayerRequest.valid;
+      const updatedLayerMetadata = updatedLayer.metadata;
+      const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+
+      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
+      polygonPartValidatorMock.validate.mockReturnValue(() => void 0);
+
+      const getJobsParams = {
+        resourceId: updatedLayerMetadata.productId,
+        productType: updatedLayerMetadata.productType,
+        isCleaned: false,
+        shouldReturnTasks: false,
+        statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
+        types: forbiddenJobTypesForParallelIngestion,
+      };
+
+      nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
+      nock(jobManagerURL).post('/jobs', updateJobRequest).reply(200, jobResponse);
+      nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
+      nock(mapProxyApiServiceUrl)
+        .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+        .reply(200);
+
+      const action = async () => {
+        await ingestionManager.updateLayer(updatedLayerMetadata.id, layerRequest);
+      };
+      await expect(action()).resolves.not.toThrow();
+    });
+
+    it('should not throw any errors when the request is valid and create update swap job', async () => {
+      const layerRequest = updateLayerRequest.valid;
+      const updatedLayerMetadata = updatedSwapLayer.metadata;
+      const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+
+      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
+      polygonPartValidatorMock.validate.mockReturnValue(() => void 0);
+
+      const getJobsParams = {
+        resourceId: updatedLayerMetadata.productId,
+        productType: updatedLayerMetadata.productType,
+        isCleaned: false,
+        shouldReturnTasks: false,
+        statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
+        types: forbiddenJobTypesForParallelIngestion,
+      };
+
+      nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
+      nock(jobManagerURL).post('/jobs', updateSwapJobRequest).reply(200, jobResponse);
+      nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedSwapLayer]);
+      nock(mapProxyApiServiceUrl)
+        .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+        .reply(200);
+
+      const action = async () => {
+        await ingestionManager.updateLayer(updatedLayerMetadata.id, layerRequest);
+      };
+      await expect(action()).resolves.not.toThrow();
+    });
+
+    it('should throw conflict error when there is a conflicting job running', async () => {
+      const layerRequest = updateLayerRequest.valid;
+      const updatedLayerMetadata = updatedLayer.metadata;
+      const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+
+      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
+      polygonPartValidatorMock.validate.mockReturnValue(() => void 0);
+
+      const getJobsParams = {
+        resourceId: updatedLayerMetadata.productId,
+        productType: updatedLayerMetadata.productType,
+        isCleaned: false,
+        shouldReturnTasks: false,
+        statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
+        types: forbiddenJobTypesForParallelIngestion,
+      };
+
+      nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, updateRunningJobResponse);
+      nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
+      nock(mapProxyApiServiceUrl)
+        .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+        .reply(200);
+
+      const action = async () => {
+        await ingestionManager.updateLayer(updatedLayerMetadata.id, layerRequest);
+      };
+
+      await expect(action()).rejects.toThrow(ConflictError);
+    });
+
+    it('should throw bad request error when there is no layer in mapProxy', async () => {
+      const layerRequest = updateLayerRequest.valid;
+      const updatedLayerMetadata = updatedLayer.metadata;
+      const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+
+      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
+      polygonPartValidatorMock.validate.mockReturnValue(() => void 0);
+
+      const getJobsParams = {
+        resourceId: updatedLayerMetadata.productId,
+        productType: updatedLayerMetadata.productType,
+        isCleaned: false,
+        shouldReturnTasks: false,
+        statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
+        types: forbiddenJobTypesForParallelIngestion,
+      };
+
+      nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
+      nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
+      nock(mapProxyApiServiceUrl)
+        .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+        .reply(404);
+
+      const action = async () => {
+        await ingestionManager.updateLayer(updatedLayerMetadata.id, layerRequest);
+      };
+
+      await expect(action()).rejects.toThrow(BadRequestError);
+    });
+
+    it('should throw bad request error when there is no layer in catalog', async () => {
+      const layerRequest = updateLayerRequest.valid;
+      const updatedLayerMetadata = updatedLayer.metadata;
+
+      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
+      polygonPartValidatorMock.validate.mockReturnValue(() => void 0);
+
+      nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer, updatedLayer]);
+
+      const action = async () => {
+        await ingestionManager.updateLayer(updatedLayerMetadata.id, layerRequest);
+      };
+
+      await expect(action()).rejects.toThrow(ConflictError);
+    });
+
+    it('should throw conflict error when there is more then one layer in catalog', async () => {
+      const layerRequest = updateLayerRequest.valid;
+      const updatedLayerMetadata = updatedLayer.metadata;
+
+      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGpkgFiles.mockReturnValue(() => void 0);
+      polygonPartValidatorMock.validate.mockReturnValue(() => void 0);
+
+      nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, []);
+
+      const action = async () => {
+        await ingestionManager.updateLayer(updatedLayerMetadata.id, layerRequest);
+      };
+
+      await expect(action()).rejects.toThrow(BadRequestError);
     });
   });
 
