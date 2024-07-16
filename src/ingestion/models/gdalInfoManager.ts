@@ -2,14 +2,14 @@ import { join } from 'node:path';
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import { IConfig } from 'config';
+import { Tracer } from '@opentelemetry/api';
+import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { GdalUtilities } from '../../utils/gdal/gdalUtilities';
 import { SERVICES } from '../../common/constants';
 import { GdalInfoError } from '../errors/ingestionErrors';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { LogContext } from '../../utils/logger/logContext';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
-import { Tracer } from '@opentelemetry/api';
-import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 
 @injectable()
 export class GdalInfoManager {

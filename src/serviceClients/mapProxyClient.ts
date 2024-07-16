@@ -2,14 +2,18 @@ import { Logger } from '@map-colonies/js-logger';
 import { NotFoundError } from '@map-colonies/error-types';
 import { HttpClient, IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { inject, injectable } from 'tsyringe';
-import { IConfig } from '../common/interfaces';
-import { SERVICES } from '../common/constants';
 import { Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { IConfig } from '../common/interfaces';
+import { SERVICES } from '../common/constants';
 
 @injectable()
 export class MapProxyClient extends HttpClient {
-  public constructor(@inject(SERVICES.CONFIG) private readonly config: IConfig, @inject(SERVICES.LOGGER) protected readonly logger: Logger , @inject(SERVICES.TRACER) public readonly tracer: Tracer) {
+  public constructor(
+    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.LOGGER) protected readonly logger: Logger,
+    @inject(SERVICES.TRACER) public readonly tracer: Tracer
+  ) {
     super(
       logger,
       config.get<string>('services.mapProxyApiServiceUrl'),

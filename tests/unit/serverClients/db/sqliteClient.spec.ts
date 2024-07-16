@@ -1,6 +1,7 @@
 /* eslint-disable jest/no-conditional-expect */
 import jsLogger from '@map-colonies/js-logger';
 import Database, { Database as SQLiteDB, Statement, SqliteError } from 'better-sqlite3';
+import { trace } from '@opentelemetry/api';
 import { init as initMockConfig, configMock, setValue, clear as clearMockConfig } from '../../../mocks/configMock';
 import { Grid } from '../../../../src/ingestion/interfaces';
 import { SQLiteClient } from '../../../../src/serviceClients/database/SQLiteClient';
@@ -18,7 +19,7 @@ describe('SQLClient', () => {
     initMockConfig();
     mockDB = { close: jest.fn } as unknown as SQLiteDB;
 
-    sqlClient = new SQLiteClient(jsLogger({ enabled: false }), configMock, 'test_gpkg', 'test_dir');
+    sqlClient = new SQLiteClient(jsLogger({ enabled: false }), configMock, trace.getTracer('testTracer'), 'test_gpkg', 'test_dir');
   });
 
   describe('getGrid', () => {

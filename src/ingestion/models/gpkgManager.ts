@@ -1,13 +1,13 @@
 import { inject, injectable } from 'tsyringe';
 import { IConfig } from 'config';
 import { Logger } from '@map-colonies/js-logger';
+import { Tracer } from '@opentelemetry/api';
+import { withSpanV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../../common/constants';
 import { SQLiteClient } from '../../serviceClients/database/SQLiteClient';
 import { InvalidIndexError, UnsupportedGridError, UnsupportedTileSizeError } from '../../serviceClients/database/errors';
 import { LogContext } from '../../utils/logger/logContext';
 import { Grid } from '../interfaces';
-import { Tracer } from '@opentelemetry/api';
-import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 
 @injectable()
 export class GpkgManager {
@@ -49,6 +49,7 @@ export class GpkgManager {
     });
   }
 
+  @withSpanV4
   private validateGpkgGrid(originDirectory: string, files: string[]): void {
     const logCtx = { ...this.logContext, function: this.validateGpkgGrid.name };
     this.readGpkgFiles(originDirectory, files, (file, sqlClient) => {
@@ -63,6 +64,7 @@ export class GpkgManager {
     });
   }
 
+  @withSpanV4
   private validateTilesSize(originDirectory: string, files: string[]): void {
     const logCtx = { ...this.logContext, function: this.validateTilesSize.name };
     this.readGpkgFiles(originDirectory, files, (file, sqlClient) => {
@@ -75,9 +77,10 @@ export class GpkgManager {
     });
   }
 
+  @withSpanV4
   private readGpkgFiles(originDirectory: string, files: string[], readFn: (file: string, sqlClient: SQLiteClient) => void): void {
     files.forEach((file) => {
-      const sqliteClient = new SQLiteClient(this.logger, this.config, file, originDirectory);
+      const sqliteClient = new SQLiteClient(this.logger, this.config, this.tracer, file, originDirectory);
       readFn(file, sqliteClient);
     });
   }

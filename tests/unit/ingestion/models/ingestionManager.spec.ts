@@ -3,6 +3,7 @@ import nock from 'nock';
 import { ConflictError, BadRequestError } from '@map-colonies/error-types';
 import { ProductType } from '@map-colonies/mc-model-types';
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
+import { trace } from '@opentelemetry/api';
 import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
@@ -17,7 +18,6 @@ import { CatalogClient } from '../../../../src/serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 import { getMapServingLayerName } from '../../../../src/utils/layerNameGenerator';
-import { trace } from '@opentelemetry/api';
 import {
   updateJobRequest,
   updateLayerRequest,
@@ -61,9 +61,9 @@ describe('IngestionManager', () => {
   beforeEach(() => {
     registerDefaultConfig();
 
-    mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }) ,trace.getTracer('testTracer'));
+    mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
     catalogClient = new CatalogClient(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
-    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }),  trace.getTracer('testTracer'));
+    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
 
     ingestionManager = new IngestionManager(
       jsLogger({ enabled: false }),

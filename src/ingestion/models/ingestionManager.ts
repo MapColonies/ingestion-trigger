@@ -3,6 +3,8 @@ import { Logger } from '@map-colonies/js-logger';
 import { InputFiles, ProductType, NewRasterLayer, UpdateRasterLayer, PolygonPart } from '@map-colonies/mc-model-types';
 import { ConflictError, BadRequestError } from '@map-colonies/error-types';
 import { ICreateJobResponse, IJobResponse, OperationStatus, IFindJobsByCriteriaBody } from '@map-colonies/mc-priority-queue';
+import { Tracer } from '@opentelemetry/api';
+import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../../common/constants';
 import { SourceValidator } from '../validators/sourceValidator';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
@@ -18,8 +20,6 @@ import { ITaskParameters } from '../interfaces';
 import { getMapServingLayerName } from '../../utils/layerNameGenerator';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
 import { GdalInfoManager } from './gdalInfoManager';
-import { Tracer } from '@opentelemetry/api';
-import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 
 @injectable()
 export class IngestionManager {

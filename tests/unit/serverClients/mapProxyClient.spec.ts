@@ -1,10 +1,10 @@
 import jsLogger from '@map-colonies/js-logger';
 import nock from 'nock';
+import { trace } from '@opentelemetry/api';
 import { MapProxyClient } from '../../../src/serviceClients/mapProxyClient';
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
 import { newLayerRequest } from '../../mocks/newIngestionRequestMockData';
 import { getMapServingLayerName } from '../../../src/utils/layerNameGenerator';
-import { trace } from '@opentelemetry/api';
 
 describe('mapProxyClient', () => {
   let mapProxyClient: MapProxyClient;

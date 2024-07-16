@@ -1,10 +1,10 @@
 import jsLogger from '@map-colonies/js-logger';
 import { IConfig } from 'config'; // Import the correct type for IConfig
+import { trace } from '@opentelemetry/api';
 import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
 import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
 import { InvalidIndexError, UnsupportedGridError, UnsupportedTileSizeError } from '../../../../src/serviceClients/database/errors';
-import { trace } from '@opentelemetry/api';
 
 describe('GpkgManager', () => {
   let gpkgManager: GpkgManager;
