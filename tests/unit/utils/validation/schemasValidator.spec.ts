@@ -184,7 +184,7 @@ describe('SchemasValidator', () => {
       expect(result).toHaveProperty('srs');
       expect(result.srs).toBe('4326');
       expect(result).toHaveProperty('srsName');
-      expect(result.srsName).toBe('WGS84Geo');
+      expect(result.srsName).toBe('WGS84GEO');
       expect(result).toHaveProperty('transparency');
       expect(Object.values(Transparency)).toContain(result.transparency);
       expect(result).toHaveProperty('region');
@@ -277,6 +277,44 @@ describe('SchemasValidator', () => {
       const invalidPartData = fakeDataToValidate.newLayerRequest.emptyGeometry;
 
       const validationAction = async () => schemasValidator.validatePartData(invalidPartData);
+      await expect(validationAction).rejects.toThrow(BadRequestError);
+    });
+  });
+
+  describe('validateUpdateMetadataSchema', () => {
+    it('should return valid update metadata schema', async () => {
+      const validMetadata = fakeDataToValidate.updateLayerRequest.valid.metadata;
+      const result = await schemasValidator.validateUpdateMetadata(validMetadata);
+      expect(result).toHaveProperty('classification');
+      expect(result.classification).toMatch(CLASSIFICATION_REGEX);
+    });
+
+    it('should throw error when given invalid update metadata', async () => {
+      const invalidMetadata = fakeDataToValidate.updateLayerRequest.invalid.metadata;
+
+      const validationAction = async () => schemasValidator.validateUpdateMetadata(invalidMetadata);
+      await expect(validationAction).rejects.toThrow(BadRequestError);
+    });
+  });
+
+  describe('validateUpdateLayerRequest', () => {
+    it('should return valid update layer request', async () => {
+      const updateLayerRequest = fakeDataToValidate.updateLayerRequest.valid;
+      const result = await schemasValidator.validateUpdateLayerRequest(updateLayerRequest);
+
+      expect(result).toHaveProperty('metadata');
+      expect(result).toHaveProperty('partData');
+      expect(result).toHaveProperty('inputFiles');
+    });
+
+    it('should throw error on invalid update layer request when metadata is invalid', async () => {
+      const layerRequest = {
+        metadata: fakeDataToValidate.updateLayerRequest.invalid.metadata,
+        partdata: fakeDataToValidate.updateLayerRequest.valid.partData,
+        inputFiles: fakeDataToValidate.inputFiles.valid,
+      };
+
+      const validationAction = async () => schemasValidator.validateUpdateLayerRequest(layerRequest);
       await expect(validationAction).rejects.toThrow(BadRequestError);
     });
   });

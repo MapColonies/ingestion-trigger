@@ -1,4 +1,4 @@
-import { IRasterCatalogUpsertRequestBody } from '@map-colonies/mc-model-types';
+import { IRasterCatalogUpsertRequestBody, ProductType } from '@map-colonies/mc-model-types';
 
 export interface IConfig {
   get: <T>(setting: string) => T;
@@ -21,4 +21,16 @@ export type FindRecordResponse = IFindResponseRecord[];
 export interface IUpdateRecordResponse {
   id: string;
   status: string;
+}
+
+export interface ISupportedIngestionSwapTypes {
+  productType: ProductType;
+  productSubType: string;
+}
+
+export interface LayerDetails {
+  productId: string;
+  productVersion: string;
+  productType: ProductType;
+  productSubType: string;
 }
