@@ -1,5 +1,3 @@
-/* istanbul ignore next @preserve */
-
 export class UnsupportedEntityError extends Error {
   public constructor(message: string) {
     super(message);

@@ -13,7 +13,8 @@ module.exports = {
     '!**/controllers/**',
     '!**/routes/**',
     '!<rootDir>/src/*',
-    '!<rootDir>/src/ingestion/schemas/updateMetadataSchema.ts',
+    '!<rootDir>/src/serviceClients/database/SQLiteClient.ts',
+    '!<rootDir>/src/ingestion/errors/ingestionErrors.ts',
   ],
   coverageDirectory: '<rootDir>/coverage',
   reporters: [

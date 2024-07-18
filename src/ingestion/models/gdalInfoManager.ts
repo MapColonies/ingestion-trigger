@@ -2,6 +2,8 @@ import { join } from 'node:path';
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import { IConfig } from 'config';
+import { Tracer } from '@opentelemetry/api';
+import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { GdalUtilities } from '../../utils/gdal/gdalUtilities';
 import { SERVICES } from '../../common/constants';
 import { GdalInfoError } from '../errors/ingestionErrors';
@@ -16,6 +18,7 @@ export class GdalInfoManager {
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator,
     private readonly gdalUtilities: GdalUtilities
   ) {
@@ -26,6 +29,7 @@ export class GdalInfoManager {
     this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
   }
 
+  @withSpanAsyncV4
   public async getInfoData(originDirectory: string, files: string[]): Promise<InfoDataWithFile[]> {
     const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
     this.logger.debug({ msg: 'getting Gdal info data', logContext: logCtx, metadata: { originDirectory, files } });
@@ -52,6 +56,7 @@ export class GdalInfoManager {
     }
   }
 
+  @withSpanAsyncV4
   public async validateInfoData(infoDataArray: InfoDataWithFile[]): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateInfoData.name };
     this.logger.info({ msg: 'Validating GDAL info data', logContext: logCtx, metadata: { infoDataArray } });

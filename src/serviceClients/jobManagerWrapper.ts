@@ -3,6 +3,8 @@ import { inject, injectable } from 'tsyringe';
 import { NewRasterLayer, UpdateRasterLayer } from '@map-colonies/mc-model-types';
 import { ICreateJobBody, ICreateJobResponse, IJobResponse, OperationStatus, ITaskResponse, JobManagerClient } from '@map-colonies/mc-priority-queue';
 import { IHttpRetryConfig } from '@map-colonies/mc-utils';
+import { Tracer } from '@opentelemetry/api';
+import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../common/constants';
 import { IConfig } from '../common/interfaces';
 import { ITaskParameters } from '../ingestion/interfaces';
@@ -15,7 +17,11 @@ export class JobManagerWrapper extends JobManagerClient {
   private readonly ingestionNewJobType: string;
   private readonly initTaskType: string;
 
-  public constructor(@inject(SERVICES.CONFIG) private readonly config: IConfig, @inject(SERVICES.LOGGER) protected readonly logger: Logger) {
+  public constructor(
+    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.LOGGER) protected readonly logger: Logger,
+    @inject(SERVICES.TRACER) public readonly tracer: Tracer
+  ) {
     super(
       logger,
       config.get<string>('services.jobManagerURL'),
@@ -32,6 +38,7 @@ export class JobManagerWrapper extends JobManagerClient {
     };
   }
 
+  @withSpanAsyncV4
   public async createInitJob(data: NewRasterLayer): Promise<ICreateJobResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.createInitJob.name };
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
@@ -45,6 +52,7 @@ export class JobManagerWrapper extends JobManagerClient {
     }
   }
 
+  @withSpanAsyncV4
   public async createInitUpdateJob(
     id: string,
     version: string,
@@ -64,6 +72,7 @@ export class JobManagerWrapper extends JobManagerClient {
     }
   }
 
+  @withSpanAsyncV4
   private async createNewJob(data: NewRasterLayer, jobType: string, taskType: string, taskParams?: ITaskParameters[]): Promise<ICreateJobResponse> {
     const createLayerTasksUrl = `/jobs`;
     const createJobRequest: CreateJobBody = {
@@ -86,6 +95,7 @@ export class JobManagerWrapper extends JobManagerClient {
     return res;
   }
 
+  @withSpanAsyncV4
   private async createUpdateJob(
     id: string,
     version: string,

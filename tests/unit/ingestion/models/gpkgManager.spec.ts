@@ -1,5 +1,6 @@
 import jsLogger from '@map-colonies/js-logger';
 import { IConfig } from 'config'; // Import the correct type for IConfig
+import { trace } from '@opentelemetry/api';
 import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
 import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
@@ -12,7 +13,7 @@ describe('GpkgManager', () => {
   let validateTilesSizeSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    gpkgManager = new GpkgManager(configMock as unknown as IConfig, jsLogger({ enabled: false }));
+    gpkgManager = new GpkgManager(configMock as unknown as IConfig, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
     validateGpkgIndexSpy = jest.spyOn(gpkgManager as unknown as { validateGpkgIndex: jest.Mock }, 'validateGpkgIndex');
     validateGpkgGridSpy = jest.spyOn(gpkgManager as unknown as { validateGpkgGrid: jest.Mock }, 'validateGpkgGrid');
     validateTilesSizeSpy = jest.spyOn(gpkgManager as unknown as { validateTilesSize: jest.Mock }, 'validateTilesSize');

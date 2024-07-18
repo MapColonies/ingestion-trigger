@@ -3,6 +3,8 @@ import { Logger } from '@map-colonies/js-logger';
 import { InputFiles, ProductType, NewRasterLayer, UpdateRasterLayer, PolygonPart } from '@map-colonies/mc-model-types';
 import { ConflictError, BadRequestError } from '@map-colonies/error-types';
 import { ICreateJobResponse, IJobResponse, OperationStatus, IFindJobsByCriteriaBody } from '@map-colonies/mc-priority-queue';
+import { Tracer } from '@opentelemetry/api';
+import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../../common/constants';
 import { SourceValidator } from '../validators/sourceValidator';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
@@ -30,6 +32,7 @@ export class IngestionManager {
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     private readonly sourceValidator: SourceValidator,
     private readonly gdalInfoManager: GdalInfoManager,
     private readonly polygonPartValidator: PolygonPartValidator,
@@ -47,6 +50,7 @@ export class IngestionManager {
     this.swapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
   }
 
+  @withSpanAsyncV4
   public async getInfoData(inputFiles: InputFiles): Promise<InfoDataWithFile[]> {
     const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
 
@@ -61,6 +65,7 @@ export class IngestionManager {
     return filesGdalInfoData;
   }
 
+  @withSpanAsyncV4
   public async validateSources(inputFiles: InputFiles): Promise<SourcesValidationResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateSources.name };
     const { originDirectory, fileNames } = inputFiles;
@@ -101,6 +106,7 @@ export class IngestionManager {
     }
   }
 
+  @withSpanAsyncV4
   public async ingestNewLayer(rasterIngestionLayer: NewRasterLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.ingestNewLayer.name };
     await this.validateNewLayer(rasterIngestionLayer);
@@ -110,6 +116,7 @@ export class IngestionManager {
     this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
   }
 
+  @withSpanAsyncV4
   public async updateLayer(internalId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayer.name };
     const layerDetails: LayerDetails = await this.validateAndGetUpdatedLayerParams(internalId, rasterUpdateLayer);
@@ -122,6 +129,7 @@ export class IngestionManager {
     });
   }
 
+  @withSpanAsyncV4
   private async setAndCreateUpdateJob(
     internalId: string,
     layerDetails: LayerDetails,
@@ -140,6 +148,7 @@ export class IngestionManager {
     );
   }
 
+  @withSpanAsyncV4
   private async validateAndGetUpdatedLayerParams(resourceId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<LayerDetails> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateAndGetUpdatedLayerParams.name };
     const { metadata, partData, inputFiles } = rasterUpdateLayer;
@@ -162,6 +171,7 @@ export class IngestionManager {
     return { productId, productVersion, productType, productSubType };
   }
 
+  @withSpanAsyncV4
   private async validateNewLayer(rasterIngestionLayer: NewRasterLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateNewLayer.name };
     const { metadata, partData, inputFiles } = rasterIngestionLayer;
@@ -184,6 +194,7 @@ export class IngestionManager {
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
   }
 
+  @withSpanAsyncV4
   private async validateNoConflictingJobs(productId: string, productType: ProductType): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateNoConflictingJobs.name };
     const jobs = await this.getJobs(productId, productType);
@@ -199,6 +210,7 @@ export class IngestionManager {
     }
   }
 
+  @withSpanAsyncV4
   private async validateNoParallelJobs(productId: string, productType: ProductType): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateNoParallelJobs.name };
     const jobs = await this.getJobs(productId, productType, this.forbiddenJobTypes);
@@ -214,6 +226,7 @@ export class IngestionManager {
     }
   }
 
+  @withSpanAsyncV4
   private async getJobs(
     productId: string,
     productType: ProductType,
@@ -231,6 +244,7 @@ export class IngestionManager {
     return jobs;
   }
 
+  @withSpanAsyncV4
   private async validateLayerDoesntExistInMapProxy(layerName: string): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateLayerDoesntExistInMapProxy.name };
     const exists = await this.mapProxyClient.exists(layerName);
@@ -245,6 +259,7 @@ export class IngestionManager {
     }
   }
 
+  @withSpanAsyncV4
   private async validateLayerExistsInMapProxy(layerName: string): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateLayerExistsInMapProxy.name };
     const exists = await this.mapProxyClient.exists(layerName);
@@ -259,6 +274,7 @@ export class IngestionManager {
     }
   }
 
+  @withSpanAsyncV4
   private async isInCatalog(productId: string, productType: ProductType): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.isInCatalog.name };
     const existsInCatalog = await this.catalogClient.exists(productId, productType);
@@ -274,6 +290,7 @@ export class IngestionManager {
     }
   }
 
+  @withSpanAsyncV4
   private async getLayer(resourceId: string): Promise<IFindResponseRecord> {
     const layerDetails = await this.catalogClient.findByInternalId(resourceId);
     if (layerDetails.length === 0) {
@@ -286,6 +303,7 @@ export class IngestionManager {
     return layerDetails[0];
   }
 
+  @withSpanAsyncV4
   private async validateRequestInputs(partData: PolygonPart[], inputFiles: InputFiles): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateRequestInputs.name };
 

@@ -1,5 +1,6 @@
 import jsLogger from '@map-colonies/js-logger';
 import nock from 'nock';
+import { trace } from '@opentelemetry/api';
 import { JobManagerWrapper } from '../../../src/serviceClients/jobManagerWrapper';
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
 import { newLayerRequest, jobResponse, newJobRequest } from '../../mocks/newIngestionRequestMockData';
@@ -14,7 +15,7 @@ describe('jobManagerWrapper', () => {
     registerDefaultConfig();
     jobManagerURL = configMock.get<string>('services.jobManagerURL');
 
-    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }));
+    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
   });
   afterEach(() => {
     nock.cleanAll();

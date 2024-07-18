@@ -3,6 +3,7 @@ import nock from 'nock';
 import { ConflictError, BadRequestError } from '@map-colonies/error-types';
 import { ProductType } from '@map-colonies/mc-model-types';
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
+import { trace } from '@opentelemetry/api';
 import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
@@ -56,17 +57,18 @@ describe('IngestionManager', () => {
     metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType },
   };
   const forbiddenJobTypesForParallelIngestion = configMock.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
-
+  const testTracer = trace.getTracer('testTracer');
   beforeEach(() => {
     registerDefaultConfig();
 
-    mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }));
-    catalogClient = new CatalogClient(configMock, jsLogger({ enabled: false }));
-    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }));
+    mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }), testTracer);
+    catalogClient = new CatalogClient(configMock, jsLogger({ enabled: false }), testTracer);
+    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }), testTracer);
 
     ingestionManager = new IngestionManager(
       jsLogger({ enabled: false }),
       configMock,
+      testTracer,
       sourceValidator as unknown as SourceValidator,
       gdalInfoManagerMock as unknown as GdalInfoManager,
       polygonPartValidatorMock as unknown as PolygonPartValidator,

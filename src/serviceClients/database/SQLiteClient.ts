@@ -2,6 +2,8 @@ import { join } from 'path';
 import Database, { Database as SQLiteDB, SqliteError } from 'better-sqlite3';
 import { Logger } from '@map-colonies/js-logger';
 import { inject, injectable } from 'tsyringe';
+import { Tracer } from '@opentelemetry/api';
+import { withSpanV4 } from '@map-colonies/telemetry';
 import { IConfig } from '../../common/interfaces';
 import { SERVICES } from '../../common/constants';
 import { Grid, IMatrixValues, TileSize, matrixRatioToGrid } from '../../ingestion/interfaces';
@@ -16,6 +18,7 @@ export class SQLiteClient {
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     private readonly packageName: string,
     private readonly originDirectory: string
   ) {
@@ -27,6 +30,7 @@ export class SQLiteClient {
     };
   }
 
+  @withSpanV4
   public getDB(fileMustExistFlag: boolean): SQLiteDB {
     try {
       return new Database(this.fullPath, { fileMustExist: fileMustExistFlag });
@@ -37,6 +41,7 @@ export class SQLiteClient {
     }
   }
 
+  @withSpanV4
   public isGpkgIndexExist(): boolean {
     let db: SQLiteDB | undefined;
     const logCtx = { ...this.logContext, function: this.isGpkgIndexExist.name };
@@ -53,6 +58,7 @@ export class SQLiteClient {
     return hasGpkgIndex;
   }
 
+  @withSpanV4
   public getGrid(): Grid {
     const logCtx = { ...this.logContext, function: this.getGrid.name };
     let db: SQLiteDB | undefined;
@@ -69,6 +75,7 @@ export class SQLiteClient {
     }
   }
 
+  @withSpanV4
   public getGpkgTileSize(): TileSize {
     const logCtx = { ...this.logContext, function: this.getGpkgTileSize.name };
     let db: SQLiteDB | undefined;
@@ -91,8 +98,7 @@ export class SQLiteClient {
       this.closeDB(db);
     }
   }
-
-  /* istanbul ignore next @preserve */
+  @withSpanV4
   private hasUniqueGpkgIndex(db: SQLiteDB, tableName: string): boolean {
     const logCtx = { ...this.logContext, function: this.hasUniqueGpkgIndex.name };
     const query = `SELECT name FROM pragma_index_list('${tableName}') WHERE "unique" = 1 AND origin = 'u';`;
@@ -124,7 +130,7 @@ export class SQLiteClient {
     }
   }
 
-  /* istanbul ignore next @preserve */
+  @withSpanV4
   private hasGpkgManualIndex(db: SQLiteDB, tableName: string): boolean {
     const logCtx = { ...this.logContext, function: this.hasGpkgManualIndex.name };
     const query = `SELECT COUNT(*) as count
@@ -140,7 +146,7 @@ export class SQLiteClient {
     }
   }
 
-  /* istanbul ignore next @preserve */
+  @withSpanV4
   private getMatrixValues(db: SQLiteDB): IMatrixValues {
     const query = 'SELECT MAX(matrix_width) as matrixWidth, MAX(matrix_height) as matrixHeight FROM gpkg_tile_matrix';
     try {
@@ -151,7 +157,7 @@ export class SQLiteClient {
     }
   }
 
-  /* istanbul ignore next @preserve */
+  @withSpanV4
   private getGpkgTableName(db: SQLiteDB): string {
     const query = 'SELECT table_name FROM gpkg_contents';
     const logCtx = { ...this.logContext, function: this.getGpkgTableName.name };
@@ -168,7 +174,7 @@ export class SQLiteClient {
     }
   }
 
-  /* istanbul ignore next @preserve */
+  @withSpanV4
   private closeDB(db: SQLiteDB | undefined): void {
     if (db !== undefined) {
       db.close();

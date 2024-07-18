@@ -71,6 +71,17 @@ cloudProvider:
   imagePullSecretName: 'my-registry-secret'
   flavor: openshift
 
+tracing:
+  enabled: false
+  url: ''
+
+metrics:
+  enabled: false
+  url: ''
+  prometheus:
+    scrape: true
+    port: 8080
+
 image:
   repository: ingestion-trigger
   tag: 'latest'
@@ -121,12 +132,6 @@ env:
   logPrettyPrintEnabled: false
   responseCompressionEnabled: true
   requestPayloadLimit: 1mb
-  tracing:
-    enabled: false
-    url: http://localhost:55681/v1/trace
-  metrics:
-    enabled: false
-    url: http://localhost:55681/v1/metrics
   storageExplorer:  
     layerSourceDir: '/layerSources'
     displayNameDir: "\\layerSources"
@@ -152,7 +157,7 @@ env:
     - Ingestion_Swap_Update  
 
 resources:
-  enabled: true
+  enabled: false
   value:
     limits:
       cpu: 100m
@@ -162,7 +167,7 @@ resources:
       memory: 128Mi
 
 route:
-  enabled: true
+  enabled: false
   path: /
   timeout:
     enabled: false # defaults to 30s by openshift

@@ -1,4 +1,4 @@
-FROM node:20 as build
+FROM node:20.15.1-slim as build
 
 
 WORKDIR /tmp/buildApp
@@ -9,9 +9,9 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-FROM node:20.3.1-alpine3.17 as production
+FROM node:20.15.1-slim as production
 
-RUN apk add dumb-init
+RUN apt-get update && apt-get install -y dumb-init
 
 ENV NODE_ENV=production
 ENV SERVER_PORT=8080
@@ -29,4 +29,4 @@ COPY --chown=node:node ./config ./config
 
 USER node
 EXPOSE 8080
-CMD ["dumb-init", "node", "--max_old_space_size=512", "./index.js"]
+CMD ["dumb-init", "node", "--max_old_space_size=512", "--require", "./common/tracing.js", "./index.js"]

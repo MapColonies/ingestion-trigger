@@ -1,6 +1,7 @@
 import jsLogger from '@map-colonies/js-logger';
 import { IConfig } from 'config';
 import nock from 'nock';
+import { trace } from '@opentelemetry/api';
 import { CatalogClient } from '../../../src/serviceClients/catalogClient';
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
 import { newLayerRequest } from '../../mocks/newIngestionRequestMockData';
@@ -17,7 +18,7 @@ describe('CatalogClient', () => {
       metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType },
     };
 
-    catalogClient = new CatalogClient(configMock as unknown as IConfig, jsLogger({ enabled: false }));
+    catalogClient = new CatalogClient(configMock as unknown as IConfig, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
   });
   afterEach(() => {
     nock.cleanAll();

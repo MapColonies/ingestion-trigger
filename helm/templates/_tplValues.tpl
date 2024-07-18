@@ -64,3 +64,11 @@ Custom definitions
 {{- define "common.ingestion.merged" -}}
 {{- include "common.tplvalues.merge" ( dict "values" ( list .Values.ingestion .Values.global.ingestion ) "context" . ) }}
 {{- end -}}
+
+{{- define "common.tracing.merged" -}}
+{{- include "common.tplvalues.merge" ( dict "values" ( list .Values.tracing .Values.global.tracing ) "context" . ) }}
+{{- end -}}
+
+{{- define "common.metrics.merged" -}}
+{{- include "common.tplvalues.merge" ( dict "values" ( list .Values.metrics .Values.global.metrics ) "context" . ) }}
+{{- end -}}
