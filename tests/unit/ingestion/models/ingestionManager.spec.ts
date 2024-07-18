@@ -57,18 +57,18 @@ describe('IngestionManager', () => {
     metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType },
   };
   const forbiddenJobTypesForParallelIngestion = configMock.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
-
+  const testTracer = trace.getTracer('testTracer');
   beforeEach(() => {
     registerDefaultConfig();
 
-    mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
-    catalogClient = new CatalogClient(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
-    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
+    mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }), testTracer);
+    catalogClient = new CatalogClient(configMock, jsLogger({ enabled: false }), testTracer);
+    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }), testTracer);
 
     ingestionManager = new IngestionManager(
       jsLogger({ enabled: false }),
       configMock,
-      trace.getTracer('testTracer'),
+      testTracer,
       sourceValidator as unknown as SourceValidator,
       gdalInfoManagerMock as unknown as GdalInfoManager,
       polygonPartValidatorMock as unknown as PolygonPartValidator,

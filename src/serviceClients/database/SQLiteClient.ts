@@ -1,4 +1,3 @@
-/* istanbul ignore file @preserve */
 import { join } from 'path';
 import Database, { Database as SQLiteDB, SqliteError } from 'better-sqlite3';
 import { Logger } from '@map-colonies/js-logger';
