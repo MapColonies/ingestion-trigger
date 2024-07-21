@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.2](https://github.com/MapColonies/ingestion-trigger/compare/v1.1.1...v1.1.2) (2024-07-21)
+
+
+### Bug Fixes
+
+* placement of task type in values ([#8](https://github.com/MapColonies/ingestion-trigger/issues/8)) ([9608546](https://github.com/MapColonies/ingestion-trigger/commit/96085461c8d6ac841a6c2c79fae2ca138936d076))
+
 ### [1.1.1](https://github.com/MapColonies/ingestion-trigger/compare/v1.1.0...v1.1.1) (2024-07-18)
 
 ## 1.1.0 (2024-07-18)
