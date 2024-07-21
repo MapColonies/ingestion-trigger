@@ -9,9 +9,9 @@ global:
     jobManager: ""
   jobManagement:
     jobDomain: RASTER
-    tasks:
-      initTaskType: ""
     ingestion:
+      init:
+        taskType: ""
       new: 
         jobType: ""
       update: 
@@ -47,9 +47,9 @@ serviceUrls:
   jobManager: ""
 jobManagement:
   jobDomain: ""
-  tasks:
-      initTaskType: ""
   ingestion:
+    init:
+      taskType: ""
     new: 
       jobType: ""
     update: 

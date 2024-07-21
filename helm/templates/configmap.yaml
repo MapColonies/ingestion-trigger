@@ -33,7 +33,7 @@ data:
   INGESTION_NEW_JOB_TYPE: {{ $jobManagement.ingestion.new.jobType | quote }}
   INGESTION_UPDATE_JOB_TYPE: {{ $jobManagement.ingestion.update.jobType | quote }}
   INGESTION_SWAP_UPDATE_JOB_TYPE: {{ $jobManagement.ingestion.updateSwap.jobType | quote }}
-  INIT_TASK_TYPE: {{ $jobManagement.tasks.initTaskType | quote }}
+  INIT_TASK_TYPE: {{ $jobManagement.ingestion.init.taskType | quote }}
   CRS: {{ .Values.env.validationValuesByInfo.crs | toJson | quote}}
   FILE_FORMAT: {{ .Values.env.validationValuesByInfo.fileFormat | toJson | quote}}
   TILE_SIZE: {{ .Values.env.validationValuesByInfo.tileSize | quote}}
