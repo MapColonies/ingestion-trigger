@@ -1,4 +1,3 @@
-import config from 'config';
 import { getOtelMixin } from '@map-colonies/telemetry';
 import { trace, metrics as OtelMetrics } from '@opentelemetry/api';
 import { DependencyContainer } from 'tsyringe/dist/typings/types';
@@ -10,14 +9,15 @@ import { tracing } from './common/tracing';
 import { InjectionObject, registerDependencies } from './common/dependencyRegistration';
 import { INGESTION_ROUTER_SYMBOL, ingestionRouterFactory } from './ingestion/routes/ingestionRouter';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, schemasValidationsFactory } from './utils/validation/schemasValidator';
-import { getConfig } from './common/config';
+import { getConfig, initConfig } from './common/config';
 
 export interface RegisterOptions {
   override?: InjectionObject<unknown>[];
   useChild?: boolean;
 }
 
-export const registerExternalValues = (options?: RegisterOptions): Promise<DependencyContainer> => {
+export const registerExternalValues = async (options?: RegisterOptions): Promise<DependencyContainer> => {
+  await initConfig(true);
   const configInstance = getConfig();
   const loggerConfig = configInstance.get('telemetry.logger');
   const logger = jsLogger({ ...loggerConfig, prettyPrint: loggerConfig.prettyPrint, mixin: getOtelMixin() });
@@ -46,5 +46,5 @@ export const registerExternalValues = (options?: RegisterOptions): Promise<Depen
     },
   ];
 
-  return Promise.resolve(registerDependencies(dependencies, options?.override, options?.useChild));
+  return registerDependencies(dependencies, options?.override, options?.useChild);
 };

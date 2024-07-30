@@ -5,17 +5,19 @@ import { Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { FindRecordResponse, IConfig } from '../common/interfaces';
 import { SERVICES } from '../common/constants';
+import { ConfigType } from '../common/config';
 
 @injectable()
 export class CatalogClient extends HttpClient {
   public constructor(
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.LOGGER) protected readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer
   ) {
+    const a = config.get('services.catalogServiceURL')
     super(
       logger,
-      config.get<string>('services.catalogServiceURL'),
+      config.get('services.catalogServiceURL'),
       'CatalogClient',
       config.get<IHttpRetryConfig>('httpRetry'),
       config.get<boolean>('disableHttpClientLogs')

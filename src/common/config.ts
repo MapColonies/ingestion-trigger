@@ -16,8 +16,9 @@ async function initConfig(offlineMode?:boolean): Promise<void> {
     configName: 'ingestion-trigger-config',
     configServerUrl: 'http://localhost:8080',
     schema: rasterIngestionIngestionTriggerV1,
-    version: 'latest',
-    offlineMode: offlineMode
+    version: 1,
+    offlineMode: offlineMode,
+    localConfigPath: './config'
   });
 }
 
