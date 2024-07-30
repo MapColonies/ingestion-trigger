@@ -14,13 +14,12 @@ export class CatalogClient extends HttpClient {
     @inject(SERVICES.LOGGER) protected readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer
   ) {
-    const a = config.get('services.catalogServiceURL')
     super(
       logger,
       config.get('services.catalogServiceURL'),
       'CatalogClient',
-      config.get<IHttpRetryConfig>('httpRetry'),
-      config.get<boolean>('disableHttpClientLogs')
+      config.get('httpRetry'),
+      config.get('disableHttpClientLogs')
     );
   }
 
