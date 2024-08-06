@@ -3,7 +3,7 @@ import { Logger } from '@map-colonies/js-logger';
 import { InputFiles, ProductType, NewRasterLayer, UpdateRasterLayer, PolygonPart } from '@map-colonies/mc-model-types';
 import { ConflictError, BadRequestError } from '@map-colonies/error-types';
 import { ICreateJobResponse, IJobResponse, OperationStatus, IFindJobsByCriteriaBody } from '@map-colonies/mc-priority-queue';
-import { Tracer } from '@opentelemetry/api';
+import { Exception, SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../../common/constants';
 import { SourceValidator } from '../validators/sourceValidator';
@@ -53,7 +53,6 @@ export class IngestionManager {
   @withSpanAsyncV4
   public async getInfoData(inputFiles: InputFiles): Promise<InfoDataWithFile[]> {
     const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
-
     const { originDirectory, fileNames } = inputFiles;
     this.logger.info({ msg: 'getting gdal info for files', logContext: logCtx, metadata: { originDirectory, fileNames } });
 
@@ -61,7 +60,8 @@ export class IngestionManager {
     this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { originDirectory, fileNames } });
 
     const filesGdalInfoData = await this.gdalInfoManager.getInfoData(originDirectory, fileNames);
-
+    trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.OK });
+    trace.getActiveSpan()?.addEvent('getInfoData.get.ok');
     return filesGdalInfoData;
   }
 
@@ -88,10 +88,14 @@ export class IngestionManager {
         logContext: logCtx,
         metadata: { originDirectory, fileNames, isValid: validationResult.isValid },
       });
+      trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.OK });
+      trace.getActiveSpan()?.addEvent('ingestionManager.validateSources.valid', { isValid: true });
       return validationResult;
     } catch (err) {
       if (err instanceof FileNotFoundError || err instanceof GdalInfoError || err instanceof GpkgError) {
         this.logger.info({ msg: `Sources are not valid:${err.message}`, logContext: logCtx, err: err, metadata: { originDirectory, fileNames } });
+        trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.ERROR });
+        trace.getActiveSpan()?.addEvent('ingestionManager.validateSources.invalid', { isValid: false });
         return { isValid: false, message: err.message };
       }
 
@@ -101,7 +105,8 @@ export class IngestionManager {
         err,
         metadata: { originDirectory, fileNames },
       });
-
+      trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.ERROR });
+      trace.getActiveSpan()?.recordException(err as Exception);
       throw err;
     }
   }
@@ -109,24 +114,33 @@ export class IngestionManager {
   @withSpanAsyncV4
   public async ingestNewLayer(rasterIngestionLayer: NewRasterLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.ingestNewLayer.name };
+    const ingestionSpan = trace.getActiveSpan();
+
     await this.validateNewLayer(rasterIngestionLayer);
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
+    ingestionSpan?.addEvent('ingestionManager.validate_new_layer.success', { validationSuccess: true });
 
     const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(rasterIngestionLayer);
+
+    ingestionSpan?.addEvent('ingestionManager.trigger_ingestion.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
     this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
   }
 
   @withSpanAsyncV4
   public async updateLayer(internalId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayer.name };
+    const updateSpan = trace.getActiveSpan();
+
     const layerDetails: LayerDetails = await this.validateAndGetUpdatedLayerParams(internalId, rasterUpdateLayer);
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
+    updateSpan?.addEvent('ingestionManager.validate_update_layer.success', { validationSuccess: true });
 
     const response = await this.setAndCreateUpdateJob(internalId, layerDetails, rasterUpdateLayer);
     this.logger.info({
       msg: `new update job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `,
       logContext: logCtx,
     });
+    updateSpan?.addEvent('ingestionManager.trigger_update.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
   }
 
   @withSpanAsyncV4
@@ -151,6 +165,7 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async validateAndGetUpdatedLayerParams(resourceId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<LayerDetails> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateAndGetUpdatedLayerParams.name };
+
     const { metadata, partData, inputFiles } = rasterUpdateLayer;
     this.logger.debug({ msg: 'started update layer validation', requestBody: { metadata, partData, inputFiles }, logCtx: logCtx });
     this.logger.info({
@@ -162,12 +177,12 @@ export class IngestionManager {
     //catalog call must be before map proxy to get productId and Type
     const layerDetails = await this.getLayer(resourceId);
     const { productId, productVersion, productType, productSubType = '' } = layerDetails.metadata as LayerDetails;
+    trace.getActiveSpan()?.addEvent('update.getLayer', { productId, productVersion, productType, productSubType });
 
     const layerName = getMapServingLayerName(productId, productType);
     await this.validateLayerExistsInMapProxy(layerName);
     await this.validateNoParallelJobs(productId, productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
-
     return { productId, productVersion, productType, productSubType };
   }
 
@@ -185,13 +200,13 @@ export class IngestionManager {
     });
 
     await this.validateRequestInputs(partData, inputFiles);
-
     //catalog ,mapproxy, jobmanager validation
     const layerName = getMapServingLayerName(metadata.productId, metadata.productType);
     await this.validateLayerDoesntExistInMapProxy(layerName);
     await this.isInCatalog(metadata.productId, metadata.productType);
     await this.validateNoConflictingJobs(metadata.productId, metadata.productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
+    trace.getActiveSpan()?.addEvent('validation.successful');
   }
 
   @withSpanAsyncV4
@@ -206,7 +221,9 @@ export class IngestionManager {
         msg: message,
         logCtx: logCtx,
       });
-      throw new ConflictError(message);
+      const error = new ConflictError(message);
+      trace.getActiveSpan()?.recordException(error);
+      throw error;
     }
   }
 
@@ -222,7 +239,9 @@ export class IngestionManager {
         msg: message,
         logCtx: logCtx,
       });
-      throw new ConflictError(message);
+      const error = new ConflictError(message);
+      trace.getActiveSpan()?.recordException(error);
+      throw error;
     }
   }
 
@@ -255,7 +274,9 @@ export class IngestionManager {
         msg: message,
         logCtx: logCtx,
       });
-      throw new ConflictError(message);
+      const error = new ConflictError(message);
+      trace.getActiveSpan()?.recordException(error);
+      throw error;
     }
   }
 
@@ -270,7 +291,9 @@ export class IngestionManager {
         msg: message,
         logCtx: logCtx,
       });
-      throw new BadRequestError(message);
+      const error = new BadRequestError(message);
+      trace.getActiveSpan()?.recordException(error);
+      throw error;
     }
   }
 
@@ -286,7 +309,9 @@ export class IngestionManager {
         msg: message,
         logCtx: logCtx,
       });
-      throw new ConflictError(message);
+      const error = new ConflictError(message);
+      trace.getActiveSpan()?.recordException(error);
+      throw error;
     }
   }
 
@@ -295,10 +320,14 @@ export class IngestionManager {
     const layerDetails = await this.catalogClient.findByInternalId(resourceId);
     if (layerDetails.length === 0) {
       const message = `there isnt a layer with id of ${resourceId}`;
-      throw new BadRequestError(message);
+      const error = new BadRequestError(message);
+      trace.getActiveSpan()?.recordException(error);
+      throw error;
     } else if (layerDetails.length !== 1) {
       const message = `found more than one Layer with id of ${resourceId} . Please check the catalog Layers`;
-      throw new ConflictError(message);
+      const error = new ConflictError(message);
+      trace.getActiveSpan()?.recordException(error);
+      throw error;
     }
     return layerDetails[0];
   }
@@ -312,7 +341,9 @@ export class IngestionManager {
     if (!isValidSources.isValid) {
       const errorMessage = isValidSources.message;
       this.logger.error({ msg: errorMessage, logContext: logCtx, inputFiles: { inputFiles } });
-      throw new UnsupportedEntityError(isValidSources.message);
+      const error = new UnsupportedEntityError(isValidSources.message);
+      trace.getActiveSpan()?.recordException(error);
+      throw error;
     }
     this.logger.debug({ msg: 'validated sources', logContext: logCtx });
 

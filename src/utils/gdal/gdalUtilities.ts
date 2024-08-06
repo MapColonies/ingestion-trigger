@@ -1,6 +1,8 @@
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import * as gdal from 'gdal-async';
+import { Tracer } from '@opentelemetry/api';
+import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../../common/constants';
 import { InfoData } from '../../ingestion/schemas/infoDataSchema';
 import { GdalInfo } from '../../ingestion/schemas/gdalDataSchema';
@@ -13,6 +15,7 @@ export class GdalUtilities {
 
   public constructor(
     @inject(SERVICES.LOGGER) protected readonly logger: Logger,
+    @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator
   ) {
     this.logContext = {
@@ -21,6 +24,7 @@ export class GdalUtilities {
     };
   }
 
+  @withSpanAsyncV4
   public async getInfoData(filePath: string): Promise<InfoData> {
     const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
 
@@ -57,6 +61,7 @@ export class GdalUtilities {
     }
   }
 
+  @withSpanAsyncV4
   private async parseAndValidateGdalInfo(jsonString: string): Promise<GdalInfo> {
     const logCtx: LogContext = { ...this.logContext, function: this.parseAndValidateGdalInfo.name };
     this.logger.debug({
@@ -70,6 +75,7 @@ export class GdalUtilities {
     return validatedData;
   }
 
+  @withSpanAsyncV4
   private async getDataset(filePath: string): Promise<gdal.Dataset> {
     const logCtx: LogContext = { ...this.logContext, function: this.getDataset.name };
 
