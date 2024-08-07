@@ -2,7 +2,7 @@ import { join } from 'path';
 import Database, { Database as SQLiteDB, SqliteError } from 'better-sqlite3';
 import { Logger } from '@map-colonies/js-logger';
 import { inject, injectable } from 'tsyringe';
-import { Tracer } from '@opentelemetry/api';
+import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { withSpanV4 } from '@map-colonies/telemetry';
 import { IConfig } from '../../common/interfaces';
 import { SERVICES } from '../../common/constants';
@@ -196,8 +196,14 @@ export class SQLiteClient {
     });
 
     if (error instanceof SqliteError) {
-      throw new SqliteError(`${message}: ${errorMessage}`, error.code);
+      const err = new SqliteError(`${message}: ${errorMessage}`, error.code);
+      trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.ERROR });
+      trace.getActiveSpan()?.recordException(err);
+      throw err;
     }
-    throw new GpkgError(`${message}: ${errorMessage}`);
+    const err = new GpkgError(`${message}: ${errorMessage}`);
+    trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.ERROR });
+    trace.getActiveSpan()?.recordException(err);
+    throw err;
   }
 }

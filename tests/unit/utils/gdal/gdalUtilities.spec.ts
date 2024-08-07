@@ -1,5 +1,6 @@
 import jsLogger from '@map-colonies/js-logger';
 
+import { trace } from '@opentelemetry/api';
 import { GdalUtilities } from '../../../../src/utils/gdal/gdalUtilities';
 import { registerDefaultConfig } from '../../../mocks/configMock';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
@@ -13,7 +14,7 @@ describe('gdalUtilities', () => {
     const [, container] = getApp();
     const schemasValidator = container.resolve<SchemasValidator>(INGESTION_SCHEMAS_VALIDATOR_SYMBOL);
     jest.resetAllMocks();
-    gdalUtilities = new GdalUtilities(jsLogger({ enabled: false }), schemasValidator);
+    gdalUtilities = new GdalUtilities(jsLogger({ enabled: false }), trace.getTracer('testTracer'), schemasValidator);
     registerDefaultConfig();
   });
 
