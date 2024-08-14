@@ -1,15 +1,18 @@
 import config from 'config';
 import get from 'lodash.get';
 import has from 'lodash.has';
-import { IConfig } from '../../src/common/interfaces';
+import { ConfigType } from '../../src/common/config';
 
 let mockConfig: Record<string, unknown> = {};
 const getMock = jest.fn();
 const hasMock = jest.fn();
 
-const configMock: IConfig = {
+const configMock: ConfigType = {
   get: getMock,
-  has: hasMock,
+  getAll: jest.fn(),
+  getConfigParts: jest.fn(),
+  getResolvedOptions: jest.fn(),
+  //has: hasMock,
 };
 
 const init = (): void => {
@@ -39,7 +42,6 @@ const setConfigValues = (values: Record<string, unknown>): void => {
 };
 
 const registerDefaultConfig = (): void => {
-  const EPSG = 4326;
   const config = {
     openapiConfig: {
       filePath: './bundledApi.yaml',
@@ -75,7 +77,7 @@ const registerDefaultConfig = (): void => {
     },
 
     validationValuesByInfo: {
-      crs: [EPSG],
+      crs: [4326],
       fileFormat: ['GPKG'],
       tileSize: 256,
       resolutionFixedPointTolerance: 12,

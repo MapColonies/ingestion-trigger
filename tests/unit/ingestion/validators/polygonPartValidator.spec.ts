@@ -10,7 +10,7 @@ describe('PolygonPartValidator', () => {
 
   beforeEach(() => {
     registerDefaultConfig();
-    polygonPartValidator = new PolygonPartValidator(jsLogger({ enabled: false }), configMock as unknown as IConfig);
+    polygonPartValidator = new PolygonPartValidator(jsLogger({ enabled: false }), configMock);
   });
   afterEach(() => {
     jest.restoreAllMocks();

@@ -2,13 +2,12 @@ import { Logger } from '@map-colonies/js-logger';
 import { inject, injectable } from 'tsyringe';
 import { NewRasterLayer, UpdateRasterLayer } from '@map-colonies/mc-model-types';
 import { ICreateJobBody, ICreateJobResponse, IJobResponse, OperationStatus, ITaskResponse, JobManagerClient } from '@map-colonies/mc-priority-queue';
-import { IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../common/constants';
-import { IConfig } from '../common/interfaces';
 import { ITaskParameters } from '../ingestion/interfaces';
 import { LogContext } from '../utils/logger/logContext';
+import { ConfigType } from '../common/config';
 
 @injectable()
 export class JobManagerWrapper extends JobManagerClient {
@@ -18,20 +17,14 @@ export class JobManagerWrapper extends JobManagerClient {
   private readonly initTaskType: string;
 
   public constructor(
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.LOGGER) protected readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer
   ) {
-    super(
-      logger,
-      config.get<string>('services.jobManagerURL'),
-      config.get<IHttpRetryConfig>('httpRetry'),
-      'jobManagerClient',
-      config.get<boolean>('disableHttpClientLogs')
-    );
-    this.jobDomain = config.get<string>('jobManager.jobDomain');
-    this.ingestionNewJobType = config.get<string>('jobManager.ingestionNewJobType');
-    this.initTaskType = config.get<string>('jobManager.initTaskType');
+    super(logger, config.get('services.jobManagerURL'), config.get('httpRetry'), 'jobManagerClient', config.get('disableHttpClientLogs'));
+    this.jobDomain = config.get('jobManager.jobDomain');
+    this.ingestionNewJobType = config.get('jobManager.ingestionNewJobType');
+    this.initTaskType = config.get('jobManager.initTaskType');
     this.logContext = {
       fileName: __filename,
       class: JobManagerWrapper.name,

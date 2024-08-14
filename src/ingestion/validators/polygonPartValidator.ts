@@ -5,7 +5,6 @@ import booleanContains from '@turf/boolean-contains';
 import isValidGeoJson from '@turf/boolean-valid';
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
-import { IConfig } from 'config';
 import { PolygonPart } from '@map-colonies/mc-model-types';
 import { LogContext } from '../../utils/logger/logContext';
 import { SERVICES } from '../../common/constants';
@@ -13,19 +12,20 @@ import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';
 import { GeometryValidationError, PixelSizeError } from '../errors/ingestionErrors';
 import { isPixelSizeValid } from '../../utils/pixelSizeValidate';
+import { ConfigType } from '../../common/config';
 
 @injectable()
 export class PolygonPartValidator {
   private readonly logContext: LogContext;
   private readonly extentBufferInMeters: number;
   private readonly resolutionFixedPointTolerance: number;
-  public constructor(@inject(SERVICES.LOGGER) private readonly logger: Logger, @inject(SERVICES.CONFIG) private readonly config: IConfig) {
+  public constructor(@inject(SERVICES.LOGGER) private readonly logger: Logger, @inject(SERVICES.CONFIG) private readonly config: ConfigType) {
     this.logContext = {
       fileName: __filename,
       class: PolygonPartValidator.name,
     };
-    this.extentBufferInMeters = this.config.get<number>('validationValuesByInfo.extentBufferInMeters');
-    this.resolutionFixedPointTolerance = this.config.get<number>('validationValuesByInfo.resolutionFixedPointTolerance');
+    this.extentBufferInMeters = this.config.get('validationValuesByInfo.extentBufferInMeters');
+    this.resolutionFixedPointTolerance = this.config.get('validationValuesByInfo.resolutionFixedPointTolerance');
   }
 
   public validate(partData: PolygonPart[], infoDataFiles: InfoDataWithFile[]): void {

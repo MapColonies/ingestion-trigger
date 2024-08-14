@@ -1,7 +1,7 @@
 import { getOtelMixin } from '@map-colonies/telemetry';
 import { trace, metrics as OtelMetrics } from '@opentelemetry/api';
 import { DependencyContainer } from 'tsyringe/dist/typings/types';
-import jsLogger, { LoggerOptions } from '@map-colonies/js-logger';
+import jsLogger from '@map-colonies/js-logger';
 import { instancePerContainerCachingFactory } from 'tsyringe';
 import { Metrics } from '@map-colonies/telemetry';
 import { SERVICES, SERVICE_NAME } from './common/constants';

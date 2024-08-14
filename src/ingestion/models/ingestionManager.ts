@@ -14,12 +14,17 @@ import { LogContext } from '../../utils/logger/logContext';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import { PolygonPartValidator } from '../validators/polygonPartValidator';
 import { CatalogClient } from '../../serviceClients/catalogClient';
-import { IConfig, IFindResponseRecord, ISupportedIngestionSwapTypes, LayerDetails } from '../../common/interfaces';
+import { IFindResponseRecord, ISupportedIngestionSwapTypes, LayerDetails } from '../../common/interfaces';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
 import { ITaskParameters } from '../interfaces';
 import { getMapServingLayerName } from '../../utils/layerNameGenerator';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
+import { ConfigType } from '../../common/config';
 import { GdalInfoManager } from './gdalInfoManager';
+
+// export type Prettify<Type> = {
+//   [Key in keyof Type]: Type[Key];
+// } & {};
 
 @injectable()
 export class IngestionManager {
@@ -31,7 +36,7 @@ export class IngestionManager {
 
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     private readonly sourceValidator: SourceValidator,
     private readonly gdalInfoManager: GdalInfoManager,
@@ -44,10 +49,10 @@ export class IngestionManager {
       fileName: __filename,
       class: IngestionManager.name,
     };
-    this.forbiddenJobTypes = this.config.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
-    this.supportedIngestionSwapTypes = this.config.get<ISupportedIngestionSwapTypes[]>('jobManager.supportedIngestionSwapTypes');
-    this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
-    this.swapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
+    this.forbiddenJobTypes = this.config.get('jobManager.forbiddenJobTypesForParallelIngestion');
+    this.supportedIngestionSwapTypes = this.config.get('jobManager.supportedIngestionSwapTypes') as ISupportedIngestionSwapTypes[];
+    this.updateJobType = config.get('jobManager.ingestionUpdateJobType');
+    this.swapUpdateJobType = config.get('jobManager.ingestionSwapUpdateJobType');
   }
 
   @withSpanAsyncV4

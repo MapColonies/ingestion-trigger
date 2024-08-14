@@ -25,8 +25,8 @@ describe('GdalInfoManager', () => {
     getInfoData: jest.fn(),
   };
 
-  beforeEach(() => {
-    const [, container] = getApp({
+  beforeEach(async () => {
+    const [, container] = await getApp({
       override: [...getTestContainerConfig()],
       useChild: true,
     });

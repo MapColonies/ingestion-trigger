@@ -2,9 +2,9 @@ import { z } from 'zod';
 import { zoomLevelToResolutionDeg } from '@map-colonies/mc-utils';
 import { GeoJSON } from 'geojson';
 import { DependencyContainer } from 'tsyringe';
-import { IConfig } from 'config';
 import { PixelRange } from '../interfaces';
 import { SERVICES } from '../../common/constants';
+import { ConfigType } from '../../common/config';
 
 const basicInfoDataSchema = z
   .object({
@@ -24,9 +24,9 @@ export const pixelSizeRange: PixelRange = { min: zoomLevelToResolutionDeg(22) as
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const createInfoDataSchema = (container: DependencyContainer) => {
-  const config = container.resolve<IConfig>(SERVICES.CONFIG);
-  const validCRSs = config.get<number[]>('validationValuesByInfo.crs');
-  const validFormats = config.get<string[]>('validationValuesByInfo.fileFormat').map((format) => format.toLowerCase());
+  const config = container.resolve<ConfigType>(SERVICES.CONFIG);
+  const validCRSs = config.get('validationValuesByInfo.crs');
+  const validFormats = config.get('validationValuesByInfo.fileFormat').map((format) => format.toLowerCase());
 
   const infoDataSchema = basicInfoDataSchema
     .refine(

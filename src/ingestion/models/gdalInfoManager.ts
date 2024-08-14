@@ -1,7 +1,6 @@
 import { join } from 'node:path';
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
-import { IConfig } from 'config';
 import { Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { GdalUtilities } from '../../utils/gdal/gdalUtilities';
@@ -10,6 +9,7 @@ import { GdalInfoError } from '../errors/ingestionErrors';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { LogContext } from '../../utils/logger/logContext';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
+import { ConfigType } from '../../common/config';
 
 @injectable()
 export class GdalInfoManager {
@@ -17,7 +17,7 @@ export class GdalInfoManager {
   private readonly logContext: LogContext;
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator,
     private readonly gdalUtilities: GdalUtilities
@@ -26,7 +26,7 @@ export class GdalInfoManager {
       fileName: __filename,
       class: GdalInfoManager.name,
     };
-    this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
+    this.sourceMount = this.config.get('storageExplorer.layerSourceDir');
   }
 
   @withSpanAsyncV4

@@ -1,5 +1,4 @@
 import { inject, injectable } from 'tsyringe';
-import { IConfig } from 'config';
 import { Logger } from '@map-colonies/js-logger';
 import { Tracer } from '@opentelemetry/api';
 import { withSpanV4 } from '@map-colonies/telemetry';
@@ -8,13 +7,14 @@ import { SQLiteClient } from '../../serviceClients/database/SQLiteClient';
 import { InvalidIndexError, UnsupportedGridError, UnsupportedTileSizeError } from '../../serviceClients/database/errors';
 import { LogContext } from '../../utils/logger/logContext';
 import { Grid } from '../interfaces';
+import { ConfigType } from '../../common/config';
 
 @injectable()
 export class GpkgManager {
   private readonly logContext: LogContext;
   private readonly validTileSize: number;
   public constructor(
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer
   ) {
@@ -22,7 +22,7 @@ export class GpkgManager {
       fileName: __filename,
       class: GpkgManager.name,
     };
-    this.validTileSize = this.config.get<number>('validationValuesByInfo.tileSize');
+    this.validTileSize = this.config.get('validationValuesByInfo.tileSize');
   }
 
   @withSpanV4

@@ -2,12 +2,12 @@ import { promises as fsPromises, constants as fsConstants } from 'node:fs';
 import { join } from 'node:path';
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
-import { IConfig } from 'config';
 import { FileNotFoundError } from '../errors/ingestionErrors';
 import { LogContext } from '../../utils/logger/logContext';
 import { SERVICES } from '../../common/constants';
 import { GpkgManager } from '../models/gpkgManager';
 import { GdalInfoManager } from '../models/gdalInfoManager';
+import { ConfigType } from '../../common/config';
 
 @injectable()
 export class SourceValidator {
@@ -15,7 +15,7 @@ export class SourceValidator {
   private readonly sourceMount: string;
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     private readonly gdalInfoManager: GdalInfoManager,
     private readonly gpkgManager: GpkgManager
   ) {
@@ -23,7 +23,7 @@ export class SourceValidator {
       fileName: __filename,
       class: SourceValidator.name,
     };
-    this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
+    this.sourceMount = this.config.get('storageExplorer.layerSourceDir');
   }
 
   public async validateFilesExist(srcDir: string, files: string[]): Promise<void> {

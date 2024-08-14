@@ -9,8 +9,8 @@ import { getApp } from '../../../../src/app';
 let gdalUtilities: GdalUtilities;
 
 describe('gdalUtilities', () => {
-  beforeEach(function () {
-    const [, container] = getApp();
+  beforeEach(async function () {
+    const [, container] = await getApp();
     const schemasValidator = container.resolve<SchemasValidator>(INGESTION_SCHEMAS_VALIDATOR_SYMBOL);
     jest.resetAllMocks();
     gdalUtilities = new GdalUtilities(jsLogger({ enabled: false }), schemasValidator);

@@ -49,14 +49,14 @@ describe('IngestionManager', () => {
   let jobManagerWrapper: JobManagerWrapper;
 
   registerDefaultConfig();
-  const jobManagerURL = configMock.get<string>('services.jobManagerURL');
-  const catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
-  const mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
+  const jobManagerURL = configMock.get('services.jobManagerURL');
+  const catalogServiceURL = configMock.get('services.catalogServiceURL');
+  const mapProxyApiServiceUrl = configMock.get('services.mapProxyApiServiceUrl');
   const layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
   const catalogPostIdAndType = {
     metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType },
   };
-  const forbiddenJobTypesForParallelIngestion = configMock.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
+  const forbiddenJobTypesForParallelIngestion = configMock.get('jobManager.forbiddenJobTypesForParallelIngestion');
   const testTracer = trace.getTracer('testTracer');
   beforeEach(() => {
     registerDefaultConfig();

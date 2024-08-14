@@ -28,8 +28,8 @@ import { getTestContainerConfig, resetContainer } from './helpers/containerConfi
 describe('Ingestion', function () {
   let requestSender: IngestionRequestSender;
 
-  beforeEach(function () {
-    const [app] = getApp({
+  beforeEach(async function () {
+    const [app] = await getApp({
       override: [...getTestContainerConfig()],
       useChild: true,
     });

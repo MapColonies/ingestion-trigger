@@ -1,5 +1,4 @@
 import { BadRequestError } from '@map-colonies/error-types';
-import { IConfig } from 'config';
 import { DependencyContainer } from 'tsyringe';
 import { ProductType, Transparency } from '@map-colonies/mc-model-types';
 import { getApp } from '../../../../src/app';
@@ -15,13 +14,17 @@ import {
   resolutionMeterRange,
 } from '../../../../src/ingestion/schemas/constants';
 import { pixelSizeRange } from '../../../../src/ingestion/schemas/infoDataSchema';
+import { ConfigType } from '../../../../src/common/config';
+import jsLogger from '@map-colonies/js-logger';
 
 let schemasValidator: SchemasValidator;
 let appContainer: DependencyContainer;
 
 describe('SchemasValidator', () => {
-  beforeEach(function () {
-    const [, container] = getApp();
+  beforeEach(async function () {
+    const [, container] = await getApp({
+      override: [{ token: SERVICES.LOGGER, provider: { useValue: jsLogger({ enabled: false }) } }],
+    });
     appContainer = container;
     schemasValidator = appContainer.resolve<SchemasValidator>(INGESTION_SCHEMAS_VALIDATOR_SYMBOL);
   });
@@ -80,9 +83,9 @@ describe('SchemasValidator', () => {
     it('should return valid Info Data', async () => {
       const infoData = fakeDataToValidate.infoData.valid;
 
-      const config = appContainer.resolve<IConfig>(SERVICES.CONFIG);
-      const validCRSs = config.get<number[]>('validationValuesByInfo.crs');
-      const validFormats = config.get<string[]>('validationValuesByInfo.fileFormat').map((format) => format.toLowerCase());
+      const config = appContainer.resolve<ConfigType>(SERVICES.CONFIG);
+      const validCRSs = config.get('validationValuesByInfo.crs');
+      const validFormats = config.get('validationValuesByInfo.fileFormat').map((format) => format.toLowerCase());
 
       const result = await schemasValidator.validateInfoData(infoData);
 

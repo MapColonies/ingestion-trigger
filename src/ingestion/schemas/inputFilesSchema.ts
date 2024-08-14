@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { IConfig } from 'config';
 import { z } from 'zod';
 import { DependencyContainer } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
+import { ConfigType } from '../../common/config';
 import { GPKG_REGEX } from './constants';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const createInputFilesSchema = (container: DependencyContainer) => {
-  const config = container.resolve<IConfig>(SERVICES.CONFIG);
-  const watchDirectory = config.get<string>('storageExplorer.watchDirectory');
+  const config = container.resolve<ConfigType>(SERVICES.CONFIG);
+  const watchDirectory = config.get('storageExplorer.watchDirectory');
 
   return z
     .object({

@@ -4,10 +4,10 @@ import { Logger } from '@map-colonies/js-logger';
 import { inject, injectable } from 'tsyringe';
 import { Tracer } from '@opentelemetry/api';
 import { withSpanV4 } from '@map-colonies/telemetry';
-import { IConfig } from '../../common/interfaces';
 import { SERVICES } from '../../common/constants';
 import { Grid, IMatrixValues, TileSize, matrixRatioToGrid } from '../../ingestion/interfaces';
 import { LogContext } from '../../utils/logger/logContext';
+import { ConfigType } from '../../common/config';
 import { GpkgError } from './errors';
 
 @injectable()
@@ -17,12 +17,12 @@ export class SQLiteClient {
 
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     private readonly packageName: string,
     private readonly originDirectory: string
   ) {
-    const layerSourceDir = this.config.get<string>('storageExplorer.layerSourceDir');
+    const layerSourceDir = this.config.get('storageExplorer.layerSourceDir');
     this.fullPath = join(layerSourceDir, this.originDirectory, this.packageName);
     this.logContext = {
       fileName: __filename,
