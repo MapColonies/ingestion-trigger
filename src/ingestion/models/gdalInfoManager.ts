@@ -33,7 +33,7 @@ export class GdalInfoManager {
     const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
     this.logger.debug({ msg: 'getting Gdal info data', logContext: logCtx, metadata: { originDirectory, files } });
 
-    const { spanOptions } = createSpanMetadata('getInfoData', SpanKind.INTERNAL);
+    const { spanOptions } = createSpanMetadata('gdalInfoManager.getInfoData', SpanKind.INTERNAL);
     const getInfoSpan = this.tracer.startSpan('gdalInfoManager.get_info process', spanOptions);
 
     try {
@@ -54,7 +54,7 @@ export class GdalInfoManager {
       }
       this.logger.error({ msg: errorMessage, err, logContext: logCtx, metadata: { originDirectory, files } });
       const error = new GdalInfoError(errorMessage);
-      getInfoSpan.recordException(error);
+      getInfoSpan.setAttribute('msg',error.message ).recordException(error);
       throw error;
     } finally {
       getInfoSpan.end();
@@ -64,7 +64,7 @@ export class GdalInfoManager {
   public async validateInfoData(infoDataArray: InfoDataWithFile[]): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateInfoData.name };
     this.logger.info({ msg: 'Validating GDAL info data', logContext: logCtx, metadata: { infoDataArray } });
-    const { spanOptions } = createSpanMetadata('validateInfoData', SpanKind.INTERNAL);
+    const { spanOptions } = createSpanMetadata('gdalInfoManager.validateInfoData', SpanKind.INTERNAL);
     const validateInfoSpan = this.tracer.startSpan('gdalInfoManager.validate_info process', spanOptions);
     let currentFile = '';
 
@@ -73,7 +73,7 @@ export class GdalInfoManager {
         currentFile = infoData.fileName;
         this.logger.debug({ msg: 'validating gdal info data', logContext: logCtx, metadata: { infoData } });
         await this.schemasValidator.validateInfoData(infoData);
-        validateInfoSpan.addEvent('gdalInfo.validate.pass');
+        validateInfoSpan.addEvent('gdalInfoManager.validateInfoData.pass');
       }
     } catch (err) {
       const customMessage = `failed to validate gdal info data for file: ${currentFile}`;
@@ -84,7 +84,7 @@ export class GdalInfoManager {
 
       this.logger.error({ msg: errorMessage, err, logContext: logCtx, metadata: { currentFile } });
       const error = new GdalInfoError(errorMessage);
-      validateInfoSpan.recordException(error);
+      validateInfoSpan.setAttribute('msg', error.message).recordException(error);
       throw error;
     } finally {
       validateInfoSpan.end();

@@ -47,7 +47,7 @@ export class SourceValidator {
     const fullPaths: string[] = [];
 
     const { spanOptions } = createSpanMetadata('validateFilesExist', SpanKind.INTERNAL);
-    const existenceSpan = this.tracer.startSpan('sourceValidator.validate_gpkg_exists process', spanOptions);
+    const existsSpan = this.tracer.startSpan('sourceValidator.validate_gpkg_exists process', spanOptions);
 
     const filePromises = files.map(async (file) => {
       const fullPath = join(this.sourceMount, srcDir, file);
@@ -57,15 +57,16 @@ export class SourceValidator {
         .catch(() => {
           this.logger.error({ msg: `File '${file}' not found at '${fullPath}'`, logContext: logCtx, metadata: { file, fullPath } });
           const error = new FileNotFoundError(file, fullPath);
-          existenceSpan.recordException(error);
+          existsSpan.recordException(error);
           throw error;
         })
         .finally(() => {
-          existenceSpan.end();
+          existsSpan.end();
         });
     });
     await Promise.all(filePromises);
 
     this.logger.debug({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullPaths } });
+    
   }
 }

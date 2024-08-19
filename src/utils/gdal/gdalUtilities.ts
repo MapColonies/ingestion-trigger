@@ -1,7 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import * as gdal from 'gdal-async';
-import { Tracer } from '@opentelemetry/api';
+import { trace, Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../../common/constants';
 import { InfoData } from '../../ingestion/schemas/infoDataSchema';
@@ -27,7 +27,6 @@ export class GdalUtilities {
   @withSpanAsyncV4
   public async getInfoData(filePath: string): Promise<InfoData> {
     const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
-
     try {
       this.logger.debug({ msg: `get gdal info for path: ${filePath}`, logCOntext: logCtx, metadata: { filePath } });
 

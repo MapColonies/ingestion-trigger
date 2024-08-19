@@ -4,13 +4,14 @@ import { GeometryValidationError, PixelSizeError } from '../../../../src/ingesti
 import { PolygonPartValidator } from '../../../../src/ingestion/validators/polygonPartValidator';
 import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { infoDataMock, polygonPartsMock } from '../../../mocks/polygonPartsMock';
+import { trace } from '@opentelemetry/api';
 
 describe('PolygonPartValidator', () => {
   let polygonPartValidator: PolygonPartValidator;
 
   beforeEach(() => {
     registerDefaultConfig();
-    polygonPartValidator = new PolygonPartValidator(jsLogger({ enabled: false }), configMock as unknown as IConfig);
+    polygonPartValidator = new PolygonPartValidator(jsLogger({ enabled: false }), configMock as unknown as IConfig, trace.getTracer('testTracer'));
   });
   afterEach(() => {
     jest.restoreAllMocks();
