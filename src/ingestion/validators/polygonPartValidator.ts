@@ -69,8 +69,8 @@ export class PolygonPartValidator {
         logContext: logCtx,
         metadata: { polygonPart },
       });
-      const error = new GeometryValidationError(polygonPart.name as string, index, 'Geometry is not valid');
-      throw error;
+      throw new GeometryValidationError(polygonPart.name as string, index, 'Geometry is not valid');
+
     }
     const containedByExtent = this.isContainedByExtent(polygonPart.geometry as Geometry, combinedExtent as GeoJSON);
     this.logger.debug({
@@ -84,8 +84,7 @@ export class PolygonPartValidator {
         logContext: logCtx,
         metadata: { polygonPart, combinedExtent },
       });
-      const error = new GeometryValidationError(polygonPart.name as string, index, 'Geometry is not contained by combined extent');
-      throw error;
+      throw new GeometryValidationError(polygonPart.name as string, index, 'Geometry is not contained by combined extent');
     }
   }
 
