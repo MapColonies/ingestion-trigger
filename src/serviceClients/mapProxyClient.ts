@@ -2,7 +2,7 @@ import { Logger } from '@map-colonies/js-logger';
 import { NotFoundError } from '@map-colonies/error-types';
 import { HttpClient, IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { inject, injectable } from 'tsyringe';
-import { Tracer } from '@opentelemetry/api';
+import { trace, Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { IConfig } from '../common/interfaces';
 import { SERVICES } from '../common/constants';
@@ -25,6 +25,8 @@ export class MapProxyClient extends HttpClient {
 
   @withSpanAsyncV4
   public async exists(name: string): Promise<boolean> {
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('mapProxyClient.exists');
     const saveMetadataUrl = `/layer/${encodeURIComponent(name)}`;
     try {
       await this.get(saveMetadataUrl);

@@ -3,7 +3,7 @@ import { Logger } from '@map-colonies/js-logger';
 import { InputFiles, ProductType, NewRasterLayer, UpdateRasterLayer, PolygonPart } from '@map-colonies/mc-model-types';
 import { ConflictError, BadRequestError } from '@map-colonies/error-types';
 import { ICreateJobResponse, IJobResponse, OperationStatus, IFindJobsByCriteriaBody } from '@map-colonies/mc-priority-queue';
-import { Exception, SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
+import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../../common/constants';
 import { SourceValidator } from '../validators/sourceValidator';
@@ -53,6 +53,8 @@ export class IngestionManager {
   @withSpanAsyncV4
   public async getInfoData(inputFiles: InputFiles): Promise<InfoDataWithFile[]> {
     const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('ingestionManager.getInfoData');
     const { originDirectory, fileNames } = inputFiles;
     this.logger.info({ msg: 'getting gdal info for files', logContext: logCtx, metadata: { originDirectory, fileNames } });
 
@@ -60,7 +62,7 @@ export class IngestionManager {
     this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { originDirectory, fileNames } });
 
     const filesGdalInfoData = await this.gdalInfoManager.getInfoData(originDirectory, fileNames);
-    trace.getActiveSpan()?.updateName('ingestionManager.getInfoData').setStatus({ code: SpanStatusCode.OK }).addEvent('getInfoData.get.ok');
+    activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('getInfoData.get.ok');
     return filesGdalInfoData;
   }
 
@@ -68,7 +70,8 @@ export class IngestionManager {
   public async validateSources(inputFiles: InputFiles): Promise<SourcesValidationResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateSources.name };
     const { originDirectory, fileNames } = inputFiles;
-    const validateSourcesSpan = trace.getActiveSpan();
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('IngestionManager.validateSources');
     try {
       this.logger.info({ msg: 'Starting source validation process', logContext: logCtx, metadata: { originDirectory, fileNames } });
 
@@ -88,12 +91,12 @@ export class IngestionManager {
         logContext: logCtx,
         metadata: { originDirectory, fileNames, isValid: validationResult.isValid },
       });
-      validateSourcesSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.validateSources.valid', { isValid: true });
+      activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.validateSources.valid', { isValid: true });
       return validationResult;
     } catch (err) {
       if (err instanceof FileNotFoundError || err instanceof GdalInfoError || err instanceof GpkgError) {
         this.logger.info({ msg: `Sources are not valid:${err.message}`, logContext: logCtx, err: err, metadata: { originDirectory, fileNames } });
-        validateSourcesSpan?.setStatus({ code: SpanStatusCode.ERROR }).addEvent('ingestionManager.validateSources.invalid', { isValid: false });
+        activeSpan?.addEvent('ingestionManager.validateSources.invalid', { isValid: false, validationError: err.message });
         return { isValid: false, message: err.message };
       }
 
@@ -103,7 +106,6 @@ export class IngestionManager {
         err,
         metadata: { originDirectory, fileNames },
       });
-      validateSourcesSpan?.setStatus({ code: SpanStatusCode.ERROR }).recordException(err as Exception);
       throw err;
     }
   }
@@ -111,33 +113,39 @@ export class IngestionManager {
   @withSpanAsyncV4
   public async ingestNewLayer(rasterIngestionLayer: NewRasterLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.ingestNewLayer.name };
-    const ingestionSpan = trace.getActiveSpan();
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('IngestionManager.ingestNewLayer');
 
     await this.validateNewLayer(rasterIngestionLayer);
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
-    ingestionSpan?.addEvent('ingestionManager.validate_new_layer.success', { validationSuccess: true });
+    activeSpan?.addEvent('ingestionManager.validate_new_layer.success', { validationSuccess: true });
 
     const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(rasterIngestionLayer);
 
-    ingestionSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.trigger_ingestion.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
+    activeSpan
+      ?.setStatus({ code: SpanStatusCode.OK })
+      .addEvent('ingestionManager.ingest_layer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
     this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
   }
 
   @withSpanAsyncV4
   public async updateLayer(internalId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayer.name };
-    const updateSpan = trace.getActiveSpan();
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('IngestionManager.updateLayer');
 
     const layerDetails: LayerDetails = await this.validateAndGetUpdatedLayerParams(internalId, rasterUpdateLayer);
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
-    updateSpan?.addEvent('ingestionManager.validate_update_layer.success', { validationSuccess: true });
+    activeSpan?.addEvent('ingestionManager.validate_update_layer.success', { validationSuccess: true });
 
     const response = await this.setAndCreateUpdateJob(internalId, layerDetails, rasterUpdateLayer);
     this.logger.info({
       msg: `new update job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `,
       logContext: logCtx,
     });
-    updateSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.trigger_update.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
+    activeSpan
+      ?.setStatus({ code: SpanStatusCode.OK })
+      .addEvent('ingestionManager.update_layer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
   }
 
   @withSpanAsyncV4
@@ -162,7 +170,8 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async validateAndGetUpdatedLayerParams(resourceId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<LayerDetails> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateAndGetUpdatedLayerParams.name };
-    const validateSpan = trace.getActiveSpan();
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('ingestionManager.validateAndGetUpdatedLayerParams');
     const { metadata, partData, inputFiles } = rasterUpdateLayer;
     this.logger.debug({ msg: 'started update layer validation', requestBody: { metadata, partData, inputFiles }, logCtx: logCtx });
     this.logger.info({
@@ -174,13 +183,12 @@ export class IngestionManager {
     //catalog call must be before map proxy to get productId and Type
     const layerDetails = await this.getLayer(resourceId);
     const { productId, productVersion, productType, productSubType = '' } = layerDetails.metadata as LayerDetails;
-    validateSpan?.addEvent('update.getLayer', { productId, productVersion, productType, productSubType });
+    activeSpan?.addEvent('updateLayer.getLayer', { productId, productVersion, productType, productSubType });
 
     const layerName = getMapServingLayerName(productId, productType);
     await this.validateLayerExistsInMapProxy(layerName);
     await this.validateNoParallelJobs(productId, productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
-    validateSpan?.addEvent('validation.successful', { msg: 'validation in catalog ,job manager and mapProxy passed' });
     return { productId, productVersion, productType, productSubType };
   }
 
@@ -204,7 +212,6 @@ export class IngestionManager {
     await this.isInCatalog(metadata.productId, metadata.productType);
     await this.validateNoConflictingJobs(metadata.productId, metadata.productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapProxy passed', logContext: logCtx });
-    trace.getActiveSpan()?.addEvent('validation.successful', { msg: 'validation in catalog ,job manager and mapProxy passed' });
   }
 
   @withSpanAsyncV4
@@ -220,11 +227,7 @@ export class IngestionManager {
         logCtx: logCtx,
       });
       const error = new ConflictError(message);
-      trace
-        .getActiveSpan()
-        ?.setStatus({ code: SpanStatusCode.ERROR })
-        .setAttributes({ 'exception.type': error.status, 'exception.message': message })
-        .recordException(error);
+      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
       throw error;
     }
   }
@@ -242,11 +245,7 @@ export class IngestionManager {
         logCtx: logCtx,
       });
       const error = new ConflictError(message);
-      trace
-        .getActiveSpan()
-        ?.setStatus({ code: SpanStatusCode.ERROR })
-        .setAttributes({ 'exception.type': error.status, 'exception.message': message })
-        .recordException(error);
+      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
       throw error;
     }
   }
@@ -281,11 +280,7 @@ export class IngestionManager {
         logCtx: logCtx,
       });
       const error = new ConflictError(message);
-      trace
-        .getActiveSpan()
-        ?.setStatus({ code: SpanStatusCode.ERROR })
-        .setAttributes({ 'exception.type': error.status, 'exception.message': message })
-        .recordException(error);
+      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
       throw error;
     }
   }
@@ -302,11 +297,7 @@ export class IngestionManager {
         logCtx: logCtx,
       });
       const error = new BadRequestError(message);
-      trace
-        .getActiveSpan()
-        ?.setStatus({ code: SpanStatusCode.ERROR })
-        .setAttributes({ 'exception.type': error.status, 'exception.message': message })
-        .recordException(error);
+      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
       throw error;
     }
   }
@@ -324,11 +315,7 @@ export class IngestionManager {
         logCtx: logCtx,
       });
       const error = new ConflictError(message);
-      trace
-        .getActiveSpan()
-        ?.setStatus({ code: SpanStatusCode.ERROR })
-        .setAttributes({ 'exception.type': error.status, 'exception.message': message })
-        .recordException(error);
+      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
       throw error;
     }
   }
@@ -340,18 +327,12 @@ export class IngestionManager {
     if (layerDetails.length === 0) {
       const message = `there isnt a layer with id of ${resourceId}`;
       const error = new BadRequestError(message);
-      getLayerSpan
-        ?.setStatus({ code: SpanStatusCode.ERROR })
-        .setAttributes({ 'exception.type': error.status, 'exception.message': message })
-        .recordException(error);
+      getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
     } else if (layerDetails.length !== 1) {
       const message = `found more than one Layer with id of ${resourceId} . Please check the catalog Layers`;
       const error = new ConflictError(message);
-      getLayerSpan
-        ?.setStatus({ code: SpanStatusCode.ERROR })
-        .setAttributes({ 'exception.type': error.status, 'exception.message': message })
-        .recordException(error);
+      getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
     }
     return layerDetails[0];
@@ -360,7 +341,6 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async validateRequestInputs(partData: PolygonPart[], inputFiles: InputFiles): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateRequestInputs.name };
-    const validateRequestInputsSpan = trace.getActiveSpan();
 
     //validate files exist, gdal info and GPKG data
     const isValidSources: SourcesValidationResponse = await this.validateSources(inputFiles);
@@ -368,10 +348,6 @@ export class IngestionManager {
       const errorMessage = isValidSources.message;
       this.logger.error({ msg: errorMessage, logContext: logCtx, inputFiles: { inputFiles } });
       const error = new UnsupportedEntityError(isValidSources.message);
-      validateRequestInputsSpan
-        ?.setStatus({ code: SpanStatusCode.ERROR })
-        .setAttributes({ 'exception.message': error.message })
-        .recordException(error);
       throw error;
     }
     this.logger.debug({ msg: 'validated sources', logContext: logCtx });

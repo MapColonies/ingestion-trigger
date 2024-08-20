@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import { IConfig } from 'config';
-import { SpanKind, Tracer } from '@opentelemetry/api';
+import { context, SpanKind, trace, Tracer } from '@opentelemetry/api';
 import { GdalUtilities } from '../../utils/gdal/gdalUtilities';
 import { SERVICES } from '../../common/constants';
 import { GdalInfoError } from '../errors/ingestionErrors';
@@ -37,15 +37,17 @@ export class GdalInfoManager {
     const getInfoSpan = this.tracer.startSpan('gdalInfoManager.get_info process', spanOptions);
 
     try {
-      const filesGdalInfoData = await Promise.all(
-        files.map(async (file) => {
-          const filePath = join(this.sourceMount, originDirectory, file);
-          const infoData = await this.gdalUtilities.getInfoData(filePath);
-          return { ...infoData, fileName: file };
-        })
-      );
-
-      return filesGdalInfoData;
+      return await context.with(trace.setSpan(context.active(), getInfoSpan), async () => {
+        const filesGdalInfoData = await Promise.all(
+          files.map(async (file) => {
+            const filePath = join(this.sourceMount, originDirectory, file);
+            const infoData = await this.gdalUtilities.getInfoData(filePath);
+            getInfoSpan.addEvent('gdalInfoManager.get_info.data', { fileName: file, fileInfo: JSON.stringify(infoData) });
+            return { ...infoData, fileName: file };
+          })
+        );
+        return filesGdalInfoData;
+      });
     } catch (err) {
       const customMessage = `failed to get gdal info data`;
       let errorMessage = customMessage;
@@ -54,7 +56,7 @@ export class GdalInfoManager {
       }
       this.logger.error({ msg: errorMessage, err, logContext: logCtx, metadata: { originDirectory, files } });
       const error = new GdalInfoError(errorMessage);
-      getInfoSpan.setAttribute('msg',error.message ).recordException(error);
+      getInfoSpan.recordException(error);
       throw error;
     } finally {
       getInfoSpan.end();
@@ -67,7 +69,6 @@ export class GdalInfoManager {
     const { spanOptions } = createSpanMetadata('gdalInfoManager.validateInfoData', SpanKind.INTERNAL);
     const validateInfoSpan = this.tracer.startSpan('gdalInfoManager.validate_info process', spanOptions);
     let currentFile = '';
-
     try {
       for (const infoData of infoDataArray) {
         currentFile = infoData.fileName;
@@ -84,7 +85,7 @@ export class GdalInfoManager {
 
       this.logger.error({ msg: errorMessage, err, logContext: logCtx, metadata: { currentFile } });
       const error = new GdalInfoError(errorMessage);
-      validateInfoSpan.setAttribute('msg', error.message).recordException(error);
+      validateInfoSpan.recordException(error);
       throw error;
     } finally {
       validateInfoSpan.end();

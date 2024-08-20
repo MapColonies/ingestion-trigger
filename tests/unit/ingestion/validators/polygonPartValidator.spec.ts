@@ -1,10 +1,10 @@
 import jsLogger from '@map-colonies/js-logger';
 import { IConfig } from 'config';
+import { trace } from '@opentelemetry/api';
 import { GeometryValidationError, PixelSizeError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { PolygonPartValidator } from '../../../../src/ingestion/validators/polygonPartValidator';
 import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { infoDataMock, polygonPartsMock } from '../../../mocks/polygonPartsMock';
-import { trace } from '@opentelemetry/api';
 
 describe('PolygonPartValidator', () => {
   let polygonPartValidator: PolygonPartValidator;

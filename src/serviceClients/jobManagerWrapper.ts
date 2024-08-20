@@ -3,7 +3,7 @@ import { inject, injectable } from 'tsyringe';
 import { NewRasterLayer, UpdateRasterLayer } from '@map-colonies/mc-model-types';
 import { ICreateJobBody, ICreateJobResponse, IJobResponse, OperationStatus, ITaskResponse, JobManagerClient } from '@map-colonies/mc-priority-queue';
 import { IHttpRetryConfig } from '@map-colonies/mc-utils';
-import { Exception, trace, Tracer } from '@opentelemetry/api';
+import { trace, Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../common/constants';
 import { IConfig } from '../common/interfaces';
@@ -41,6 +41,8 @@ export class JobManagerWrapper extends JobManagerClient {
   @withSpanAsyncV4
   public async createInitJob(data: NewRasterLayer): Promise<ICreateJobResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.createInitJob.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('jobManagerWrapper.createInitJob');
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
     try {
       const jobResponse = await this.createNewJob(data, this.ingestionNewJobType, this.initTaskType, taskParams);
@@ -48,7 +50,6 @@ export class JobManagerWrapper extends JobManagerClient {
     } catch (err) {
       const message = 'failed to create a new init job ';
       this.logger.error({ msg: message, err, logContext: logCtx, layer: data });
-      trace.getActiveSpan()?.recordException(err as Exception);
       throw err;
     }
   }
@@ -62,6 +63,8 @@ export class JobManagerWrapper extends JobManagerClient {
     jobType: string
   ): Promise<ICreateJobResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.createInitUpdateJob.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('jobManagerWrapper.createInitUpdateJob');
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
     try {
       const jobResponse = await this.createUpdateJob(id, version, internalId, data, jobType, this.initTaskType, taskParams);
@@ -69,7 +72,6 @@ export class JobManagerWrapper extends JobManagerClient {
     } catch (err) {
       const message = 'failed to create a new init update job ';
       this.logger.error({ msg: message, jobType: jobType, taskType: this.initTaskType, err, logContext: logCtx, layer: data });
-      trace.getActiveSpan()?.recordException(err as Exception);
       throw err;
     }
   }

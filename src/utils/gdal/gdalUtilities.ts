@@ -27,6 +27,8 @@ export class GdalUtilities {
   @withSpanAsyncV4
   public async getInfoData(filePath: string): Promise<InfoData> {
     const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('gdalUtilities.getInfoData');
     try {
       this.logger.debug({ msg: `get gdal info for path: ${filePath}`, logCOntext: logCtx, metadata: { filePath } });
 
@@ -43,7 +45,6 @@ export class GdalUtilities {
       };
 
       dataset.close();
-
       return infoData;
     } catch (err) {
       let message = `failed to get gdal info on file: ${filePath}`;

@@ -7,21 +7,25 @@ import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import { IConfig } from 'config';
 import { PolygonPart } from '@map-colonies/mc-model-types';
+import { Tracer, trace } from '@opentelemetry/api';
+import { withSpanV4 } from '@map-colonies/telemetry';
 import { LogContext } from '../../utils/logger/logContext';
 import { SERVICES } from '../../common/constants';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';
 import { GeometryValidationError, PixelSizeError } from '../errors/ingestionErrors';
 import { isPixelSizeValid } from '../../utils/pixelSizeValidate';
-import { Tracer , trace } from '@opentelemetry/api';
-import { withSpanV4 } from '@map-colonies/telemetry';
 
 @injectable()
 export class PolygonPartValidator {
   private readonly logContext: LogContext;
   private readonly extentBufferInMeters: number;
   private readonly resolutionFixedPointTolerance: number;
-  public constructor(@inject(SERVICES.LOGGER) private readonly logger: Logger, @inject(SERVICES.CONFIG) private readonly config: IConfig,@inject(SERVICES.TRACER) public readonly tracer: Tracer) {
+  public constructor(
+    @inject(SERVICES.LOGGER) private readonly logger: Logger,
+    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.TRACER) public readonly tracer: Tracer
+  ) {
     this.logContext = {
       fileName: __filename,
       class: PolygonPartValidator.name,
@@ -33,7 +37,8 @@ export class PolygonPartValidator {
   @withSpanV4
   public validate(partData: PolygonPart[], infoDataFiles: InfoDataWithFile[]): void {
     const logCtx = { ...this.logContext, function: this.validate.name };
-    const validateGeometriesSpan = trace.getActiveSpan();
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('polygonPartValidator.validate');
     //create combined extent
     const features = extractPolygons(infoDataFiles);
     const combinedExtent = combineExtentPolygons(features);
@@ -43,13 +48,14 @@ export class PolygonPartValidator {
       this.validatePartGeometry(polygonPart, index, combinedExtent);
       this.validatePartPixelSize(polygonPart, index, infoDataFiles);
     });
-    validateGeometriesSpan?.addEvent('polygonPartValidator.validate.success');
+    activeSpan?.addEvent('polygonPartValidator.validate.success');
   }
 
   @withSpanV4
   private validatePartGeometry(polygonPart: PolygonPart, index: number, combinedExtent: Feature<MultiPolygon>): void {
     const logCtx = { ...this.logContext, function: this.validatePartGeometry.name };
-    const validatePartGeometrySpan = trace.getActiveSpan();
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('polygonPartValidator.validatePartGeometry');
     const validGeo = this.validateGeometry(polygonPart.geometry as Geometry);
     this.logger.debug({
       msg: `validated geometry of part ${polygonPart.name} at index: ${index} . validGeo: ${validGeo}`,
@@ -63,8 +69,7 @@ export class PolygonPartValidator {
         logContext: logCtx,
         metadata: { polygonPart },
       });
-      const error = new GeometryValidationError(polygonPart.name as string, index, 'Geometry is not valid'); 
-      validatePartGeometrySpan?.setAttribute('msg',error.message).recordException(error);
+      const error = new GeometryValidationError(polygonPart.name as string, index, 'Geometry is not valid');
       throw error;
     }
     const containedByExtent = this.isContainedByExtent(polygonPart.geometry as Geometry, combinedExtent as GeoJSON);
@@ -80,25 +85,27 @@ export class PolygonPartValidator {
         metadata: { polygonPart, combinedExtent },
       });
       const error = new GeometryValidationError(polygonPart.name as string, index, 'Geometry is not contained by combined extent');
-      validatePartGeometrySpan?.setAttribute('msg',error.message).recordException(error);
-      throw error; 
+      throw error;
     }
   }
 
   @withSpanV4
   private validateGeometry(footprint: Geometry): boolean {
-    const validatePartGeometrySpan = trace.getActiveSpan();
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('polygonPartValidator.validateGeometry');
     const footprintIssues = getIssues(JSON.stringify(footprint));
     if ((footprint.type === 'Polygon' || footprint.type === 'MultiPolygon') && footprintIssues.length === 0 && isValidGeoJson(footprint)) {
-      validatePartGeometrySpan?.addEvent('polygonPartValidator.validateGeometry.success');
+      activeSpan?.addEvent('polygonPartValidator.validateGeometry.success');
       return true;
     }
-    validatePartGeometrySpan?.addEvent('polygonPartValidator.validateGeometry.failed');
+    activeSpan?.addEvent('polygonPartValidator.validateGeometry.failed');
     return false;
   }
 
   @withSpanV4
   private isContainedByExtent(footprint: Geometry, extent: GeoJSON): boolean {
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('polygonPartValidator.isContainedByExtent');
     const bufferedExtent = extentBuffer(this.extentBufferInMeters, extent);
     if (footprint.type === 'MultiPolygon') {
       for (let i = 0; i < footprint.coordinates.length; i++) {
@@ -107,18 +114,31 @@ export class PolygonPartValidator {
         if (
           !(booleanContains(bufferedExtent as unknown as Geometry, polygon as Geometry) || booleanContains(extent as Geometry, polygon as Geometry))
         ) {
+          activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.false', {
+            providedExtent: JSON.stringify(extent),
+            bufferedExtenet: JSON.stringify(bufferedExtent),
+            footprint: JSON.stringify(footprint),
+          });
           return false;
         }
       }
     } else if (!(booleanContains(bufferedExtent as unknown as Geometry, footprint) || booleanContains(extent as Geometry, footprint))) {
+      activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.false', {
+        providedExtent: JSON.stringify(extent),
+        bufferedExtenet: JSON.stringify(bufferedExtent),
+        footprint: JSON.stringify(footprint),
+      });
       return false;
     }
+    activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.true');
     return true;
   }
 
   @withSpanV4
   private validatePartPixelSize(polygonPart: PolygonPart, index: number, infoDataFiles: InfoDataWithFile[]): void {
     const logCtx = { ...this.logContext, function: this.validatePartPixelSize.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('polygonPartValidator.validatePartPixelSize');
     const polygonPartResolutionDegree = polygonPart.resolutionDegree;
     for (let i = 0; i < infoDataFiles.length; i++) {
       const infoDataPixelSize = infoDataFiles[i].pixelSize;
@@ -134,5 +154,6 @@ export class PolygonPartValidator {
         throw new PixelSizeError(polygonPart.name as string, index, `ResolutionDeg is not bigger that pixelSize in ${sourceFileName}`);
       }
     }
+    activeSpan?.addEvent('polygonPartValidator.validatePartPixelSize.valid');
   }
 }
