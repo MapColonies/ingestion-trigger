@@ -118,13 +118,13 @@ export class IngestionManager {
 
     await this.validateNewLayer(rasterIngestionLayer);
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
-    activeSpan?.addEvent('ingestionManager.validate_new_layer.success', { validationSuccess: true });
+    activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
     const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(rasterIngestionLayer);
 
     activeSpan
       ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.ingest_layer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
+      .addEvent('ingestionManager.ingestLayer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
     this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
   }
 
@@ -136,7 +136,7 @@ export class IngestionManager {
 
     const layerDetails: LayerDetails = await this.validateAndGetUpdatedLayerParams(internalId, rasterUpdateLayer);
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
-    activeSpan?.addEvent('ingestionManager.validate_update_layer.success', { validationSuccess: true });
+    activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
     const response = await this.setAndCreateUpdateJob(internalId, layerDetails, rasterUpdateLayer);
     this.logger.info({
@@ -145,7 +145,7 @@ export class IngestionManager {
     });
     activeSpan
       ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.update_layer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
+      .addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
   }
 
   @withSpanAsyncV4

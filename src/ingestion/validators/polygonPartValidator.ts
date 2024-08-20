@@ -69,8 +69,7 @@ export class PolygonPartValidator {
         logContext: logCtx,
         metadata: { polygonPart },
       });
-      throw new GeometryValidationError(polygonPart.name as string, index, 'Geometry is not valid');
-
+      throw new GeometryValidationError(polygonPart.name as string, index, 'Geometry is invalid');
     }
     const containedByExtent = this.isContainedByExtent(polygonPart.geometry as Geometry, combinedExtent as GeoJSON);
     this.logger.debug({
@@ -115,7 +114,7 @@ export class PolygonPartValidator {
         ) {
           activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.false', {
             providedExtent: JSON.stringify(extent),
-            bufferedExtenet: JSON.stringify(bufferedExtent),
+            bufferedExtent: JSON.stringify(bufferedExtent),
             footprint: JSON.stringify(footprint),
           });
           return false;
@@ -124,7 +123,7 @@ export class PolygonPartValidator {
     } else if (!(booleanContains(bufferedExtent as unknown as Geometry, footprint) || booleanContains(extent as Geometry, footprint))) {
       activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.false', {
         providedExtent: JSON.stringify(extent),
-        bufferedExtenet: JSON.stringify(bufferedExtent),
+        bufferedExtent: JSON.stringify(bufferedExtent),
         footprint: JSON.stringify(footprint),
       });
       return false;
