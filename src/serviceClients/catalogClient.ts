@@ -32,20 +32,28 @@ export class CatalogClient extends HttpClient {
 
   @withSpanAsyncV4
   public async findByInternalId(internalId: string): Promise<FindRecordResponse> {
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('catalogClient.findByInternalId');
     const req = {
       id: internalId,
     };
-    return this.post<FindRecordResponse>('/records/find', req);
+    const res = this.post<FindRecordResponse>('/records/find', req);
+    activeSpan?.addEvent('catalogClient.findByInternalId.response', { findByInternalIdResponse: JSON.stringify(res) });
+    return res;
   }
 
   @withSpanAsyncV4
   private async findByProductIdAndType(productId: string, productType: string): Promise<FindRecordResponse> {
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('catalogClient.findByProductIdAndType');
     const req = {
       metadata: {
         productId,
         productType,
       },
     };
-    return this.post<FindRecordResponse>('/records/find', req);
+    const res = this.post<FindRecordResponse>('/records/find', req);
+    activeSpan?.addEvent('catalogClient.findByProductIdAndType.response', { findByProductIdAndTypeResponse: JSON.stringify(res) });
+    return res;
   }
 }
