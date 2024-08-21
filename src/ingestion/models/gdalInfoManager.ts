@@ -2,14 +2,14 @@ import { join } from 'node:path';
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import { IConfig } from 'config';
-import { Tracer } from '@opentelemetry/api';
-import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { context, SpanKind, trace, Tracer } from '@opentelemetry/api';
 import { GdalUtilities } from '../../utils/gdal/gdalUtilities';
 import { SERVICES } from '../../common/constants';
 import { GdalInfoError } from '../errors/ingestionErrors';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { LogContext } from '../../utils/logger/logContext';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
+import { createSpanMetadata } from '../../common/tracing';
 
 @injectable()
 export class GdalInfoManager {
@@ -29,44 +29,52 @@ export class GdalInfoManager {
     this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
   }
 
-  @withSpanAsyncV4
   public async getInfoData(originDirectory: string, files: string[]): Promise<InfoDataWithFile[]> {
     const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
     this.logger.debug({ msg: 'getting Gdal info data', logContext: logCtx, metadata: { originDirectory, files } });
 
-    try {
-      const filesGdalInfoData = await Promise.all(
-        files.map(async (file) => {
-          const filePath = join(this.sourceMount, originDirectory, file);
-          const infoData = await this.gdalUtilities.getInfoData(filePath);
-          return { ...infoData, fileName: file };
-        })
-      );
+    const { spanOptions } = createSpanMetadata('gdalInfoManager.getInfoData', SpanKind.INTERNAL);
+    const getInfoSpan = this.tracer.startSpan('gdalInfoManager.get_info process', spanOptions);
 
-      return filesGdalInfoData;
+    try {
+      return await context.with(trace.setSpan(context.active(), getInfoSpan), async () => {
+        const filesGdalInfoData = await Promise.all(
+          files.map(async (file) => {
+            const filePath = join(this.sourceMount, originDirectory, file);
+            const infoData = await this.gdalUtilities.getInfoData(filePath);
+            getInfoSpan.addEvent('gdalInfoManager.get_info.data', { fileName: file, fileInfo: JSON.stringify(infoData) });
+            return { ...infoData, fileName: file };
+          })
+        );
+        return filesGdalInfoData;
+      });
     } catch (err) {
       const customMessage = `failed to get gdal info data`;
       let errorMessage = customMessage;
       if (err instanceof Error) {
         errorMessage = `${customMessage}: ${err.message}`;
       }
-
       this.logger.error({ msg: errorMessage, err, logContext: logCtx, metadata: { originDirectory, files } });
-      throw new GdalInfoError(errorMessage);
+      const error = new GdalInfoError(errorMessage);
+      getInfoSpan.recordException(error);
+      throw error;
+    } finally {
+      getInfoSpan.end();
     }
   }
 
-  @withSpanAsyncV4
   public async validateInfoData(infoDataArray: InfoDataWithFile[]): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateInfoData.name };
     this.logger.info({ msg: 'Validating GDAL info data', logContext: logCtx, metadata: { infoDataArray } });
+    const { spanOptions } = createSpanMetadata('gdalInfoManager.validateInfoData', SpanKind.INTERNAL);
+    const validateInfoSpan = this.tracer.startSpan('gdalInfoManager.validate_info process', spanOptions);
     let currentFile = '';
-
     try {
       for (const infoData of infoDataArray) {
         currentFile = infoData.fileName;
         this.logger.debug({ msg: 'validating gdal info data', logContext: logCtx, metadata: { infoData } });
         await this.schemasValidator.validateInfoData(infoData);
+        validateInfoSpan.addEvent('gdalInfoManager.validateInfoData.pass');
       }
     } catch (err) {
       const customMessage = `failed to validate gdal info data for file: ${currentFile}`;
@@ -76,7 +84,11 @@ export class GdalInfoManager {
       }
 
       this.logger.error({ msg: errorMessage, err, logContext: logCtx, metadata: { currentFile } });
-      throw new GdalInfoError(errorMessage);
+      const error = new GdalInfoError(errorMessage);
+      validateInfoSpan.recordException(error);
+      throw error;
+    } finally {
+      validateInfoSpan.end();
     }
   }
 }

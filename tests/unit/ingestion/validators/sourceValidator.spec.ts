@@ -1,6 +1,7 @@
 import { promises as fsp, constants as fsConstants } from 'node:fs';
 import jsLogger from '@map-colonies/js-logger';
 import { IConfig } from 'config';
+import { trace } from '@opentelemetry/api';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
 import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
@@ -27,7 +28,7 @@ describe('SourceValidator', () => {
     config = container.resolve<IConfig>(SERVICES.CONFIG);
     mockGdalInfoManager = { getInfoData: jest.fn, validateInfoData: jest.fn } as unknown as GdalInfoManager;
     mockGpkgManager = { validateGpkgFiles: jest.fn } as unknown as GpkgManager;
-    sourceValidator = new SourceValidator(jsLogger({ enabled: false }), config, mockGdalInfoManager, mockGpkgManager);
+    sourceValidator = new SourceValidator(jsLogger({ enabled: false }), config, trace.getTracer('testTracer'), mockGdalInfoManager, mockGpkgManager);
     fspAccessSpy = jest.spyOn(fsp, 'access');
   });
   afterEach(() => {

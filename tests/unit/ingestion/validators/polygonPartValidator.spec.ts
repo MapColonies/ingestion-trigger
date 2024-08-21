@@ -1,5 +1,6 @@
 import jsLogger from '@map-colonies/js-logger';
 import { IConfig } from 'config';
+import { trace } from '@opentelemetry/api';
 import { GeometryValidationError, PixelSizeError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { PolygonPartValidator } from '../../../../src/ingestion/validators/polygonPartValidator';
 import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
@@ -10,7 +11,7 @@ describe('PolygonPartValidator', () => {
 
   beforeEach(() => {
     registerDefaultConfig();
-    polygonPartValidator = new PolygonPartValidator(jsLogger({ enabled: false }), configMock as unknown as IConfig);
+    polygonPartValidator = new PolygonPartValidator(jsLogger({ enabled: false }), configMock as unknown as IConfig, trace.getTracer('testTracer'));
   });
   afterEach(() => {
     jest.restoreAllMocks();

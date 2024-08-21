@@ -2,6 +2,7 @@ import { BadRequestError } from '@map-colonies/error-types';
 import { IConfig } from 'config';
 import { DependencyContainer } from 'tsyringe';
 import { ProductType, Transparency } from '@map-colonies/mc-model-types';
+import jsLogger from '@map-colonies/js-logger';
 import { getApp } from '../../../../src/app';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
 import { fakeDataToValidate, mockMetadata, mockPart } from '../../../mocks/schemasValidatorMockData';
@@ -21,7 +22,9 @@ let appContainer: DependencyContainer;
 
 describe('SchemasValidator', () => {
   beforeEach(function () {
-    const [, container] = getApp();
+    const [, container] = getApp({
+      override: [{ token: SERVICES.LOGGER, provider: { useValue: jsLogger({ enabled: false }) } }],
+    });
     appContainer = container;
     schemasValidator = appContainer.resolve<SchemasValidator>(INGESTION_SCHEMAS_VALIDATOR_SYMBOL);
   });
