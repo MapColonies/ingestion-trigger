@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.2.0](https://github.com/MapColonies/ingestion-trigger/compare/v1.1.2...v1.2.0) (2024-08-21)
+
+
+### Features
+
+* add advanced tracing(MAPCO-4512) ([#9](https://github.com/MapColonies/ingestion-trigger/issues/9)) ([9acc4bd](https://github.com/MapColonies/ingestion-trigger/commit/9acc4bd570ebd3a782afaaf7879c88e7a1c4016b))
+
 ### [1.1.2](https://github.com/MapColonies/ingestion-trigger/compare/v1.1.1...v1.1.2) (2024-07-21)
 
 
