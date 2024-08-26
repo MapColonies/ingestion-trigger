@@ -56,9 +56,9 @@ export class JobManagerWrapper extends JobManagerClient {
 
   @withSpanAsyncV4
   public async createInitUpdateJob(
-    id: string,
+    productId: string,
     version: string,
-    internalId: string,
+    catalogId: string,
     data: UpdateRasterLayer,
     jobType: string
   ): Promise<ICreateJobResponse> {
@@ -67,7 +67,7 @@ export class JobManagerWrapper extends JobManagerClient {
     activeSpan?.updateName('jobManagerWrapper.createInitUpdateJob');
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
     try {
-      const jobResponse = await this.createUpdateJob(id, version, internalId, data, jobType, this.initTaskType, taskParams);
+      const jobResponse = await this.createUpdateJob(productId, version, catalogId, data, jobType, this.initTaskType, taskParams);
       return jobResponse;
     } catch (err) {
       const message = 'failed to create a new init update job ';
@@ -101,9 +101,9 @@ export class JobManagerWrapper extends JobManagerClient {
 
   @withSpanAsyncV4
   private async createUpdateJob(
-    id: string,
+    productId: string,
     version: string,
-    internalId: string,
+    catalogId: string,
     data: UpdateRasterLayer,
     jobType: string,
     taskType: string,
@@ -111,9 +111,9 @@ export class JobManagerWrapper extends JobManagerClient {
   ): Promise<ICreateJobResponse> {
     const createLayerTasksUrl = `/jobs`;
     const createJobRequest: CreateJobBody = {
-      resourceId: id,
-      version: version,
-      internalId: internalId,
+      resourceId: productId,
+      version: (parseFloat(version) + 1).toFixed(1),
+      internalId: catalogId,
       type: jobType,
       status: OperationStatus.PENDING,
       parameters: { ...data } as unknown as Record<string, unknown>,
