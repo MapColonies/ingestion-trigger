@@ -161,6 +161,8 @@ export class IngestionManager {
     return this.jobManagerWrapper.createInitUpdateJob(
       layerDetails.productId,
       layerDetails.productVersion,
+      layerDetails.tileOutputFormat,
+      layerDetails.displayPath,
       internalId,
       rasterUpdateLayer,
       updateJobAction
@@ -182,14 +184,14 @@ export class IngestionManager {
     await this.validateRequestInputs(partData, inputFiles);
     //catalog call must be before map proxy to get productId and Type
     const layerDetails = await this.getLayer(resourceId);
-    const { productId, productVersion, productType, productSubType = '' } = layerDetails.metadata as LayerDetails;
-    activeSpan?.addEvent('updateLayer.getLayer', { productId, productVersion, productType, productSubType });
+    const { productId, productVersion, productType, productSubType = '', tileOutputFormat, displayPath } = layerDetails.metadata as LayerDetails;
+    activeSpan?.addEvent('updateLayer.getLayer', { productId, productVersion, productType, productSubType, tileOutputFormat, displayPath });
 
     const layerName = getMapServingLayerName(productId, productType);
     await this.validateLayerExistsInMapProxy(layerName);
     await this.validateNoParallelJobs(productId, productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
-    return { productId, productVersion, productType, productSubType };
+    return { productId, productVersion, productType, productSubType, tileOutputFormat, displayPath };
   }
 
   @withSpanAsyncV4

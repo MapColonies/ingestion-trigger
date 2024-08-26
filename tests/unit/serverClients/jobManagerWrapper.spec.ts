@@ -47,6 +47,8 @@ describe('jobManagerWrapper', () => {
         jobManagerWrapper.createInitUpdateJob(
           updatedLayerMetadata.productId,
           updatedLayerMetadata.productVersion,
+          updatedLayerMetadata.tileOutputFormat,
+          updatedLayerMetadata.displayPath,
           updatedLayerMetadata.id,
           layerRequest,
           updateJobType
@@ -64,6 +66,8 @@ describe('jobManagerWrapper', () => {
         jobManagerWrapper.createInitUpdateJob(
           updatedLayerMetadata.productId,
           updatedLayerMetadata.productVersion,
+          updatedLayerMetadata.tileOutputFormat,
+          updatedLayerMetadata.displayPath,
           updatedLayerMetadata.id,
           layerRequest,
           updateJobType

@@ -1,6 +1,6 @@
 import { Logger } from '@map-colonies/js-logger';
 import { inject, injectable } from 'tsyringe';
-import { NewRasterLayer, UpdateRasterLayer } from '@map-colonies/mc-model-types';
+import { NewRasterLayer, TileOutputFormat, UpdateRasterLayer, IngestionUpdateJobParams } from '@map-colonies/mc-model-types';
 import { ICreateJobBody, ICreateJobResponse, IJobResponse, OperationStatus, ITaskResponse, JobManagerClient } from '@map-colonies/mc-priority-queue';
 import { IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { trace, Tracer } from '@opentelemetry/api';
@@ -15,6 +15,7 @@ export class JobManagerWrapper extends JobManagerClient {
   private readonly jobDomain: string;
   private readonly logContext: LogContext;
   private readonly ingestionNewJobType: string;
+  private readonly swapUpdateJobType: string;
   private readonly initTaskType: string;
 
   public constructor(
@@ -32,6 +33,7 @@ export class JobManagerWrapper extends JobManagerClient {
     this.jobDomain = config.get<string>('jobManager.jobDomain');
     this.ingestionNewJobType = config.get<string>('jobManager.ingestionNewJobType');
     this.initTaskType = config.get<string>('jobManager.initTaskType');
+    this.swapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
     this.logContext = {
       fileName: __filename,
       class: JobManagerWrapper.name,
@@ -58,6 +60,8 @@ export class JobManagerWrapper extends JobManagerClient {
   public async createInitUpdateJob(
     id: string,
     version: string,
+    tileOutputFormat: TileOutputFormat,
+    displayPath: string,
     internalId: string,
     data: UpdateRasterLayer,
     jobType: string
@@ -67,7 +71,17 @@ export class JobManagerWrapper extends JobManagerClient {
     activeSpan?.updateName('jobManagerWrapper.createInitUpdateJob');
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
     try {
-      const jobResponse = await this.createUpdateJob(id, version, internalId, data, jobType, this.initTaskType, taskParams);
+      const jobResponse = await this.createUpdateJob(
+        id,
+        version,
+        tileOutputFormat,
+        displayPath,
+        internalId,
+        data,
+        jobType,
+        this.initTaskType,
+        taskParams
+      );
       return jobResponse;
     } catch (err) {
       const message = 'failed to create a new init update job ';
@@ -84,7 +98,7 @@ export class JobManagerWrapper extends JobManagerClient {
       version: '1.0',
       type: jobType,
       status: OperationStatus.PENDING,
-      parameters: { ...data } as unknown as Record<string, unknown>,
+      parameters: { ...data },
       productName: data.metadata.productName,
       productType: data.metadata.productType,
       domain: this.jobDomain,
@@ -103,6 +117,8 @@ export class JobManagerWrapper extends JobManagerClient {
   private async createUpdateJob(
     id: string,
     version: string,
+    tileOutputFormat: TileOutputFormat,
+    displayPath: string,
     internalId: string,
     data: UpdateRasterLayer,
     jobType: string,
@@ -110,13 +126,17 @@ export class JobManagerWrapper extends JobManagerClient {
     taskParams?: ITaskParameters[]
   ): Promise<ICreateJobResponse> {
     const createLayerTasksUrl = `/jobs`;
+    const ingestionUpdateJobParams: IngestionUpdateJobParams = {
+      ...data,
+      additionalParams: { tileOutputFormat, ...(jobType === this.swapUpdateJobType && { displayPath }) },
+    };
     const createJobRequest: CreateJobBody = {
       resourceId: id,
       version: version,
       internalId: internalId,
       type: jobType,
       status: OperationStatus.PENDING,
-      parameters: { ...data } as unknown as Record<string, unknown>,
+      parameters: ingestionUpdateJobParams,
       domain: this.jobDomain,
       tasks: taskParams?.map((params) => {
         return {
@@ -132,4 +152,4 @@ export class JobManagerWrapper extends JobManagerClient {
 
 export type JobResponse = IJobResponse<Record<string, unknown>, ITaskParameters>;
 export type TaskResponse = ITaskResponse<ITaskParameters>;
-export type CreateJobBody = ICreateJobBody<Record<string, unknown>, ITaskParameters>;
+export type CreateJobBody = ICreateJobBody<NewRasterLayer | IngestionUpdateJobParams, ITaskParameters>;
