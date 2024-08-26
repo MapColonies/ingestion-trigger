@@ -335,7 +335,7 @@ export class IngestionManager {
       getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
     } else if (layerDetails.length !== 1) {
-      const message = `found more than one Layer with id of ${catalogId} . Please check the catalog Layers`;
+      const message = `found more than one layer with id of ${catalogId}, Please check the catalog layers`;
       const error = new ConflictError(message);
       getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
