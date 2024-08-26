@@ -159,7 +159,7 @@ export const updateRunningJobResponse = [{ status: OperationStatus.IN_PROGRESS, 
 
 export const updateJobRequest = {
   resourceId: 'blueMarble_test_2',
-  version: '1.0',
+  version: '2.0',
   internalId: '14460cdd-44ae-4a04-944f-29e907b6cd2a',
   type: 'Ingestion_Update',
   status: 'Pending',
@@ -364,7 +364,7 @@ export const updatedSwapLayer = {
 
 export const updateSwapJobRequest = {
   resourceId: 'blueMarble_test_2',
-  version: '1.0',
+  version: '2.0',
   internalId: '14460cdd-44ae-4a04-944f-29e907b6cd2a',
   type: 'Ingestion_Swap_Update',
   status: 'Pending',

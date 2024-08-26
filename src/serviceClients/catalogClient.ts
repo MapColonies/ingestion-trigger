@@ -31,14 +31,14 @@ export class CatalogClient extends HttpClient {
   }
 
   @withSpanAsyncV4
-  public async findByInternalId(internalId: string): Promise<FindRecordResponse> {
+  public async findById(catalogId: string): Promise<FindRecordResponse> {
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('catalogClient.findByInternalId');
+    activeSpan?.updateName('catalogClient.findByCatalogId');
     const req = {
-      id: internalId,
+      id: catalogId,
     };
     const res = this.post<FindRecordResponse>('/records/find', req);
-    activeSpan?.addEvent('catalogClient.findByInternalId.response', { findByInternalIdResponse: JSON.stringify(res) });
+    activeSpan?.addEvent('catalogClient.findByCatalogId.response', { findByCatalogIdResponse: JSON.stringify(res) });
     return res;
   }
 

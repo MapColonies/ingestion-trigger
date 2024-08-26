@@ -44,10 +44,10 @@ export class IngestionController {
 
   public updateLayer: UpdateLayerHandler = async (req, res, next) => {
     try {
-      const resourceId = req.params.id;
+      const catalogId = req.params.id;
       const updateLayerRequestBody: unknown = req.body;
       const validUpdateLayerRequestBody: UpdateRasterLayer = await this.schemasValidator.validateUpdateLayerRequest(updateLayerRequestBody);
-      await this.ingestionManager.updateLayer(resourceId, validUpdateLayerRequestBody);
+      await this.ingestionManager.updateLayer(catalogId, validUpdateLayerRequestBody);
 
       res.status(StatusCodes.OK).send({ status: 'success' });
     } catch (error) {

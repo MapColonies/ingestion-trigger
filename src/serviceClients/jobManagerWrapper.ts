@@ -58,11 +58,11 @@ export class JobManagerWrapper extends JobManagerClient {
 
   @withSpanAsyncV4
   public async createInitUpdateJob(
-    id: string,
+    productId: string,
     version: string,
     tileOutputFormat: TileOutputFormat,
     displayPath: string,
-    internalId: string,
+    catalogId: string,
     data: UpdateRasterLayer,
     jobType: string
   ): Promise<ICreateJobResponse> {
@@ -72,11 +72,11 @@ export class JobManagerWrapper extends JobManagerClient {
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
     try {
       const jobResponse = await this.createUpdateJob(
-        id,
+        productId,
         version,
         tileOutputFormat,
         displayPath,
-        internalId,
+        catalogId,
         data,
         jobType,
         this.initTaskType,
@@ -115,11 +115,11 @@ export class JobManagerWrapper extends JobManagerClient {
 
   @withSpanAsyncV4
   private async createUpdateJob(
-    id: string,
+    productId: string,
     version: string,
     tileOutputFormat: TileOutputFormat,
     displayPath: string,
-    internalId: string,
+    catalogId: string,
     data: UpdateRasterLayer,
     jobType: string,
     taskType: string,
@@ -131,9 +131,9 @@ export class JobManagerWrapper extends JobManagerClient {
       additionalParams: { tileOutputFormat, ...(jobType === this.swapUpdateJobType && { displayPath }) },
     };
     const createJobRequest: CreateJobBody = {
-      resourceId: id,
-      version: version,
-      internalId: internalId,
+      resourceId: productId,
+      version: (parseFloat(version) + 1).toFixed(1),
+      internalId: catalogId,
       type: jobType,
       status: OperationStatus.PENDING,
       parameters: ingestionUpdateJobParams,
