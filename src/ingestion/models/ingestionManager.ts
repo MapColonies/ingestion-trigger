@@ -129,16 +129,16 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  public async updateLayer(internalId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<void> {
+  public async updateLayer(catalogId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayer.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('IngestionManager.updateLayer');
 
-    const layerDetails: LayerDetails = await this.validateAndGetUpdatedLayerParams(internalId, rasterUpdateLayer);
+    const layerDetails: LayerDetails = await this.validateAndGetUpdatedLayerParams(catalogId, rasterUpdateLayer);
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
-    const response = await this.setAndCreateUpdateJob(internalId, layerDetails, rasterUpdateLayer);
+    const response = await this.setAndCreateUpdateJob(catalogId, layerDetails, rasterUpdateLayer);
     this.logger.info({
       msg: `new update job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `,
       logContext: logCtx,
@@ -150,7 +150,7 @@ export class IngestionManager {
 
   @withSpanAsyncV4
   private async setAndCreateUpdateJob(
-    internalId: string,
+    catalogId: string,
     layerDetails: LayerDetails,
     rasterUpdateLayer: UpdateRasterLayer
   ): Promise<ICreateJobResponse> {
@@ -161,27 +161,32 @@ export class IngestionManager {
     return this.jobManagerWrapper.createInitUpdateJob(
       layerDetails.productId,
       layerDetails.productVersion,
-      internalId,
+      catalogId,
       rasterUpdateLayer,
       updateJobAction
     );
   }
 
   @withSpanAsyncV4
-  private async validateAndGetUpdatedLayerParams(resourceId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<LayerDetails> {
+  private async validateAndGetUpdatedLayerParams(catalogId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<LayerDetails> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateAndGetUpdatedLayerParams.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.validateAndGetUpdatedLayerParams');
     const { metadata, partData, inputFiles } = rasterUpdateLayer;
-    this.logger.debug({ msg: 'started update layer validation', requestBody: { metadata, partData, inputFiles }, logCtx: logCtx });
+    this.logger.debug({
+      msg: 'started update layer validation',
+      catalogId: catalogId,
+      requestBody: { metadata, partData, inputFiles },
+      logCtx: logCtx,
+    });
     this.logger.info({
-      resourceId: resourceId,
+      catalogId: catalogId,
       msg: 'started validation on update layer request',
       logCtx: logCtx,
     });
     await this.validateRequestInputs(partData, inputFiles);
     //catalog call must be before map proxy to get productId and Type
-    const layerDetails = await this.getLayer(resourceId);
+    const layerDetails = await this.getLayer(catalogId);
     const { productId, productVersion, productType, productSubType = '' } = layerDetails.metadata as LayerDetails;
     activeSpan?.addEvent('updateLayer.getLayer', { productId, productVersion, productType, productSubType });
 
@@ -219,7 +224,7 @@ export class IngestionManager {
     const logCtx: LogContext = { ...this.logContext, function: this.validateNoConflictingJobs.name };
     const jobs = await this.getJobs(productId, productType);
     if (jobs.length !== 0) {
-      const message = `Layer id: ${productId} product type: ${productType}, there is at least one conflicting job already running for that layer`;
+      const message = `ProductId: ${productId} ProductType: ${productType}, there is at least one conflicting job already running for that layer`;
       this.logger.error({
         productId: productId,
         productType: productType,
@@ -237,7 +242,7 @@ export class IngestionManager {
     const logCtx: LogContext = { ...this.logContext, function: this.validateNoParallelJobs.name };
     const jobs = await this.getJobs(productId, productType, this.forbiddenJobTypes);
     if (jobs.length !== 0) {
-      const message = `Layer id: ${productId} product type: ${productType}, there is at least one conflicting job already running for that layer`;
+      const message = `ProductId: ${productId} productType: ${productType}, there is at least one conflicting job already running for that layer`;
       this.logger.error({
         productId: productId,
         productType: productType,
@@ -307,7 +312,7 @@ export class IngestionManager {
     const logCtx: LogContext = { ...this.logContext, function: this.isInCatalog.name };
     const existsInCatalog = await this.catalogClient.exists(productId, productType);
     if (existsInCatalog) {
-      const message = `Layer id: ${productId} ProductType: ${productType}, already exists in catalog`;
+      const message = `ProductId: ${productId} ProductType: ${productType}, already exists in catalog`;
       this.logger.error({
         productId: productId,
         productType: productType,
@@ -321,16 +326,16 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async getLayer(resourceId: string): Promise<IFindResponseRecord> {
-    const layerDetails = await this.catalogClient.findByInternalId(resourceId);
+  private async getLayer(catalogId: string): Promise<IFindResponseRecord> {
+    const layerDetails = await this.catalogClient.findByCatalogId(catalogId);
     const getLayerSpan = trace.getActiveSpan();
     if (layerDetails.length === 0) {
-      const message = `there isnt a layer with id of ${resourceId}`;
+      const message = `there isnt a layer with id of ${catalogId}`;
       const error = new BadRequestError(message);
       getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
     } else if (layerDetails.length !== 1) {
-      const message = `found more than one Layer with id of ${resourceId} . Please check the catalog Layers`;
+      const message = `found more than one Layer with id of ${catalogId} . Please check the catalog Layers`;
       const error = new ConflictError(message);
       getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
