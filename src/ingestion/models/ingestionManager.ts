@@ -327,7 +327,7 @@ export class IngestionManager {
 
   @withSpanAsyncV4
   private async getLayer(catalogId: string): Promise<IFindResponseRecord> {
-    const layerDetails = await this.catalogClient.findByCatalogId(catalogId);
+    const layerDetails = await this.catalogClient.findById(catalogId);
     const getLayerSpan = trace.getActiveSpan();
     if (layerDetails.length === 0) {
       const message = `there isnt a layer with id of ${catalogId}`;

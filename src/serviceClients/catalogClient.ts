@@ -31,7 +31,7 @@ export class CatalogClient extends HttpClient {
   }
 
   @withSpanAsyncV4
-  public async findByCatalogId(catalogId: string): Promise<FindRecordResponse> {
+  public async findById(catalogId: string): Promise<FindRecordResponse> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('catalogClient.findByCatalogId');
     const req = {
