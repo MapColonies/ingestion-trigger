@@ -112,7 +112,7 @@ export class JobManagerWrapper extends JobManagerClient {
     const createLayerTasksUrl = `/jobs`;
     const createJobRequest: CreateJobBody = {
       resourceId: productId,
-      version: (parseFloat(version) + 1).toFixed(1),
+      version: parseFloat(++version).toFixed(1)
       internalId: catalogId,
       type: jobType,
       status: OperationStatus.PENDING,
