@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0](https://github.com/MapColonies/ingestion-trigger/compare/v1.3.0...v2.0.0) (2024-08-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update pp fields names(MAPCO-4684) (#13)
+
+### Features
+
+* Update pp fields names(MAPCO-4684) ([#13](https://github.com/MapColonies/ingestion-trigger/issues/13)) ([748011e](https://github.com/MapColonies/ingestion-trigger/commit/748011eb3585efca32b04911230e14750581e00b))
+
 ## [1.3.0](https://github.com/MapColonies/ingestion-trigger/compare/v1.2.0...v1.3.0) (2024-08-29)
 
 
