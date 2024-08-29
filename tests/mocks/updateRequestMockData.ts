@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { InputFiles, PolygonPart, UpdateRasterLayerMetadata } from '@map-colonies/mc-model-types';
+import { InputFiles, PolygonPart, TileOutputFormat, UpdateRasterLayerMetadata } from '@map-colonies/mc-model-types';
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
 
 export const updateLayerRequest = {
@@ -199,6 +199,9 @@ export const updateJobRequest = {
       originDirectory: 'test_files',
       fileNames: ['valid(blueMarble).gpkg'],
     },
+    additionalParams: {
+      tileOutputFormat: TileOutputFormat.PNG,
+    },
   },
   domain: 'RASTER',
   tasks: [
@@ -281,7 +284,7 @@ export const updatedLayer = {
     displayPath: 'd698bf1d-bb66-4292-a8b4-524cbeadf36f',
     transparency: 'TRANSPARENT',
     tileMimeFormat: 'image/png',
-    tileOutputFormat: 'PNG',
+    tileOutputFormat: TileOutputFormat.PNG,
   },
 };
 
@@ -400,6 +403,10 @@ export const updateSwapJobRequest = {
     inputFiles: {
       originDirectory: 'test_files',
       fileNames: ['valid(blueMarble).gpkg'],
+    },
+    additionalParams: {
+      tileOutputFormat: TileOutputFormat.PNG,
+      displayPath: 'd698bf1d-bb66-4292-a8b4-524cbeadf36f',
     },
   },
   domain: 'RASTER',
