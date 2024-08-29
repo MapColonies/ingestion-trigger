@@ -116,8 +116,8 @@ export const fakeDataToValidate = {
       },
       partData: [
         {
-          id: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
-          name: 'string',
+          sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
+          sourceName: 'string',
           imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
           imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
           resolutionDegree: 0.703125,
@@ -164,8 +164,8 @@ export const fakeDataToValidate = {
       },
       partData: [
         {
-          id: 'invalid !',
-          name: 'string',
+          sourceId: 'invalid !',
+          sourceName: 'string',
           imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
           imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
           resolutionDegree: 0.703125,
@@ -212,8 +212,8 @@ export const fakeDataToValidate = {
       },
       partData: [
         {
-          id: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
-          name: 'string',
+          sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
+          sourceName: 'string',
           imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
           imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
           resolutionDegree: 0.703125,
@@ -240,8 +240,8 @@ export const fakeDataToValidate = {
       },
       partData: [
         {
-          id: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
-          name: 'string',
+          sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
+          sourceName: 'string',
           imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
           imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
           resolutionDegree: 0.703125,
@@ -277,8 +277,8 @@ export const fakeDataToValidate = {
       },
       partData: [
         {
-          id: 'invalid !',
-          name: 'string',
+          sourceId: 'invalid !',
+          sourceName: 'string',
           imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
           imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
           resolutionDegree: 0.703125,
@@ -325,8 +325,8 @@ export const fakeDataToValidate = {
       },
       partData: [
         {
-          id: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
-          name: 'string',
+          sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
+          sourceName: 'string',
           imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
           imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
           resolutionDegree: 0.703125,
@@ -501,11 +501,11 @@ export const mockMetadata = {
 };
 
 export const mockPart = {
-  id: {
+  sourceId: {
     valid: 'part_123',
     invalid: 3,
   },
-  name: {
+  sourceName: {
     valid: 'Valid Part Name',
     invalid: '',
   },

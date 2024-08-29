@@ -388,7 +388,7 @@ components:
       type: object
       description: Layer polygon part data definitions
       required:
-        - name
+        - sourceName
         - imagingTimeBeginUTC
         - imagingTimeEndUTC
         - geometry
@@ -398,10 +398,10 @@ components:
         - horizontalAccuracyCE90
         - sensors
       properties:
-        id:
+        sourceId:
           type: string
           description: Layer's external identifier
-        name:
+        sourceName:
           type: string
           description: Layer's external name
         imagingTimeBeginUTC:

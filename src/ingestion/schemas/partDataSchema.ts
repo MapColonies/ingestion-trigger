@@ -6,8 +6,8 @@ import { horizontalAccuracyCE90Range, resolutionDegRange, resolutionMeterRange }
 
 //eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const partSchema = z.object({
-  id: z.string().optional(), //NOTE FOR THE FUTURE:removed regex check because po noted that we cannot know the the struct of the id, we may want to add the constraint in the future but not for now
-  name: z.string().min(1),
+  sourceId: z.string().optional(), //NOTE FOR THE FUTURE:removed regex check because po noted that we cannot know the the struct of the id, we may want to add the constraint in the future but not for now
+  sourceName: z.string().min(1),
   description: z.string().optional(),
   imagingTimeBeginUTC: z.coerce.date(),
   imagingTimeEndUTC: z.coerce.date(),

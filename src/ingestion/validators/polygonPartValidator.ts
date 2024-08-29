@@ -58,32 +58,32 @@ export class PolygonPartValidator {
     activeSpan?.updateName('polygonPartValidator.validatePartGeometry');
     const validGeo = this.validateGeometry(polygonPart.geometry as Geometry);
     this.logger.debug({
-      msg: `validated geometry of part ${polygonPart.name} at index: ${index} . validGeo: ${validGeo}`,
+      msg: `validated geometry of part ${polygonPart.sourceName} at index: ${index} . validGeo: ${validGeo}`,
       logContext: logCtx,
       metadata: { polygonPart },
       logCtx: logCtx,
     });
     if (!validGeo) {
       this.logger.error({
-        msg: `invalid geometry in part: ${polygonPart.name} at index: ${index} `,
+        msg: `invalid geometry in part: ${polygonPart.sourceName} at index: ${index} `,
         logContext: logCtx,
         metadata: { polygonPart },
       });
-      throw new GeometryValidationError(polygonPart.name as string, index, 'Geometry is invalid');
+      throw new GeometryValidationError(polygonPart.sourceName as string, index, 'Geometry is invalid');
     }
     const containedByExtent = this.isContainedByExtent(polygonPart.geometry as Geometry, combinedExtent as GeoJSON);
     this.logger.debug({
-      msg: `validated geometry of part ${polygonPart.name} at index: ${index}. containedByExtent: ${containedByExtent}`,
+      msg: `validated geometry of part ${polygonPart.sourceName} at index: ${index}. containedByExtent: ${containedByExtent}`,
       logContext: logCtx,
       metadata: { polygonPart },
     });
     if (!containedByExtent) {
       this.logger.error({
-        msg: `Geometry of ${polygonPart.name} at index: ${index} is not contained by combined extent`,
+        msg: `Geometry of ${polygonPart.sourceName} at index: ${index} is not contained by combined extent`,
         logContext: logCtx,
         metadata: { polygonPart, combinedExtent },
       });
-      throw new GeometryValidationError(polygonPart.name as string, index, 'Geometry is not contained by combined extent');
+      throw new GeometryValidationError(polygonPart.sourceName as string, index, 'Geometry is not contained by combined extent');
     }
   }
 
@@ -143,13 +143,13 @@ export class PolygonPartValidator {
       const isValidPixelSize = isPixelSizeValid(polygonPartResolutionDegree as number, infoDataPixelSize, this.resolutionFixedPointTolerance);
       if (!isValidPixelSize) {
         const sourceFileName = infoDataFiles[i].fileName;
-        const errorMsg = `PixelSize of ${polygonPart.name} at index: ${index} is not bigger than source pixelSize of: ${infoDataPixelSize} in source file: ${sourceFileName}`;
+        const errorMsg = `PixelSize of ${polygonPart.sourceName} at index: ${index} is not bigger than source pixelSize of: ${infoDataPixelSize} in source file: ${sourceFileName}`;
         this.logger.error({
           msg: errorMsg,
           logContext: logCtx,
           polygonPart: { polygonPart, index, infoDataPixelSize, sourceFileName },
         });
-        throw new PixelSizeError(polygonPart.name as string, index, `ResolutionDeg is not bigger that pixelSize in ${sourceFileName}`);
+        throw new PixelSizeError(polygonPart.sourceName as string, index, `ResolutionDeg is not bigger that pixelSize in ${sourceFileName}`);
       }
     }
     activeSpan?.addEvent('polygonPartValidator.validatePartPixelSize.valid');
