@@ -215,11 +215,11 @@ describe('SchemasValidator', () => {
       const result = await schemasValidator.validatePartData(validPartData);
 
       expect(Array.isArray(result)).toBe(true);
-      expect(result[0]).toHaveProperty('id');
-      expect(result[0].id).toMatch(PRODUCT_ID_REGEX);
-      expect(result[0]).toHaveProperty('name');
-      expect(typeof result[0].name).toBe('string');
-      expect(result[0].name).not.toHaveLength(0);
+      expect(result[0]).toHaveProperty('sourceId');
+      expect(result[0].sourceId).toMatch(PRODUCT_ID_REGEX);
+      expect(result[0]).toHaveProperty('sourceName');
+      expect(typeof result[0].sourceName).toBe('string');
+      expect(result[0].sourceName).not.toHaveLength(0);
       expect(result[0]).toHaveProperty('imagingTimeBeginUTC');
       expect(result[0].imagingTimeBeginUTC).toBeInstanceOf(Date);
       expect(result[0]).toHaveProperty('imagingTimeEndUTC');

@@ -5,8 +5,8 @@ import { InfoDataWithFile } from '../../src/ingestion/schemas/infoDataSchema';
 export const polygonPartsMock = {
   valid: [
     {
-      id: 'string',
-      name: 'string',
+      sourceId: 'string',
+      sourceName: 'string',
       imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
       imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
       resolutionDegree: 0.703125,
@@ -31,8 +31,8 @@ export const polygonPartsMock = {
       },
     },
     {
-      id: 'another-id',
-      name: 'another-string',
+      sourceId: 'another-id',
+      sourceName: 'another-string',
       imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
       imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
       resolutionDegree: 0.703125,
@@ -57,8 +57,8 @@ export const polygonPartsMock = {
       },
     },
     {
-      id: 'third-id',
-      name: 'another-string',
+      sourceId: 'third-id',
+      sourceName: 'another-string',
       imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
       imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
       resolutionDegree: 0.703125,
@@ -88,8 +88,8 @@ export const polygonPartsMock = {
   invalid: {
     notValidGeometry: [
       {
-        id: 'string',
-        name: 'string',
+        sourceId: 'string',
+        sourceName: 'string',
         imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
         imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
         resolutionDegree: 0.703125,
@@ -115,8 +115,8 @@ export const polygonPartsMock = {
     ] as PolygonPart[],
     notContainedGeometry: [
       {
-        id: 'string',
-        name: 'string',
+        sourceId: 'string',
+        sourceName: 'string',
         imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
         imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
         resolutionDegree: 0.703125,
@@ -143,8 +143,8 @@ export const polygonPartsMock = {
     ] as PolygonPart[],
     notContainedMultiPolygon: [
       {
-        id: 'string',
-        name: 'string',
+        sourceId: 'string',
+        sourceName: 'string',
         imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
         imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
         resolutionDegree: 0.703125,
@@ -173,8 +173,8 @@ export const polygonPartsMock = {
     ] as PolygonPart[],
     notValidResolutionDeg: [
       {
-        id: 'string',
-        name: 'string',
+        sourceId: 'string',
+        sourceName: 'string',
         imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
         imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
         resolutionDegree: 0.703125,
@@ -199,8 +199,8 @@ export const polygonPartsMock = {
         },
       },
       {
-        id: 'another-id',
-        name: 'another-string',
+        sourceId: 'another-id',
+        sourceName: 'another-string',
         imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
         imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
         resolutionDegree: 0.703125,
@@ -225,8 +225,8 @@ export const polygonPartsMock = {
         },
       },
       {
-        id: 'third-id',
-        name: 'another-string',
+        sourceId: 'third-id',
+        sourceName: 'another-string',
         imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
         imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
         resolutionDegree: 0.01,

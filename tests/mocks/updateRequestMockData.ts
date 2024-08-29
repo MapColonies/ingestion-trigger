@@ -9,8 +9,8 @@ export const updateLayerRequest = {
     } as UpdateRasterLayerMetadata,
     partData: [
       {
-        id: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
-        name: 'string',
+        sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
+        sourceName: 'string',
         imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
         imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
         resolutionDegree: 0.703125,
@@ -47,8 +47,8 @@ export const updateLayerRequest = {
       } as UpdateRasterLayerMetadata,
       partData: [
         {
-          id: 'invalid !',
-          name: 'string',
+          sourceId: 'invalid !',
+          sourceName: 'string',
           imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
           imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
           resolutionDegree: 0.703125,
@@ -84,8 +84,8 @@ export const updateLayerRequest = {
       } as UpdateRasterLayerMetadata,
       partData: [
         {
-          id: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
-          name: 'string',
+          sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
+          sourceName: 'string',
           imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
           imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
           resolutionDegree: 0.703125,
@@ -121,8 +121,8 @@ export const updateLayerRequest = {
       } as UpdateRasterLayerMetadata,
       partData: [
         {
-          id: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
-          name: 'string',
+          sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
+          sourceName: 'string',
           imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
           imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
           resolutionDegree: 0.703125,
@@ -169,8 +169,8 @@ export const updateJobRequest = {
     },
     partData: [
       {
-        id: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
-        name: 'string',
+        sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
+        sourceName: 'string',
         imagingTimeBeginUTC: '2024-06-17T12:00:00.000Z',
         imagingTimeEndUTC: '2024-06-18T12:00:00.000Z',
         resolutionDegree: 0.703125,
@@ -374,8 +374,8 @@ export const updateSwapJobRequest = {
     },
     partData: [
       {
-        id: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
-        name: 'string',
+        sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
+        sourceName: 'string',
         imagingTimeBeginUTC: '2024-06-17T12:00:00.000Z',
         imagingTimeEndUTC: '2024-06-18T12:00:00.000Z',
         resolutionDegree: 0.703125,
