@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.3.0](https://github.com/MapColonies/ingestion-trigger/compare/v1.2.0...v1.3.0) (2024-08-29)
+
+
+### Features
+
+* Add job parameters on update(MAPCO-4685) ([#12](https://github.com/MapColonies/ingestion-trigger/issues/12)) ([254ccb3](https://github.com/MapColonies/ingestion-trigger/commit/254ccb3749b3f86c96a78bc8b80858878a2fdc92))
+* change name conventions and version calculation (MAPCO-4687, MAPCO-4686) ([#10](https://github.com/MapColonies/ingestion-trigger/issues/10)) ([c40caf8](https://github.com/MapColonies/ingestion-trigger/commit/c40caf8a7477009c89598a4642c31bf6349ae392))
+* use scope argument in workflow ([#11](https://github.com/MapColonies/ingestion-trigger/issues/11)) ([12f198d](https://github.com/MapColonies/ingestion-trigger/commit/12f198d1e1f3a38ffabaa7ebfff43b086ea9fd68))
+
 ## [1.2.0](https://github.com/MapColonies/ingestion-trigger/compare/v1.1.2...v1.2.0) (2024-08-21)
 
 
