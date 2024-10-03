@@ -56,7 +56,7 @@ export class PolygonPartValidator {
     const logCtx = { ...this.logContext, function: this.validatePartGeometry.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.validatePartGeometry');
-    const validGeo = this.validateGeometry(polygonPart.geometry as Geometry);
+    const validGeo = this.validateGeometry(polygonPart.footprint as Geometry);
     this.logger.debug({
       msg: `validated geometry of part ${polygonPart.sourceName} at index: ${index} . validGeo: ${validGeo}`,
       logContext: logCtx,
@@ -71,7 +71,7 @@ export class PolygonPartValidator {
       });
       throw new GeometryValidationError(polygonPart.sourceName as string, index, 'Geometry is invalid');
     }
-    const containedByExtent = this.isContainedByExtent(polygonPart.geometry as Geometry, combinedExtent as GeoJSON);
+    const containedByExtent = this.isContainedByExtent(polygonPart.footprint as Geometry, combinedExtent as GeoJSON);
     this.logger.debug({
       msg: `validated geometry of part ${polygonPart.sourceName} at index: ${index}. containedByExtent: ${containedByExtent}`,
       logContext: logCtx,

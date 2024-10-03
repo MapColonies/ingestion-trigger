@@ -1,34 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { GeoJSON } from 'geojson';
 import { z } from 'zod';
+import { partSchema } from '@map-colonies/mc-model-types'
 import { getUTCDate } from '@map-colonies/mc-utils';
-import { horizontalAccuracyCE90Range, resolutionDegRange, resolutionMeterRange } from './constants';
-
-//eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-const partSchema = z.object({
-  sourceId: z.string().optional(), //NOTE FOR THE FUTURE:removed regex check because po noted that we cannot know the the struct of the id, we may want to add the constraint in the future but not for now
-  sourceName: z.string().min(1),
-  description: z.string().optional(),
-  imagingTimeBeginUTC: z.coerce.date(),
-  imagingTimeEndUTC: z.coerce.date(),
-  resolutionDegree: z
-    .number()
-    .min(resolutionDegRange.min as number)
-    .max(resolutionDegRange.max as number),
-  resolutionMeter: z
-    .number()
-    .min(resolutionMeterRange.min as number)
-    .max(resolutionMeterRange.max as number),
-  sourceResolutionMeter: z
-    .number()
-    .min(resolutionMeterRange.min as number)
-    .max(resolutionMeterRange.max as number),
-  horizontalAccuracyCE90: z.number().min(horizontalAccuracyCE90Range.min).max(horizontalAccuracyCE90Range.max),
-  sensors: z.array(z.string().min(1)).min(1),
-  countries: z.array(z.string().min(1)).optional(),
-  cities: z.array(z.string().min(1)).optional(),
-  geometry: z.custom<GeoJSON>(),
-});
 
 export type Part = z.infer<typeof partSchema>;
 
@@ -66,11 +40,11 @@ export const createPartDataSchema = () => {
         )
         .refine(
           (data: Part) => {
-            const isValidGeoJson = typeof data.geometry === 'object' && (data.geometry.type === 'Polygon' || data.geometry.type === 'MultiPolygon');
+            const isValidGeoJson = typeof data.footprint === 'object' && (data.footprint.type === 'Polygon' || data.footprint.type === 'MultiPolygon');
             return isValidGeoJson;
           },
           () => ({
-            message: `geometry is not a valid geoJson`,
+            message: `footprint is not a valid polygon`,
           })
         )
     )
