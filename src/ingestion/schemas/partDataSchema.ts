@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { Polygon } from 'geojson';
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { z } from 'zod';
 import { getUTCDate } from '@map-colonies/mc-utils';
 import { partSchema } from '@map-colonies/mc-model-types';

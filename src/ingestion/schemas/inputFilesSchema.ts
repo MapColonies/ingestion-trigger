@@ -2,8 +2,8 @@
 import { IConfig } from 'config';
 import { z } from 'zod';
 import { DependencyContainer } from 'tsyringe';
-import { SERVICES } from '../../common/constants';
 import { inputFilesSchema } from '@map-colonies/mc-model-types';
+import { SERVICES } from '../../common/constants';
 
 type inputFiles = z.infer<typeof inputFilesSchema>;
 

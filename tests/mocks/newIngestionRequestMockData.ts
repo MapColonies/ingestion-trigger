@@ -2,6 +2,7 @@
 import { InputFiles, ProductType, Transparency, NewRasterLayerMetadata, PolygonPart } from '@map-colonies/mc-model-types';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { Polygon } from 'geojson';
+
 const polygonTest: Polygon = {
   type: 'Polygon',
   coordinates: [

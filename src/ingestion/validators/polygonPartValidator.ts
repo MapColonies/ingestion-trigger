@@ -69,7 +69,7 @@ export class PolygonPartValidator {
         logContext: logCtx,
         metadata: { polygonPart },
       });
-      throw new GeometryValidationError(polygonPart.sourceName as string, index, 'Geometry is invalid');
+      throw new GeometryValidationError(polygonPart.sourceName, index, 'Geometry is invalid');
     }
     const containedByExtent = this.isContainedByExtent(polygonPart.footprint as Geometry, combinedExtent as GeoJSON);
     this.logger.debug({
@@ -83,7 +83,7 @@ export class PolygonPartValidator {
         logContext: logCtx,
         metadata: { polygonPart, combinedExtent },
       });
-      throw new GeometryValidationError(polygonPart.sourceName as string, index, 'Geometry is not contained by combined extent');
+      throw new GeometryValidationError(polygonPart.sourceName, index, 'Geometry is not contained by combined extent');
     }
   }
 
@@ -125,7 +125,7 @@ export class PolygonPartValidator {
     const polygonPartResolutionDegree = polygonPart.resolutionDegree;
     for (let i = 0; i < infoDataFiles.length; i++) {
       const infoDataPixelSize = infoDataFiles[i].pixelSize;
-      const isValidPixelSize = isPixelSizeValid(polygonPartResolutionDegree as number, infoDataPixelSize, this.resolutionFixedPointTolerance);
+      const isValidPixelSize = isPixelSizeValid(polygonPartResolutionDegree, infoDataPixelSize, this.resolutionFixedPointTolerance);
       if (!isValidPixelSize) {
         const sourceFileName = infoDataFiles[i].fileName;
         const errorMsg = `PixelSize of ${polygonPart.sourceName} at index: ${index} is not bigger than source pixelSize of: ${infoDataPixelSize} in source file: ${sourceFileName}`;
@@ -134,7 +134,7 @@ export class PolygonPartValidator {
           logContext: logCtx,
           polygonPart: { polygonPart, index, infoDataPixelSize, sourceFileName },
         });
-        throw new PixelSizeError(polygonPart.sourceName as string, index, `ResolutionDeg is not bigger that pixelSize in ${sourceFileName}`);
+        throw new PixelSizeError(polygonPart.sourceName, index, `ResolutionDeg is not bigger that pixelSize in ${sourceFileName}`);
       }
     }
     activeSpan?.addEvent('polygonPartValidator.validatePartPixelSize.valid');
