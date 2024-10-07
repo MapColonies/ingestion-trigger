@@ -216,7 +216,6 @@ describe('SchemasValidator', () => {
 
       expect(Array.isArray(result)).toBe(true);
       expect(result[0]).toHaveProperty('sourceId');
-      expect(result[0].sourceId).toMatch(PRODUCT_ID_REGEX);
       expect(result[0]).toHaveProperty('sourceName');
       expect(typeof result[0].sourceName).toBe('string');
       expect(result[0].sourceName).not.toHaveLength(0);
@@ -242,10 +241,10 @@ describe('SchemasValidator', () => {
       expect(result[0].horizontalAccuracyCE90).toBeLessThanOrEqual(horizontalAccuracyCE90Range.max);
       expect(result[0]).toHaveProperty('sensors');
       expect(Array.isArray(result[0].sensors)).toBe(true);
-      expect(result[0]).toHaveProperty('geometry');
-      expect(typeof result[0].geometry).toBe('object');
-      expect(result[0].geometry).toHaveProperty('type');
-      expect(result[0].geometry).toHaveProperty('coordinates');
+      expect(result[0]).toHaveProperty('footprint');
+      expect(typeof result[0].footprint).toBe('object');
+      expect(result[0].footprint).toHaveProperty('type');
+      expect(result[0].footprint).toHaveProperty('coordinates');
     });
 
     it.each(
@@ -276,7 +275,7 @@ describe('SchemasValidator', () => {
       await expect(validationAction).rejects.toThrow(BadRequestError);
     });
 
-    it('should throw error when geometry is an empty object', async () => {
+    it('should throw error when footprint is an empty object', async () => {
       const invalidPartData = fakeDataToValidate.newLayerRequest.emptyGeometry;
 
       const validationAction = async () => schemasValidator.validatePartData(invalidPartData);

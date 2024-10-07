@@ -21,7 +21,7 @@ export const updateLayerRequest = {
         countries: ['string'],
         cities: ['string'],
         description: 'string',
-        geometry: {
+        footprint: {
           type: 'Polygon',
           coordinates: [
             [
@@ -59,7 +59,7 @@ export const updateLayerRequest = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -96,7 +96,7 @@ export const updateLayerRequest = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -133,7 +133,7 @@ export const updateLayerRequest = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -181,7 +181,7 @@ export const updateJobRequest = {
         countries: ['string'],
         cities: ['string'],
         description: 'string',
-        geometry: {
+        footprint: {
           type: 'Polygon',
           coordinates: [
             [
@@ -386,7 +386,7 @@ export const updateSwapJobRequest = {
         countries: ['string'],
         cities: ['string'],
         description: 'string',
-        geometry: {
+        footprint: {
           type: 'Polygon',
           coordinates: [
             [

@@ -1,11 +1,11 @@
-import { zoomLevelToResolutionDeg, zoomLevelToResolutionMeter } from '@map-colonies/mc-utils';
+import { VALIDATIONS } from '@map-colonies/mc-model-types';
 
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-export const PRODUCT_ID_REGEX = new RegExp('^[a-zA-Z0-9_-]+$');
-export const GPKG_REGEX = new RegExp('^.+.[Gg][Pp][Kk][Gg]$');
-export const CLASSIFICATION_REGEX = new RegExp('^[0-9]$|^[1-9][0-9]$|^(100)$');
-export const resolutionMeterRange = { min: zoomLevelToResolutionMeter(22), max: zoomLevelToResolutionMeter(0) };
-export const resolutionDegRange = { min: zoomLevelToResolutionDeg(22), max: zoomLevelToResolutionDeg(0) };
-export const horizontalAccuracyCE90Range = { min: 0.01, max: 4000 };
-export const scaleRange = { min: 0, max: 100000000 };
+export const PRODUCT_ID_REGEX = new RegExp(VALIDATIONS.productId.pattern);
+export const GPKG_REGEX = new RegExp(VALIDATIONS.fileNames.pattern);
+export const CLASSIFICATION_REGEX = new RegExp(VALIDATIONS.classification.pattern);
+export const resolutionMeterRange = { min: VALIDATIONS.resolutionMeter.min, max: VALIDATIONS.resolutionMeter.max };
+export const resolutionDegRange = { min: VALIDATIONS.resolutionDeg.min , max: VALIDATIONS.resolutionDeg.max };
+export const horizontalAccuracyCE90Range = { min: VALIDATIONS.horizontalAccuracyCE90.min, max: VALIDATIONS.horizontalAccuracyCE90.max };
+export const scaleRange = { min: VALIDATIONS.scale.min, max: VALIDATIONS.scale.max };
 /* eslint-enable @typescript-eslint/no-magic-numbers */

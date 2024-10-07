@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { zoomLevelToResolutionDeg } from '@map-colonies/mc-utils';
-import { GeoJSON } from 'geojson';
+import { Geometry } from 'geojson';
 import { DependencyContainer } from 'tsyringe';
 import { IConfig } from 'config';
 import { PixelRange } from '../interfaces';
@@ -11,7 +11,7 @@ const basicInfoDataSchema = z
     crs: z.number(),
     fileFormat: z.string(),
     pixelSize: z.number(),
-    extentPolygon: z.custom<GeoJSON>(),
+    extentPolygon: z.custom<Geometry>(),
   })
   .describe('InfoDataSchema');
 

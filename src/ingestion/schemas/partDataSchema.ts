@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { GeoJSON } from 'geojson';
+import { Polygon } from 'geojson';
 import { z } from 'zod';
-import { partSchema } from '@map-colonies/mc-model-types'
 import { getUTCDate } from '@map-colonies/mc-utils';
+import { partSchema } from '@map-colonies/mc-model-types';
 
 export type Part = z.infer<typeof partSchema>;
 
@@ -40,7 +40,7 @@ export const createPartDataSchema = () => {
         )
         .refine(
           (data: Part) => {
-            const isValidGeoJson = typeof data.footprint === 'object' && (data.footprint.type === 'Polygon' || data.footprint.type === 'MultiPolygon');
+            const isValidGeoJson = typeof data.footprint === 'object' && data.footprint.type === 'Polygon';
             return isValidGeoJson;
           },
           () => ({

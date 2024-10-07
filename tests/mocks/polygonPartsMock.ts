@@ -17,7 +17,7 @@ export const polygonPartsMock = {
       countries: ['string'],
       cities: ['string'],
       description: 'string',
-      geometry: {
+      footprint: {
         type: 'Polygon',
         coordinates: [
           [
@@ -43,7 +43,7 @@ export const polygonPartsMock = {
       countries: ['string'],
       cities: ['string'],
       description: 'string',
-      geometry: {
+      footprint: {
         type: 'Polygon',
         coordinates: [
           [
@@ -69,17 +69,15 @@ export const polygonPartsMock = {
       countries: ['string'],
       cities: ['string'],
       description: 'string',
-      geometry: {
-        type: 'MultiPolygon',
+      footprint: {
+        type: 'Polygon',
         coordinates: [
           [
-            [
-              [34.85149443279957, 32.30543192283443],
-              [34.85149443279957, 32.29430955805424],
-              [34.86824157112912, 32.29430955805424],
-              [34.86824157112912, 32.30543192283443],
-              [34.85149443279957, 32.30543192283443],
-            ],
+            [34.85149443279957, 32.30543192283443],
+            [34.85149443279957, 32.29430955805424],
+            [34.86824157112912, 32.29430955805424],
+            [34.86824157112912, 32.30543192283443],
+            [34.85149443279957, 32.30543192283443],
           ],
         ],
       },
@@ -100,7 +98,7 @@ export const polygonPartsMock = {
         countries: ['string'],
         cities: ['string'],
         description: 'string',
-        geometry: {
+        footprint: {
           type: 'Polygon',
           coordinates: [
             [
@@ -127,7 +125,7 @@ export const polygonPartsMock = {
         countries: ['string'],
         cities: ['string'],
         description: 'string',
-        geometry: {
+        footprint: {
           type: 'Polygon',
           coordinates: [
             [
@@ -136,36 +134,6 @@ export const polygonPartsMock = {
               [220, 80],
               [220, 100],
               [200, 100],
-            ],
-          ],
-        },
-      },
-    ] as PolygonPart[],
-    notContainedMultiPolygon: [
-      {
-        sourceId: 'string',
-        sourceName: 'string',
-        imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
-        imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
-        resolutionDegree: 0.703125,
-        resolutionMeter: 8000,
-        sourceResolutionMeter: 8000,
-        horizontalAccuracyCE90: 10,
-        sensors: ['string'],
-        countries: ['string'],
-        cities: ['string'],
-        description: 'string',
-        geometry: {
-          type: 'MultiPolygon',
-          coordinates: [
-            [
-              [
-                [200, 100],
-                [200, 80],
-                [220, 80],
-                [220, 100],
-                [200, 100],
-              ],
             ],
           ],
         },
@@ -185,7 +153,7 @@ export const polygonPartsMock = {
         countries: ['string'],
         cities: ['string'],
         description: 'string',
-        geometry: {
+        footprint: {
           type: 'Polygon',
           coordinates: [
             [
@@ -211,7 +179,7 @@ export const polygonPartsMock = {
         countries: ['string'],
         cities: ['string'],
         description: 'string',
-        geometry: {
+        footprint: {
           type: 'Polygon',
           coordinates: [
             [
@@ -237,17 +205,15 @@ export const polygonPartsMock = {
         countries: ['string'],
         cities: ['string'],
         description: 'string',
-        geometry: {
-          type: 'MultiPolygon',
+        footprint: {
+          type: 'Polygon',
           coordinates: [
             [
-              [
-                [34.85149443279957, 32.30543192283443],
-                [34.85149443279957, 32.29430955805424],
-                [34.86824157112912, 32.29430955805424],
-                [34.86824157112912, 32.30543192283443],
-                [34.85149443279957, 32.30543192283443],
-              ],
+              [34.85149443279957, 32.30543192283443],
+              [34.85149443279957, 32.29430955805424],
+              [34.86824157112912, 32.29430955805424],
+              [34.86824157112912, 32.30543192283443],
+              [34.85149443279957, 32.30543192283443],
             ],
           ],
         },

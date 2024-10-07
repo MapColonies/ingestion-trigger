@@ -92,7 +92,7 @@ export class PolygonPartValidator {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.validateGeometry');
     const footprintIssues = getIssues(JSON.stringify(footprint));
-    if ((footprint.type === 'Polygon' || footprint.type === 'MultiPolygon') && footprintIssues.length === 0 && isValidGeoJson(footprint)) {
+    if (footprint.type === 'Polygon' && footprintIssues.length === 0 && isValidGeoJson(footprint)) {
       activeSpan?.addEvent('polygonPartValidator.validateGeometry.success');
       return true;
     }
@@ -105,22 +105,7 @@ export class PolygonPartValidator {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.isContainedByExtent');
     const bufferedExtent = extentBuffer(this.extentBufferInMeters, extent);
-    if (footprint.type === 'MultiPolygon') {
-      for (let i = 0; i < footprint.coordinates.length; i++) {
-        const coords = footprint.coordinates[i];
-        const polygon = { type: 'Polygon', coordinates: coords };
-        if (
-          !(booleanContains(bufferedExtent as unknown as Geometry, polygon as Geometry) || booleanContains(extent as Geometry, polygon as Geometry))
-        ) {
-          activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.false', {
-            providedExtent: JSON.stringify(extent),
-            bufferedExtent: JSON.stringify(bufferedExtent),
-            footprint: JSON.stringify(footprint),
-          });
-          return false;
-        }
-      }
-    } else if (!(booleanContains(bufferedExtent as unknown as Geometry, footprint) || booleanContains(extent as Geometry, footprint))) {
+    if (!(booleanContains(bufferedExtent as unknown as Geometry, footprint) || booleanContains(extent as Geometry, footprint))) {
       activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.false', {
         providedExtent: JSON.stringify(extent),
         bufferedExtent: JSON.stringify(bufferedExtent),
