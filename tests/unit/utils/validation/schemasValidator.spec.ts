@@ -14,7 +14,7 @@ import {
   horizontalAccuracyCE90Range,
   resolutionDegRange,
   resolutionMeterRange,
-} from '../../../../src/ingestion/schemas/constants';
+} from '../../../utils/constants';
 import { pixelSizeRange } from '../../../../src/ingestion/schemas/infoDataSchema';
 
 let schemasValidator: SchemasValidator;
