@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0](https://github.com/MapColonies/ingestion-trigger/compare/v2.0.0...v3.0.0) (2024-10-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* Geometry to footprint(MAPCO-4916) (#15)
+
+### Features
+
+* Geometry to footprint(MAPCO-4916) ([#15](https://github.com/MapColonies/ingestion-trigger/issues/15)) ([330e6b4](https://github.com/MapColonies/ingestion-trigger/commit/330e6b4f07bb530dff67cdca512c2e23282e39ae))
+
 ## [2.0.0](https://github.com/MapColonies/ingestion-trigger/compare/v1.3.0...v2.0.0) (2024-08-29)
 
 
