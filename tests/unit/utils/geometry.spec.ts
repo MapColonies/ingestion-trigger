@@ -1,11 +1,11 @@
-import { Feature, MultiPolygon, Polygon } from 'geojson';
+import { Feature, Polygon } from 'geojson';
 import { extentBuffer, extractPolygons, combineExtentPolygons } from '../../../src/utils/geometry';
 import { init as initMockConfig } from '../../mocks/configMock';
 import { bufferedGeometry } from '../../mocks/test_files/bufferedGeometry';
 import { InfoData } from '../../../src/ingestion/schemas/infoDataSchema';
 import { infoDataArray, expectedExtractedPolygons, expectedCombined } from '../../mocks/schemasValidatorMockData';
 
-const extent: Feature<Polygon | MultiPolygon> = {
+const extent: Feature<Polygon> = {
   type: 'Feature',
   geometry: {
     type: 'Polygon',

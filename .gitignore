@@ -112,3 +112,6 @@ dist
 # Jest
 jest_html_reporters.html
 reports
+
+# OpenAPI output bundledAPI
+bundledApi.yaml

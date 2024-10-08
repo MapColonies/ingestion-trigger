@@ -1,11 +1,25 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { InputFiles, ProductType, Transparency, NewRasterLayerMetadata, PolygonPart } from '@map-colonies/mc-model-types';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
+import { Polygon } from 'geojson';
+
+const polygonTest: Polygon = {
+  type: 'Polygon',
+  coordinates: [
+    [
+      [34.85149443279957, 32.30543192283443],
+      [34.85149443279957, 32.29430955805424],
+      [34.86824157112912, 32.29430955805424],
+      [34.86824157112912, 32.30543192283443],
+      [34.85149443279957, 32.30543192283443],
+    ],
+  ],
+};
 
 export const newLayerRequest = {
   valid: {
     metadata: {
-      productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
+      productId: 'BLUE_2',
       productName: 'string',
       productType: ProductType.ORTHOPHOTO,
       productSubType: 'string',
@@ -32,18 +46,7 @@ export const newLayerRequest = {
         countries: ['string'],
         cities: ['string'],
         description: 'string',
-        geometry: {
-          type: 'Polygon',
-          coordinates: [
-            [
-              [34.85149443279957, 32.30543192283443],
-              [34.85149443279957, 32.29430955805424],
-              [34.86824157112912, 32.29430955805424],
-              [34.86824157112912, 32.30543192283443],
-              [34.85149443279957, 32.30543192283443],
-            ],
-          ],
-        },
+        footprint: polygonTest,
       },
     ] as PolygonPart[],
     inputFiles: {
@@ -81,7 +84,7 @@ export const newLayerRequest = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -102,7 +105,7 @@ export const newLayerRequest = {
     },
     notContainedPolygon: {
       metadata: {
-        productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
+        productId: 'BLUE_2',
         productName: 'string',
         productType: ProductType.ORTHOPHOTO,
         productSubType: 'string',
@@ -129,7 +132,7 @@ export const newLayerRequest = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -148,59 +151,9 @@ export const newLayerRequest = {
         fileNames: ['(valid)indexed.gpkg'],
       } as InputFiles,
     },
-    notContainedMultiPolygon: {
-      metadata: {
-        productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
-        productName: 'string',
-        productType: ProductType.ORTHOPHOTO,
-        productSubType: 'string',
-        description: 'string',
-        srs: '4326',
-        srsName: 'WGS84GEO',
-        transparency: Transparency.TRANSPARENT,
-        region: ['string'],
-        classification: '6',
-        producerName: 'string',
-        scale: 100000000,
-      } as NewRasterLayerMetadata,
-      partData: [
-        {
-          sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
-          sourceName: 'string',
-          imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
-          imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
-          resolutionDegree: 0.703125,
-          resolutionMeter: 8000,
-          sourceResolutionMeter: 8000,
-          horizontalAccuracyCE90: 10,
-          sensors: ['string'],
-          countries: ['string'],
-          cities: ['string'],
-          description: 'string',
-          geometry: {
-            type: 'MultiPolygon',
-            coordinates: [
-              [
-                [
-                  [-180, -90],
-                  [-180, 90],
-                  [180, 90],
-                  [180, -90],
-                  [-180, -90],
-                ],
-              ],
-            ],
-          },
-        },
-      ] as PolygonPart[],
-      inputFiles: {
-        originDirectory: 'test_files',
-        fileNames: ['(valid)indexed.gpkg'],
-      } as InputFiles,
-    },
     gdalInfo: {
       metadata: {
-        productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
+        productId: 'BLUE_2',
         productName: 'string',
         productType: ProductType.ORTHOPHOTO,
         productSubType: 'string',
@@ -227,7 +180,7 @@ export const newLayerRequest = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -248,7 +201,7 @@ export const newLayerRequest = {
     },
     invalidPartDataGeometry: {
       metadata: {
-        productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
+        productId: 'BLUE_2',
         productName: 'string',
         productType: ProductType.ORTHOPHOTO,
         productSubType: 'string',
@@ -275,7 +228,7 @@ export const newLayerRequest = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -295,7 +248,7 @@ export const newLayerRequest = {
     },
     invalidBeginDate: {
       metadata: {
-        productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
+        productId: 'BLUE_2',
         productName: 'string',
         productType: ProductType.ORTHOPHOTO,
         productSubType: 'string',
@@ -322,7 +275,7 @@ export const newLayerRequest = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -343,7 +296,7 @@ export const newLayerRequest = {
     },
     invalidEndDateAfterCurrent: {
       metadata: {
-        productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
+        productId: 'BLUE_2',
         productName: 'string',
         productType: ProductType.ORTHOPHOTO,
         productSubType: 'string',
@@ -370,7 +323,7 @@ export const newLayerRequest = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -391,7 +344,7 @@ export const newLayerRequest = {
     },
     invalidBeginDateAfterCurrent: {
       metadata: {
-        productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
+        productId: 'BLUE_2',
         productName: 'string',
         productType: ProductType.ORTHOPHOTO,
         productSubType: 'string',
@@ -418,7 +371,7 @@ export const newLayerRequest = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -439,7 +392,7 @@ export const newLayerRequest = {
     },
     invalidGeometryType: {
       metadata: {
-        productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
+        productId: 'BLUE_2',
         productName: 'string',
         productType: ProductType.ORTHOPHOTO,
         productSubType: 'string',
@@ -466,10 +419,7 @@ export const newLayerRequest = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
-            type: 'Point',
-            coordinates: [34.85149443279957, 32.30543192283443],
-          },
+          footprint: {},
         },
       ] as PolygonPart[],
       inputFiles: {
@@ -479,7 +429,7 @@ export const newLayerRequest = {
     },
     invalidResolutionDeg: {
       metadata: {
-        productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
+        productId: 'BLUE_2',
         productName: 'string',
         productType: ProductType.ORTHOPHOTO,
         productSubType: 'string',
@@ -506,7 +456,7 @@ export const newLayerRequest = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -536,13 +486,13 @@ export const jobResponse: ICreateJobResponse = {
 export const runningJobResponse = [{ status: OperationStatus.IN_PROGRESS, type: 'export' }];
 
 export const newJobRequest = {
-  resourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
+  resourceId: 'BLUE_2',
   version: '1.0',
   type: 'Ingestion_New',
   status: 'Pending',
   parameters: {
     metadata: {
-      productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
+      productId: 'BLUE_2',
       productName: 'string',
       productType: 'Orthophoto',
       productSubType: 'string',
@@ -569,7 +519,7 @@ export const newJobRequest = {
         countries: ['string'],
         cities: ['string'],
         description: 'string',
-        geometry: {
+        footprint: {
           type: 'Polygon',
           coordinates: [
             [

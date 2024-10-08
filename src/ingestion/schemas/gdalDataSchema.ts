@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { GeoJSON } from 'geojson';
+import { Geometry } from 'geojson';
 
 export const gdalInfoSchema = z
   .object({
@@ -9,7 +9,7 @@ export const gdalInfoSchema = z
     }),
     geoTransform: z.array(z.number()),
     driverShortName: z.string(),
-    wgs84Extent: z.custom<GeoJSON>(),
+    wgs84Extent: z.custom<Geometry>(),
   })
   .describe('GdalInfoSchema');
 

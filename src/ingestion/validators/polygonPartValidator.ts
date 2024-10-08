@@ -56,7 +56,7 @@ export class PolygonPartValidator {
     const logCtx = { ...this.logContext, function: this.validatePartGeometry.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.validatePartGeometry');
-    const validGeo = this.validateGeometry(polygonPart.geometry as Geometry);
+    const validGeo = this.validateGeometry(polygonPart.footprint as Geometry);
     this.logger.debug({
       msg: `validated geometry of part ${polygonPart.sourceName} at index: ${index} . validGeo: ${validGeo}`,
       logContext: logCtx,
@@ -69,9 +69,9 @@ export class PolygonPartValidator {
         logContext: logCtx,
         metadata: { polygonPart },
       });
-      throw new GeometryValidationError(polygonPart.sourceName as string, index, 'Geometry is invalid');
+      throw new GeometryValidationError(polygonPart.sourceName, index, 'Geometry is invalid');
     }
-    const containedByExtent = this.isContainedByExtent(polygonPart.geometry as Geometry, combinedExtent as GeoJSON);
+    const containedByExtent = this.isContainedByExtent(polygonPart.footprint as Geometry, combinedExtent as GeoJSON);
     this.logger.debug({
       msg: `validated geometry of part ${polygonPart.sourceName} at index: ${index}. containedByExtent: ${containedByExtent}`,
       logContext: logCtx,
@@ -83,7 +83,7 @@ export class PolygonPartValidator {
         logContext: logCtx,
         metadata: { polygonPart, combinedExtent },
       });
-      throw new GeometryValidationError(polygonPart.sourceName as string, index, 'Geometry is not contained by combined extent');
+      throw new GeometryValidationError(polygonPart.sourceName, index, 'Geometry is not contained by combined extent');
     }
   }
 
@@ -92,7 +92,7 @@ export class PolygonPartValidator {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.validateGeometry');
     const footprintIssues = getIssues(JSON.stringify(footprint));
-    if ((footprint.type === 'Polygon' || footprint.type === 'MultiPolygon') && footprintIssues.length === 0 && isValidGeoJson(footprint)) {
+    if (footprint.type === 'Polygon' && footprintIssues.length === 0 && isValidGeoJson(footprint)) {
       activeSpan?.addEvent('polygonPartValidator.validateGeometry.success');
       return true;
     }
@@ -105,22 +105,7 @@ export class PolygonPartValidator {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.isContainedByExtent');
     const bufferedExtent = extentBuffer(this.extentBufferInMeters, extent);
-    if (footprint.type === 'MultiPolygon') {
-      for (let i = 0; i < footprint.coordinates.length; i++) {
-        const coords = footprint.coordinates[i];
-        const polygon = { type: 'Polygon', coordinates: coords };
-        if (
-          !(booleanContains(bufferedExtent as unknown as Geometry, polygon as Geometry) || booleanContains(extent as Geometry, polygon as Geometry))
-        ) {
-          activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.false', {
-            providedExtent: JSON.stringify(extent),
-            bufferedExtent: JSON.stringify(bufferedExtent),
-            footprint: JSON.stringify(footprint),
-          });
-          return false;
-        }
-      }
-    } else if (!(booleanContains(bufferedExtent as unknown as Geometry, footprint) || booleanContains(extent as Geometry, footprint))) {
+    if (!(booleanContains(bufferedExtent as unknown as Geometry, footprint) || booleanContains(extent as Geometry, footprint))) {
       activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.false', {
         providedExtent: JSON.stringify(extent),
         bufferedExtent: JSON.stringify(bufferedExtent),
@@ -140,7 +125,7 @@ export class PolygonPartValidator {
     const polygonPartResolutionDegree = polygonPart.resolutionDegree;
     for (let i = 0; i < infoDataFiles.length; i++) {
       const infoDataPixelSize = infoDataFiles[i].pixelSize;
-      const isValidPixelSize = isPixelSizeValid(polygonPartResolutionDegree as number, infoDataPixelSize, this.resolutionFixedPointTolerance);
+      const isValidPixelSize = isPixelSizeValid(polygonPartResolutionDegree, infoDataPixelSize, this.resolutionFixedPointTolerance);
       if (!isValidPixelSize) {
         const sourceFileName = infoDataFiles[i].fileName;
         const errorMsg = `PixelSize of ${polygonPart.sourceName} at index: ${index} is not bigger than source pixelSize of: ${infoDataPixelSize} in source file: ${sourceFileName}`;
@@ -149,7 +134,7 @@ export class PolygonPartValidator {
           logContext: logCtx,
           polygonPart: { polygonPart, index, infoDataPixelSize, sourceFileName },
         });
-        throw new PixelSizeError(polygonPart.sourceName as string, index, `ResolutionDeg is not bigger that pixelSize in ${sourceFileName}`);
+        throw new PixelSizeError(polygonPart.sourceName, index, `ResolutionDeg is not bigger that pixelSize in ${sourceFileName}`);
       }
     }
     activeSpan?.addEvent('polygonPartValidator.validatePartPixelSize.valid');

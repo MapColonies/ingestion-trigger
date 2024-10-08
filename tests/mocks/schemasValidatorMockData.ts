@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 
 import { ProductType, Transparency } from '@map-colonies/mc-model-types';
-import { scaleRange, horizontalAccuracyCE90Range, resolutionDegRange, resolutionMeterRange } from '../../src/ingestion/schemas/constants';
+import { scaleRange, horizontalAccuracyCE90Range, resolutionDegRange, resolutionMeterRange } from '../utils/constants';
 
 export const fakeDataToValidate = {
   inputFiles: {
@@ -101,7 +101,7 @@ export const fakeDataToValidate = {
   newLayerRequest: {
     valid: {
       metadata: {
-        productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
+        productId: 'BLUE_2',
         productName: 'string',
         productType: 'Orthophoto',
         productSubType: 'string',
@@ -128,7 +128,7 @@ export const fakeDataToValidate = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -176,7 +176,7 @@ export const fakeDataToValidate = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -197,7 +197,7 @@ export const fakeDataToValidate = {
     },
     emptyGeometry: {
       metadata: {
-        productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
+        productId: 'BLUE_2',
         productName: 'string',
         productType: 'Orthophoto',
         productSubType: 'string',
@@ -224,7 +224,7 @@ export const fakeDataToValidate = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {},
+          footprint: {},
         },
       ],
       inputFiles: {
@@ -252,7 +252,7 @@ export const fakeDataToValidate = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -289,7 +289,7 @@ export const fakeDataToValidate = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {
+          footprint: {
             type: 'Polygon',
             coordinates: [
               [
@@ -310,7 +310,7 @@ export const fakeDataToValidate = {
     },
     emptyGeometry: {
       metadata: {
-        productId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2691',
+        productId: 'BLUE_2',
         productName: 'string',
         productType: 'Orthophoto',
         productSubType: 'string',
@@ -337,7 +337,7 @@ export const fakeDataToValidate = {
           countries: ['string'],
           cities: ['string'],
           description: 'string',
-          geometry: {},
+          footprint: {},
         },
       ],
       inputFiles: {
@@ -549,10 +549,18 @@ export const mockPart = {
     valid: ['CityA', 'CityB'],
     invalid: ['', ''], // Empty strings, violate min length
   },
-  geometry: {
+  footprint: {
     valid: {
-      type: 'Point',
-      coordinates: [1.234, 5.678],
+      type: 'Polygon',
+      coordinates: [
+        [
+          [34.61517, 34.10156],
+          [34.61517, 32.242124],
+          [36.4361539, 32.242124],
+          [36.4361539, 34.10156],
+          [34.61517, 34.10156],
+        ],
+      ],
     },
     invalid: {},
   },

@@ -467,14 +467,6 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when partData MultiPolygon geometry isnt contained by extent', async () => {
-        const layerRequest = newLayerRequest.invalid.notContainedMultiPolygon;
-        const response = await requestSender.ingestNewLayer(layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-      });
-
       it('should throw 409 status when the ingested layer is in mapProxy', async () => {
         const layerRequest = newLayerRequest.valid;
 
