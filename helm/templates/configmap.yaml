@@ -3,7 +3,7 @@
 {{- $metrics := (include "common.metrics.merged" .) | fromYaml }}
 {{- $configmapName := include "configmap.fullname" . }}
 {{- $serviceUrls := (include "common.serviceUrls.merged" .) | fromYaml }}
-{{- $jobManagement := (include "common.jobManagement.merged" .) | fromYaml }}
+{{- $jobDefinitions := (include "common.jobDefinitions.merged" .) | fromYaml }}
 {{- $storage := (include "common.storage.merged" .) | fromYaml }}
 {{- $ingestion := (include "common.ingestion.merged" .) | fromYaml }}
 {{- if .Values.enabled -}}
@@ -16,7 +16,7 @@ data:
   RESPONSE_COMPRESSION_ENABLED: {{ .Values.env.responseCompressionEnabled | quote }}
   LOG_LEVEL: {{ .Values.env.logLevel | quote }}
   LOG_PRETTY_PRINT_ENABLED: {{ .Values.env.logPrettyPrintEnabled | quote }}
-  JOB_DOMAIN: {{ $jobManagement.jobDomain | quote }}
+  JOB_DOMAIN: {{ .Values.global.domain | quote }}
   JOB_MANAGER_URL: {{ $serviceUrls.jobManager | quote }}
   MAP_PROXY_API_SERVICE_URL: {{ $serviceUrls.mapproxyApi | quote }}
   CATALOG_SERVICE_URL: {{ $serviceUrls.catalogManager | quote }}
@@ -25,17 +25,18 @@ data:
   STORAGE_EXPLORER_WATCH_DIRECTORY: {{ .Values.env.storageExplorer.watchDirectory | quote }}
   STORAGE_EXPLORER_VALID_FILE_EXTENSIONS: {{ .Values.env.storageExplorer.validFileExtensions | toJson | quote }}
   FORBIDDEN_TYPES_FOR_PARALLEL_INGESTION: {{ .Values.env.forbiddenJobTypesForParallelIngestion | toJson | quote }}
-  SUPPORTED_INGESTION_SWAP_TYPES: {{ $jobManagement.ingestion.updateSwap.supportedIngestionSwapTypes | toJson | quote }}
+  SUPPORTED_INGESTION_SWAP_TYPES: {{ .Values.env.supportedIngestionSwapTypes | toJson | quote }}
   HTTP_RETRY_ATTEMPTS: {{ .Values.env.httpRetry.attempts | quote }}
   HTTP_RETRY_DELAY: {{ .Values.env.httpRetry.delay | quote }}
   HTTP_RETRY_RESET_TIMEOUT: {{ .Values.env.httpRetry.resetTimeout | quote }}
   DISABLE_HTTP_CLIENT_LOGS: {{ .Values.env.disableHttpClientLogs | quote }}
-  INGESTION_NEW_JOB_TYPE: {{ $jobManagement.ingestion.new.jobType | quote }}
-  INGESTION_UPDATE_JOB_TYPE: {{ $jobManagement.ingestion.update.jobType | quote }}
-  INGESTION_SWAP_UPDATE_JOB_TYPE: {{ $jobManagement.ingestion.updateSwap.jobType | quote }}
-  INIT_TASK_TYPE: {{ $jobManagement.ingestion.init.taskType | quote }}
+  INGESTION_NEW_JOB_TYPE: {{ $jobDefinitions.jobs.new.type | quote }}
+  INGESTION_UPDATE_JOB_TYPE: {{ $jobDefinitions.jobs.update.type | quote }}
+  INGESTION_SWAP_UPDATE_JOB_TYPE: {{ $jobDefinitions.jobs.swapUpdate.type | quote }}
+  INIT_TASK_TYPE: {{ $jobDefinitions.tasks.init.type | quote }}
   CRS: {{ .Values.env.validationValuesByInfo.crs | toJson | quote}}
   FILE_FORMAT: {{ .Values.env.validationValuesByInfo.fileFormat | toJson | quote}}
+  TEST_ATTEMPTS_INIT_TASK: {{ $jobDefinitions.tasks.init.attempts }}
   TILE_SIZE: {{ .Values.env.validationValuesByInfo.tileSize | quote}}
   RESOLUTION_FIXED_POINT_TOLERANCE: {{ .Values.env.validationValuesByInfo.resolutionFixedPointTolerance | quote }}
   EXTENT_BUFFER_IN_METERS: {{ .Values.env.validationValuesByInfo.extentBufferInMeters | quote }}
