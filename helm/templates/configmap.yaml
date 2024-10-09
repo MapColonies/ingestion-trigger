@@ -36,7 +36,6 @@ data:
   INIT_TASK_TYPE: {{ $jobDefinitions.tasks.init.type | quote }}
   CRS: {{ .Values.env.validationValuesByInfo.crs | toJson | quote}}
   FILE_FORMAT: {{ .Values.env.validationValuesByInfo.fileFormat | toJson | quote}}
-  TEST_ATTEMPTS_INIT_TASK: {{ $jobDefinitions.tasks.init.attempts }}
   TILE_SIZE: {{ .Values.env.validationValuesByInfo.tileSize | quote}}
   RESOLUTION_FIXED_POINT_TOLERANCE: {{ .Values.env.validationValuesByInfo.resolutionFixedPointTolerance | quote }}
   EXTENT_BUFFER_IN_METERS: {{ .Values.env.validationValuesByInfo.extentBufferInMeters | quote }}

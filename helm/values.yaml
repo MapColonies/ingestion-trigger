@@ -38,7 +38,7 @@ serviceUrls:
 jobDefinitions:
   jobs:
     new:
-      type: &jobNewType ""
+      type: ""
     update:
       type: ""
     swapUpdate:
