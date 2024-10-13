@@ -1,6 +1,6 @@
 import jsLogger from '@map-colonies/js-logger';
 import nock from 'nock';
-import { ConflictError, BadRequestError } from '@map-colonies/error-types';
+import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { ProductType } from '@map-colonies/mc-model-types';
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
 import { trace } from '@opentelemetry/api';
@@ -287,7 +287,7 @@ describe('IngestionManager', () => {
       await expect(action()).rejects.toThrow(ConflictError);
     });
 
-    it('should throw bad request error when there is no layer in mapProxy', async () => {
+    it('should throw not found error when there is no layer in mapProxy', async () => {
       const layerRequest = updateLayerRequest.valid;
       const updatedLayerMetadata = updatedLayer.metadata;
       const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
@@ -316,10 +316,10 @@ describe('IngestionManager', () => {
         await ingestionManager.updateLayer(updatedLayerMetadata.id, layerRequest);
       };
 
-      await expect(action()).rejects.toThrow(BadRequestError);
+      await expect(action()).rejects.toThrow(NotFoundError);
     });
 
-    it('should throw bad request error when there is no layer in catalog', async () => {
+    it('should throw conflict error when there is more then one layer in catalog', async () => {
       const layerRequest = updateLayerRequest.valid;
       const updatedLayerMetadata = updatedLayer.metadata;
 
@@ -337,7 +337,7 @@ describe('IngestionManager', () => {
       await expect(action()).rejects.toThrow(ConflictError);
     });
 
-    it('should throw conflict error when there is more then one layer in catalog', async () => {
+    it('should throw not found error when there is no layer in catalog', async () => {
       const layerRequest = updateLayerRequest.valid;
       const updatedLayerMetadata = updatedLayer.metadata;
 
@@ -352,7 +352,7 @@ describe('IngestionManager', () => {
         await ingestionManager.updateLayer(updatedLayerMetadata.id, layerRequest);
       };
 
-      await expect(action()).rejects.toThrow(BadRequestError);
+      await expect(action()).rejects.toThrow(NotFoundError);
     });
   });
 
