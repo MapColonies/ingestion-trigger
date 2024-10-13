@@ -639,7 +639,7 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.CONFLICT);
       });
 
-      it('should return 400 status code when there is no such layer in the catalog', async () => {
+      it('should return 404 status code when there is no such layer in the catalog', async () => {
         const layerRequest = updateLayerRequest.valid;
         const updatedLayerMetadata = updatedLayer.metadata;
 
@@ -648,7 +648,7 @@ describe('Ingestion', function () {
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
       });
 
       it('should return 400 status code when there is a validation error', async () => {
