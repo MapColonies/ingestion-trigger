@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.0.1](https://github.com/MapColonies/ingestion-trigger/compare/v3.0.0...v3.0.1) (2024-10-13)
+
+
+### Bug Fixes
+
+* return 404 on layer not in catalog on update (MAPCO-4959) ([#17](https://github.com/MapColonies/ingestion-trigger/issues/17)) ([ae42662](https://github.com/MapColonies/ingestion-trigger/commit/ae42662b74f7c18f2f433e120a4faedbd8b6ed7e))
+
 ## [3.0.0](https://github.com/MapColonies/ingestion-trigger/compare/v2.0.0...v3.0.0) (2024-10-08)
 
 
