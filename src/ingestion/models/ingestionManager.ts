@@ -1,7 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import { InputFiles, ProductType, NewRasterLayer, UpdateRasterLayer, PolygonPart } from '@map-colonies/mc-model-types';
-import { ConflictError, BadRequestError, NotFoundError } from '@map-colonies/error-types';
+import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { ICreateJobResponse, IJobResponse, OperationStatus, IFindJobsByCriteriaBody } from '@map-colonies/mc-priority-queue';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
@@ -303,7 +303,7 @@ export class IngestionManager {
         msg: message,
         logCtx: logCtx,
       });
-      const error = new BadRequestError(message);
+      const error = new NotFoundError(message);
       trace.getActiveSpan()?.setAttribute('exception.type', error.status);
       throw error;
     }
