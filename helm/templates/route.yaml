@@ -9,16 +9,28 @@ kind: Route
 metadata:
   name: {{ $routeName }}
   annotations:
-    haproxy.router.openshift.io/rewrite-target: /
+    {{- if .Values.route.rewriteTarget }}
+    haproxy.router.openshift.io/rewrite-target: {{ .Values.route.rewriteTarget }}
+    {{- end }}
     {{- if .Values.route.timeout.enabled }}
     haproxy.router.openshift.io/timeout: {{ .Values.route.timeout.duration }}
     {{- end }}
 spec:
-  path:  {{ .Values.route.path | default "/" }}
+  {{- if .Values.route.host }}
+  host: {{ .Values.route.host }}
+  {{- end }}
+  path: {{ .Values.route.path | default "/" }}
   to:
     kind: Service
     name: {{ $serviceName }}
+  {{- if .Values.route.tls.enabled }}
   tls:
-    termination: edge
-    insecureEdgeTerminationPolicy: Redirect
+    termination: {{ .Values.route.tls.termination | quote }}
+    insecureEdgeTerminationPolicy: {{ .Values.route.tls.insecureEdgeTerminationPolicy | quote }}
+    {{- if .Values.route.tls.useCerts }}
+    certificate: {{ .Values.route.tls.certificate | quote }}
+    key: {{ .Values.route.tls.key | quote }}
+    caCertificate: {{ .Values.route.tls.caCertificate | quote }}
+    {{- end }}
+  {{- end -}}
 {{- end -}}
