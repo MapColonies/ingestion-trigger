@@ -3,22 +3,12 @@ global:
   tracing: {}
   metrics: {}
   environment: ''
+  domain: "RASTER"
   serviceUrls:
     mapproxyApi: ""
     catalogManager: ""
     jobManager: ""
-  jobManagement:
-    jobDomain: RASTER
-    ingestion:
-      init:
-        taskType: ""
-      new: 
-        jobType: ""
-      update: 
-        jobType: ""
-      updateSwap:
-        jobType: ""
-        supportedIngestionSwapTypes: {}
+  jobDefinitions: {}
   storage:
     fs:
       ingestionSourcePvc:
@@ -45,18 +35,17 @@ serviceUrls:
   mapproxyApi: ""
   catalogManager: ""
   jobManager: ""
-jobManagement:
-  jobDomain: ""
-  ingestion:
+jobDefinitions:
+  jobs:
+    new:
+      type: ""
+    update:
+      type: ""
+    swapUpdate:
+      type: ""
+  tasks:
     init:
-      taskType: ""
-    new: 
-      jobType: ""
-    update: 
-      jobType: ""
-    updateSwap:
-      jobType: ""
-      supportedIngestionSwapTypes: {}
+      type: ""
 
 storage:
   fs:
@@ -150,11 +139,12 @@ env:
   httpRetry:
     attempts: 5
     delay: exponential
-    resetTimeout: true  
+    resetTimeout: true
+  supportedIngestionSwapTypes: {}
   forbiddenJobTypesForParallelIngestion:
     - Ingestion_New
     - Ingestion_Update
-    - Ingestion_Swap_Update  
+    - Ingestion_Swap_Update
 
 resources:
   enabled: false
