@@ -15,7 +15,7 @@ export class JobManagerWrapper extends JobManagerClient {
   private readonly jobDomain: string;
   private readonly logContext: LogContext;
   private readonly ingestionNewJobType: string;
-  private readonly swapUpdateJobType: string;
+  private readonly updateJobType: string;
   private readonly initTaskType: string;
 
   public constructor(
@@ -33,7 +33,7 @@ export class JobManagerWrapper extends JobManagerClient {
     this.jobDomain = config.get<string>('jobManager.jobDomain');
     this.ingestionNewJobType = config.get<string>('jobManager.ingestionNewJobType');
     this.initTaskType = config.get<string>('jobManager.initTaskType');
-    this.swapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
+    this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
     this.logContext = {
       fileName: __filename,
       class: JobManagerWrapper.name,
@@ -128,7 +128,7 @@ export class JobManagerWrapper extends JobManagerClient {
     const createLayerTasksUrl = `/jobs`;
     const ingestionUpdateJobParams: IngestionUpdateJobParams = {
       ...data,
-      additionalParams: { tileOutputFormat, ...(jobType === this.swapUpdateJobType && { displayPath }) },
+      additionalParams: { tileOutputFormat, ...(jobType === this.updateJobType && { displayPath }) },
     };
     const createJobRequest: CreateJobBody = {
       resourceId: productId,
