@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.0.2](https://github.com/MapColonies/ingestion-trigger/compare/v3.0.1...v3.0.2) (2024-10-20)
+
+
+### Bug Fixes
+
+* switch additionalParams between swapUpdate and update ([#19](https://github.com/MapColonies/ingestion-trigger/issues/19)) ([659b217](https://github.com/MapColonies/ingestion-trigger/commit/659b21710a2d8941ca1e0008214758b614cd3400))
+
 ### [3.0.1](https://github.com/MapColonies/ingestion-trigger/compare/v3.0.0...v3.0.1) (2024-10-13)
 
 
