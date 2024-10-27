@@ -32,7 +32,7 @@ export const newLayerRequest = {
       producerName: 'string',
       scale: 100000000,
     } as NewRasterLayerMetadata,
-    partData: [
+    partsData: [
       {
         sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
         sourceName: 'string',
@@ -70,7 +70,7 @@ export const newLayerRequest = {
         producerName: 'string',
         scale: 100000000,
       } as NewRasterLayerMetadata,
-      partData: [
+      partsData: [
         {
           sourceId: 'invalid !',
           sourceName: 'string',
@@ -118,7 +118,7 @@ export const newLayerRequest = {
         producerName: 'string',
         scale: 100000000,
       } as NewRasterLayerMetadata,
-      partData: [
+      partsData: [
         {
           sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
           sourceName: 'string',
@@ -166,7 +166,7 @@ export const newLayerRequest = {
         producerName: 'string',
         scale: 100000000,
       } as NewRasterLayerMetadata,
-      partData: [
+      partsData: [
         {
           sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
           sourceName: 'string',
@@ -199,7 +199,7 @@ export const newLayerRequest = {
         fileNames: ['invalidCrs(3857).gpkg'],
       } as InputFiles,
     },
-    invalidPartDataGeometry: {
+    invalidpartsDataGeometry: {
       metadata: {
         productId: 'BLUE_2',
         productName: 'string',
@@ -214,7 +214,7 @@ export const newLayerRequest = {
         producerName: 'string',
         scale: 100000000,
       } as NewRasterLayerMetadata,
-      partData: [
+      partsData: [
         {
           sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
           sourceName: 'string',
@@ -261,7 +261,7 @@ export const newLayerRequest = {
         producerName: 'string',
         scale: 100000000,
       } as NewRasterLayerMetadata,
-      partData: [
+      partsData: [
         {
           sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
           sourceName: 'string',
@@ -309,7 +309,7 @@ export const newLayerRequest = {
         producerName: 'string',
         scale: 100000000,
       } as NewRasterLayerMetadata,
-      partData: [
+      partsData: [
         {
           sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
           sourceName: 'string',
@@ -357,7 +357,7 @@ export const newLayerRequest = {
         producerName: 'string',
         scale: 100000000,
       } as NewRasterLayerMetadata,
-      partData: [
+      partsData: [
         {
           sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
           sourceName: 'string',
@@ -405,7 +405,7 @@ export const newLayerRequest = {
         producerName: 'string',
         scale: 100000000,
       } as NewRasterLayerMetadata,
-      partData: [
+      partsData: [
         {
           sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
           sourceName: 'string',
@@ -442,7 +442,7 @@ export const newLayerRequest = {
         producerName: 'string',
         scale: 100000000,
       } as NewRasterLayerMetadata,
-      partData: [
+      partsData: [
         {
           sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
           sourceName: 'string',
@@ -505,7 +505,7 @@ export const newJobRequest = {
       producerName: 'string',
       scale: 100000000,
     },
-    partData: [
+    partsData: [
       {
         sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
         sourceName: 'string',

@@ -7,7 +7,7 @@ import { partSchema } from '@map-colonies/mc-model-types';
 export type Part = z.infer<typeof partSchema>;
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export const createPartDataSchema = () => {
+export const createPartsDataSchema = () => {
   return z
     .array(
       partSchema
@@ -49,5 +49,5 @@ export const createPartDataSchema = () => {
         )
     )
     .min(1)
-    .describe('PartData');
+    .describe('partsData');
 };

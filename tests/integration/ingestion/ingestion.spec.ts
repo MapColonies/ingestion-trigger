@@ -406,7 +406,7 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when partData BeginTime is after EndTime', async () => {
+      it('should return 400 status code when partsData BeginTime is after EndTime', async () => {
         const layerRequest = newLayerRequest.invalid.invalidBeginDate;
 
         const response = await requestSender.ingestNewLayer(layerRequest);
@@ -415,8 +415,8 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when partData geometry isnt a valid geometry', async () => {
-        const layerRequest = newLayerRequest.invalid.invalidPartDataGeometry;
+      it('should return 400 status code when partsData geometry isnt a valid geometry', async () => {
+        const layerRequest = newLayerRequest.invalid.invalidpartsDataGeometry;
 
         const response = await requestSender.ingestNewLayer(layerRequest);
 
@@ -424,7 +424,7 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when partData BeginTime is after currentTime', async () => {
+      it('should return 400 status code when partsData BeginTime is after currentTime', async () => {
         const layerRequest = newLayerRequest.invalid.invalidBeginDateAfterCurrent;
 
         const response = await requestSender.ingestNewLayer(layerRequest);
@@ -433,7 +433,7 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when partData EndTime is after currentTime', async () => {
+      it('should return 400 status code when partsData EndTime is after currentTime', async () => {
         const layerRequest = newLayerRequest.invalid.invalidEndDateAfterCurrent;
 
         const response = await requestSender.ingestNewLayer(layerRequest);
@@ -442,7 +442,7 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when partData geometry type is wrong', async () => {
+      it('should return 400 status code when partsData geometry type is wrong', async () => {
         const layerRequest = newLayerRequest.invalid.invalidGeometryType;
 
         const response = await requestSender.ingestNewLayer(layerRequest);
@@ -451,7 +451,7 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when partData polygon geometry isnt contained by extent', async () => {
+      it('should return 400 status code when partsData polygon geometry isnt contained by extent', async () => {
         const layerRequest = newLayerRequest.invalid.notContainedPolygon;
         const response = await requestSender.ingestNewLayer(layerRequest);
 
@@ -459,7 +459,7 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when partData resolutionDeg isnt greater than pixel size', async () => {
+      it('should return 400 status code when partsData resolutionDeg isnt greater than pixel size', async () => {
         const layerRequest = newLayerRequest.invalid.invalidResolutionDeg;
         const response = await requestSender.ingestNewLayer(layerRequest);
 

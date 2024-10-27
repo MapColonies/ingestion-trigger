@@ -7,7 +7,7 @@ export const updateLayerRequest = {
     metadata: {
       classification: '6',
     } as UpdateRasterLayerMetadata,
-    partData: [
+    partsData: [
       {
         sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
         sourceName: 'string',
@@ -45,7 +45,7 @@ export const updateLayerRequest = {
       metadata: {
         classification: '1000',
       } as UpdateRasterLayerMetadata,
-      partData: [
+      partsData: [
         {
           sourceId: 'invalid !',
           sourceName: 'string',
@@ -82,7 +82,7 @@ export const updateLayerRequest = {
       metadata: {
         classification: '6',
       } as UpdateRasterLayerMetadata,
-      partData: [
+      partsData: [
         {
           sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
           sourceName: 'string',
@@ -119,7 +119,7 @@ export const updateLayerRequest = {
       metadata: {
         classification: '6',
       } as UpdateRasterLayerMetadata,
-      partData: [
+      partsData: [
         {
           sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
           sourceName: 'string',
@@ -167,7 +167,7 @@ export const updateJobRequest = {
     metadata: {
       classification: '6',
     },
-    partData: [
+    partsData: [
       {
         sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
         sourceName: 'string',
@@ -373,7 +373,7 @@ export const updateSwapJobRequest = {
     metadata: {
       classification: '6',
     },
-    partData: [
+    partsData: [
       {
         sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
         sourceName: 'string',

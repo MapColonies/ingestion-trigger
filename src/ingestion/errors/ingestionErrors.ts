@@ -25,15 +25,15 @@ export class ValidationError extends Error {
 }
 
 export class GeometryValidationError extends ValidationError {
-  public constructor(partDataName: string, index: number, description: string) {
-    const message = `error in part: ${partDataName} at index ${index}. ${description}`;
+  public constructor(partsDataName: string, index: number, description: string) {
+    const message = `error in part: ${partsDataName} at index ${index}. ${description}`;
     super(message);
   }
 }
 
 export class PixelSizeError extends ValidationError {
-  public constructor(partDataName: string, index: number, description: string) {
-    const message = `error in part: ${partDataName} at index ${index}. ${description}`;
+  public constructor(partsDataName: string, index: number, description: string) {
+    const message = `error in part: ${partsDataName} at index ${index}. ${description}`;
     super(message);
   }
 }

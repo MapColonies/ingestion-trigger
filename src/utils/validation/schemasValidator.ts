@@ -13,7 +13,7 @@ import { InfoData, createInfoDataSchema } from '../../ingestion/schemas/infoData
 import { gdalInfoSchema } from '../../ingestion/schemas/gdalDataSchema';
 import { createNewIngestionLayerSchema } from '../../ingestion/schemas/ingestionLayerSchema';
 import { createNewMetadataSchema } from '../../ingestion/schemas/newMetadataSchema';
-import { createPartDataSchema } from '../../ingestion/schemas/partDataSchema';
+import { createPartsDataSchema } from '../../ingestion/schemas/partsDataSchema';
 import { createUpdateMetadataSchema } from '../../ingestion/schemas/updateMetadataSchema';
 import { createUpdateLayerSchema } from '../../ingestion/schemas/updateLayerSchema';
 import { ZodValidator } from './zodValidator';
@@ -27,7 +27,7 @@ export function schemasValidationsFactory(container: DependencyContainer) {
   const infoDataSchema = createInfoDataSchema(container);
   const rasterIngestionLayerSchema = createNewIngestionLayerSchema(container);
   const newMetadataSchema = createNewMetadataSchema();
-  const partDataSchema = createPartDataSchema();
+  const partsDataSchema = createPartsDataSchema();
   const rasterUpdateLayerSchema = createUpdateLayerSchema(container);
   const updateMetadataSchema = createUpdateMetadataSchema();
 
@@ -37,7 +37,7 @@ export function schemasValidationsFactory(container: DependencyContainer) {
     validateGdalInfo: async (value: unknown): Promise<z.infer<typeof gdalInfoSchema>> => validator.validate(gdalInfoSchema, value),
     validateNewLayerRequest: async (value: unknown): Promise<NewRasterLayer> => validator.validate(rasterIngestionLayerSchema, value),
     validateNewMetadata: async (value: unknown): Promise<NewRasterLayerMetadata> => validator.validate(newMetadataSchema, value),
-    validatePartData: async (value: unknown): Promise<PolygonPart[]> => validator.validate(partDataSchema, value),
+    validatepartsData: async (value: unknown): Promise<PolygonPart[]> => validator.validate(partsDataSchema, value),
     validateUpdateMetadata: async (value: unknown): Promise<UpdateRasterLayerMetadata> => validator.validate(updateMetadataSchema, value),
     validateUpdateLayerRequest: async (value: unknown): Promise<UpdateRasterLayer> => validator.validate(rasterUpdateLayerSchema, value),
   };

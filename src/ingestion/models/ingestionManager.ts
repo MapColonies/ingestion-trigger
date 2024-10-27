@@ -174,11 +174,11 @@ export class IngestionManager {
     const logCtx: LogContext = { ...this.logContext, function: this.validateAndGetUpdatedLayerParams.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.validateAndGetUpdatedLayerParams');
-    const { metadata, partData, inputFiles } = rasterUpdateLayer;
+    const { metadata, partsData, inputFiles } = rasterUpdateLayer;
     this.logger.debug({
       msg: 'started update layer validation',
       catalogId: catalogId,
-      requestBody: { metadata, partData, inputFiles },
+      requestBody: { metadata, partsData, inputFiles },
       logCtx: logCtx,
     });
     this.logger.info({
@@ -186,7 +186,7 @@ export class IngestionManager {
       msg: 'started validation on update layer request',
       logCtx: logCtx,
     });
-    await this.validateRequestInputs(partData, inputFiles);
+    await this.validateRequestInputs(partsData, inputFiles);
     //catalog call must be before map proxy to get productId and Type
     const layerDetails = await this.getLayer(catalogId);
     const { productId, productVersion, productType, productSubType = '', tileOutputFormat, displayPath } = layerDetails.metadata as LayerDetails;
@@ -202,8 +202,8 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async validateNewLayer(rasterIngestionLayer: NewRasterLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateNewLayer.name };
-    const { metadata, partData, inputFiles } = rasterIngestionLayer;
-    this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, partData, inputFiles }, logCtx: logCtx });
+    const { metadata, partsData, inputFiles } = rasterIngestionLayer;
+    this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, partsData, inputFiles }, logCtx: logCtx });
     this.logger.info({
       productId: metadata.productId,
       productType: metadata.productType,
@@ -212,7 +212,7 @@ export class IngestionManager {
       logCtx: logCtx,
     });
 
-    await this.validateRequestInputs(partData, inputFiles);
+    await this.validateRequestInputs(partsData, inputFiles);
     //catalog ,mapproxy, jobmanager validation
     const layerName = getMapServingLayerName(metadata.productId, metadata.productType);
     await this.validateLayerDoesntExistInMapProxy(layerName);
@@ -346,7 +346,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async validateRequestInputs(partData: PolygonPart[], inputFiles: InputFiles): Promise<void> {
+  private async validateRequestInputs(partsData: PolygonPart[], inputFiles: InputFiles): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateRequestInputs.name };
 
     //validate files exist, gdal info and GPKG data
@@ -361,7 +361,7 @@ export class IngestionManager {
 
     //validate new ingestion payload against gpkg data for each part
     const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
-    this.polygonPartValidator.validate(partData, infoData);
+    this.polygonPartValidator.validate(partsData, infoData);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
   }
 }

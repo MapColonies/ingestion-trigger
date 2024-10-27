@@ -135,14 +135,14 @@ describe('SchemasValidator', () => {
       const result = await schemasValidator.validateNewLayerRequest(layerRequest);
 
       expect(result).toHaveProperty('metadata');
-      expect(result).toHaveProperty('partData');
+      expect(result).toHaveProperty('partsData');
       expect(result).toHaveProperty('inputFiles');
     });
 
     it('should throw error on invalid new layer request when metadata is invalid', async () => {
       const layerRequest = {
         metadata: fakeDataToValidate.newLayerRequest.invalid.metadata,
-        partdata: fakeDataToValidate.newLayerRequest.valid.partData,
+        partsData: fakeDataToValidate.newLayerRequest.valid.partsData,
         inputFiles: fakeDataToValidate.inputFiles.valid,
       };
 
@@ -150,10 +150,10 @@ describe('SchemasValidator', () => {
       await expect(validationAction).rejects.toThrow(BadRequestError);
     });
 
-    it('should throw error on invalid new layer request when partdata is invalid', async () => {
+    it('should throw error on invalid new layer request when partsData is invalid', async () => {
       const layerRequest = {
         metadata: fakeDataToValidate.newLayerRequest.valid.metadata,
-        partdata: fakeDataToValidate.newLayerRequest.invalid.partData,
+        partsData: fakeDataToValidate.newLayerRequest.invalid.partsData,
         inputFiles: fakeDataToValidate.inputFiles.valid,
       };
 
@@ -164,7 +164,7 @@ describe('SchemasValidator', () => {
     it('should throw error on invalid new layer request when inputFiles is invalid', async () => {
       const layerRequest = {
         metadata: fakeDataToValidate.newLayerRequest.valid.metadata,
-        partdata: fakeDataToValidate.newLayerRequest.valid.partData,
+        partsData: fakeDataToValidate.newLayerRequest.valid.partsData,
         inputFiles: fakeDataToValidate.inputFiles.invalid.filesNotSupplied,
       };
 
@@ -209,10 +209,10 @@ describe('SchemasValidator', () => {
     );
   });
 
-  describe('validatePartDataSchema', () => {
-    it('should return valid partData schema', async () => {
-      const validPartData = fakeDataToValidate.newLayerRequest.valid.partData;
-      const result = await schemasValidator.validatePartData(validPartData);
+  describe('validatepartsDataSchema', () => {
+    it('should return valid partsData schema', async () => {
+      const validpartsData = fakeDataToValidate.newLayerRequest.valid.partsData;
+      const result = await schemasValidator.validatepartsData(validpartsData);
 
       expect(Array.isArray(result)).toBe(true);
       expect(result[0]).toHaveProperty('sourceId');
@@ -248,37 +248,37 @@ describe('SchemasValidator', () => {
     });
 
     it.each(
-      Object.keys(fakeDataToValidate.newLayerRequest.valid.partData[0]) as (keyof (typeof fakeDataToValidate.newLayerRequest.valid.partData)[0])[]
+      Object.keys(fakeDataToValidate.newLayerRequest.valid.partsData[0]) as (keyof (typeof fakeDataToValidate.newLayerRequest.valid.partsData)[0])[]
     )('should throw error when given invalid value in %p attribute', async (attribute) => {
       const { invalid } = mockPart[attribute];
       const invalidPart = [
         {
-          ...fakeDataToValidate.newLayerRequest.valid.partData[0],
+          ...fakeDataToValidate.newLayerRequest.valid.partsData[0],
           [attribute]: invalid,
         },
       ];
-      const validationAction = async () => schemasValidator.validatePartData(invalidPart);
+      const validationAction = async () => schemasValidator.validatepartsData(invalidPart);
       await expect(validationAction).rejects.toThrow(BadRequestError);
     });
 
     it('should throw error when imagingTimeBeginUTC is after presentTime', async () => {
-      const invalidPartData = fakeDataToValidate.newLayerRequest.valid.partData;
-      invalidPartData[0]['imagingTimeBeginUTC'] = new Date(Date.UTC(2099, 12, 24, 22, 22, 22));
-      const validationAction = async () => schemasValidator.validatePartData(invalidPartData);
+      const invalidpartsData = fakeDataToValidate.newLayerRequest.valid.partsData;
+      invalidpartsData[0]['imagingTimeBeginUTC'] = new Date(Date.UTC(2099, 12, 24, 22, 22, 22));
+      const validationAction = async () => schemasValidator.validatepartsData(invalidpartsData);
       await expect(validationAction).rejects.toThrow(BadRequestError);
     });
 
     it('should throw error when imagingTimeEndUTC is after presentTime', async () => {
-      const invalidPartData = fakeDataToValidate.newLayerRequest.valid.partData;
-      invalidPartData[0]['imagingTimeEndUTC'] = new Date(Date.UTC(2099, 12, 24, 22, 22, 22));
-      const validationAction = async () => schemasValidator.validatePartData(invalidPartData);
+      const invalidpartsData = fakeDataToValidate.newLayerRequest.valid.partsData;
+      invalidpartsData[0]['imagingTimeEndUTC'] = new Date(Date.UTC(2099, 12, 24, 22, 22, 22));
+      const validationAction = async () => schemasValidator.validatepartsData(invalidpartsData);
       await expect(validationAction).rejects.toThrow(BadRequestError);
     });
 
     it('should throw error when footprint is an empty object', async () => {
-      const invalidPartData = fakeDataToValidate.newLayerRequest.emptyGeometry;
+      const invalidpartsData = fakeDataToValidate.newLayerRequest.emptyGeometry;
 
-      const validationAction = async () => schemasValidator.validatePartData(invalidPartData);
+      const validationAction = async () => schemasValidator.validatepartsData(invalidpartsData);
       await expect(validationAction).rejects.toThrow(BadRequestError);
     });
   });
@@ -305,14 +305,14 @@ describe('SchemasValidator', () => {
       const result = await schemasValidator.validateUpdateLayerRequest(updateLayerRequest);
 
       expect(result).toHaveProperty('metadata');
-      expect(result).toHaveProperty('partData');
+      expect(result).toHaveProperty('partsData');
       expect(result).toHaveProperty('inputFiles');
     });
 
     it('should throw error on invalid update layer request when metadata is invalid', async () => {
       const layerRequest = {
         metadata: fakeDataToValidate.updateLayerRequest.invalid.metadata,
-        partdata: fakeDataToValidate.updateLayerRequest.valid.partData,
+        partsData: fakeDataToValidate.updateLayerRequest.valid.partsData,
         inputFiles: fakeDataToValidate.inputFiles.valid,
       };
 

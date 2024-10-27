@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { DependencyContainer } from 'tsyringe';
-import { createPartDataSchema } from './partDataSchema';
+import { createPartsDataSchema } from './partsDataSchema';
 import { createInputFilesSchema } from './inputFilesSchema';
 import { createUpdateMetadataSchema } from './updateMetadataSchema';
 
@@ -8,7 +8,7 @@ import { createUpdateMetadataSchema } from './updateMetadataSchema';
 export const createUpdateLayerSchema = (container: DependencyContainer) => {
   return z.object({
     metadata: createUpdateMetadataSchema(),
-    partData: createPartDataSchema(),
+    partsData: createPartsDataSchema(),
     inputFiles: createInputFilesSchema(container),
   });
 };
