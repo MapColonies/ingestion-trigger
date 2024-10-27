@@ -114,7 +114,7 @@ export const fakeDataToValidate = {
         producerName: 'string',
         scale: 100000000,
       },
-      partData: [
+      partsData: [
         {
           sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
           sourceName: 'string',
@@ -162,11 +162,11 @@ export const fakeDataToValidate = {
         producerName: 'string',
         scale: 100000000,
       },
-      partData: [
+      partsData: [
         {
-          sourceId: 'invalid !',
+          sourceId: 'string !',
           sourceName: 'string',
-          imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
+          imagingTimeBeginUTC: new Date('2024-06-19T12:00:00Z'),
           imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
           resolutionDegree: 0.703125,
           resolutionMeter: 8000,
@@ -210,7 +210,7 @@ export const fakeDataToValidate = {
         producerName: 'string',
         scale: 100000000,
       },
-      partData: [
+      partsData: [
         {
           sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
           sourceName: 'string',
@@ -238,7 +238,7 @@ export const fakeDataToValidate = {
       metadata: {
         classification: '6',
       },
-      partData: [
+      partsData: [
         {
           sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
           sourceName: 'string',
@@ -275,7 +275,7 @@ export const fakeDataToValidate = {
       metadata: {
         classification: '1000',
       },
-      partData: [
+      partsData: [
         {
           sourceId: 'invalid !',
           sourceName: 'string',
@@ -323,7 +323,7 @@ export const fakeDataToValidate = {
         producerName: 'string',
         scale: 100000000,
       },
-      partData: [
+      partsData: [
         {
           sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
           sourceName: 'string',
