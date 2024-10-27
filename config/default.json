@@ -50,7 +50,8 @@
   "services": {
     "jobManagerURL": "",
     "mapProxyApiServiceUrl": "",
-    "catalogServiceURL": ""
+    "catalogServiceURL": "",
+    "jobTrackerServiceURL": ""
   },
   "jobManager": {
     "jobDomain": "RASTER",
