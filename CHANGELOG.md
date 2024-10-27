@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.1.0](https://github.com/MapColonies/ingestion-trigger/compare/v3.0.2...v3.1.0) (2024-10-27)
+
+
+### Features
+
+* add jobTrackerUrl to additionalParams (MAPCO-5054) ([#21](https://github.com/MapColonies/ingestion-trigger/issues/21)) ([8a17dbf](https://github.com/MapColonies/ingestion-trigger/commit/8a17dbffa8028f279aea886f8c76dc4b9a797540))
+
+
+### Bug Fixes
+
+* partData to partsData ([#20](https://github.com/MapColonies/ingestion-trigger/issues/20)) ([e09bec6](https://github.com/MapColonies/ingestion-trigger/commit/e09bec65f0746717e1eb459ecca2dbb8a8968077))
+
 ### [3.0.2](https://github.com/MapColonies/ingestion-trigger/compare/v3.0.1...v3.0.2) (2024-10-20)
 
 
