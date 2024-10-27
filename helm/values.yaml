@@ -4,10 +4,7 @@ global:
   metrics: {}
   environment: ''
   domain: "RASTER"
-  serviceUrls:
-    mapproxyApi: ""
-    catalogManager: ""
-    jobManager: ""
+  serviceUrls: {}
   jobDefinitions: {}
   storage:
     fs:
@@ -35,6 +32,7 @@ serviceUrls:
   mapproxyApi: ""
   catalogManager: ""
   jobManager: ""
+  jobTracker: ""
 jobDefinitions:
   jobs:
     new:

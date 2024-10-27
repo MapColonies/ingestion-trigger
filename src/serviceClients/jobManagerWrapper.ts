@@ -1,6 +1,6 @@
 import { Logger } from '@map-colonies/js-logger';
 import { inject, injectable } from 'tsyringe';
-import { NewRasterLayer, TileOutputFormat, UpdateRasterLayer, IngestionUpdateJobParams } from '@map-colonies/mc-model-types';
+import { NewRasterLayer, TileOutputFormat, UpdateRasterLayer, IngestionUpdateJobParams, IngestionNewJobParams } from '@map-colonies/mc-model-types';
 import { ICreateJobBody, ICreateJobResponse, IJobResponse, OperationStatus, ITaskResponse, JobManagerClient } from '@map-colonies/mc-priority-queue';
 import { IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { trace, Tracer } from '@opentelemetry/api';
@@ -8,15 +8,14 @@ import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../common/constants';
 import { IConfig } from '../common/interfaces';
 import { ITaskParameters } from '../ingestion/interfaces';
-import { LogContext } from '../utils/logger/logContext';
 
 @injectable()
 export class JobManagerWrapper extends JobManagerClient {
   private readonly jobDomain: string;
-  private readonly logContext: LogContext;
   private readonly ingestionNewJobType: string;
   private readonly updateJobType: string;
   private readonly initTaskType: string;
+  private readonly jobTrackerServiceUrl: string;
 
   public constructor(
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
@@ -34,15 +33,11 @@ export class JobManagerWrapper extends JobManagerClient {
     this.ingestionNewJobType = config.get<string>('jobManager.ingestionNewJobType');
     this.initTaskType = config.get<string>('jobManager.initTaskType');
     this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
-    this.logContext = {
-      fileName: __filename,
-      class: JobManagerWrapper.name,
-    };
+    this.jobTrackerServiceUrl = config.get<string>('services.jobTrackerServiceURL');
   }
 
   @withSpanAsyncV4
   public async createInitJob(data: NewRasterLayer): Promise<ICreateJobResponse> {
-    const logCtx: LogContext = { ...this.logContext, function: this.createInitJob.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('jobManagerWrapper.createInitJob');
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
@@ -51,7 +46,7 @@ export class JobManagerWrapper extends JobManagerClient {
       return jobResponse;
     } catch (err) {
       const message = 'failed to create a new init job ';
-      this.logger.error({ msg: message, err, logContext: logCtx, layer: data });
+      this.logger.error({ msg: message, err, layer: data });
       throw err;
     }
   }
@@ -66,7 +61,6 @@ export class JobManagerWrapper extends JobManagerClient {
     data: UpdateRasterLayer,
     jobType: string
   ): Promise<ICreateJobResponse> {
-    const logCtx: LogContext = { ...this.logContext, function: this.createInitUpdateJob.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('jobManagerWrapper.createInitUpdateJob');
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
@@ -85,7 +79,7 @@ export class JobManagerWrapper extends JobManagerClient {
       return jobResponse;
     } catch (err) {
       const message = 'failed to create a new init update job ';
-      this.logger.error({ msg: message, jobType: jobType, taskType: this.initTaskType, err, logContext: logCtx, layer: data });
+      this.logger.error({ msg: message, jobType: jobType, taskType: this.initTaskType, err, layer: data });
       throw err;
     }
   }
@@ -93,12 +87,16 @@ export class JobManagerWrapper extends JobManagerClient {
   @withSpanAsyncV4
   private async createNewJob(data: NewRasterLayer, jobType: string, taskType: string, taskParams?: ITaskParameters[]): Promise<ICreateJobResponse> {
     const createLayerTasksUrl = `/jobs`;
+    const ingestionNewJobParams: IngestionNewJobParams = {
+      ...data,
+      additionalParams: { jobTrackerServiceURL: this.jobTrackerServiceUrl },
+    };
     const createJobRequest: CreateJobBody = {
       resourceId: data.metadata.productId,
       version: '1.0',
       type: jobType,
       status: OperationStatus.PENDING,
-      parameters: { ...data },
+      parameters: ingestionNewJobParams,
       productName: data.metadata.productName,
       productType: data.metadata.productType,
       domain: this.jobDomain,
@@ -128,7 +126,7 @@ export class JobManagerWrapper extends JobManagerClient {
     const createLayerTasksUrl = `/jobs`;
     const ingestionUpdateJobParams: IngestionUpdateJobParams = {
       ...data,
-      additionalParams: { tileOutputFormat, ...(jobType === this.updateJobType && { displayPath }) },
+      additionalParams: { tileOutputFormat, jobTrackerServiceURL: this.jobTrackerServiceUrl, ...(jobType === this.updateJobType && { displayPath }) },
     };
     const createJobRequest: CreateJobBody = {
       resourceId: productId,
@@ -152,4 +150,4 @@ export class JobManagerWrapper extends JobManagerClient {
 
 export type JobResponse = IJobResponse<Record<string, unknown>, ITaskParameters>;
 export type TaskResponse = ITaskResponse<ITaskParameters>;
-export type CreateJobBody = ICreateJobBody<NewRasterLayer | IngestionUpdateJobParams, ITaskParameters>;
+export type CreateJobBody = ICreateJobBody<IngestionNewJobParams | IngestionUpdateJobParams, ITaskParameters>;

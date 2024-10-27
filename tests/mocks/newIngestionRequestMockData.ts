@@ -537,6 +537,9 @@ export const newJobRequest = {
       originDirectory: 'test_files',
       fileNames: ['valid(blueMarble).gpkg'],
     },
+    additionalParams: {
+      jobTrackerServiceURL: 'http://jobTrackerServiceUrl',
+    },
   },
   productName: 'string',
   productType: 'Orthophoto',

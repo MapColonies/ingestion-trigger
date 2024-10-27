@@ -202,6 +202,7 @@ export const updateJobRequest = {
     additionalParams: {
       tileOutputFormat: TileOutputFormat.PNG,
       displayPath: 'd698bf1d-bb66-4292-a8b4-524cbeadf36f',
+      jobTrackerServiceURL: 'http://jobTrackerServiceUrl',
     },
   },
   domain: 'RASTER',
@@ -407,6 +408,7 @@ export const updateSwapJobRequest = {
     },
     additionalParams: {
       tileOutputFormat: TileOutputFormat.PNG,
+      jobTrackerServiceURL: 'http://jobTrackerServiceUrl',
     },
   },
   domain: 'RASTER',
