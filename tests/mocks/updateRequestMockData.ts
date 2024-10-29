@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { InputFiles, PolygonPart, TileOutputFormat, UpdateRasterLayerMetadata } from '@map-colonies/mc-model-types';
+import { InputFiles, PolygonPart, ProductType, TileOutputFormat, UpdateRasterLayerMetadata } from '@map-colonies/mc-model-types';
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
 
 export const updateLayerRequest = {
@@ -162,6 +162,8 @@ export const updateJobRequest = {
   version: '2.0',
   internalId: '14460cdd-44ae-4a04-944f-29e907b6cd2a',
   type: 'Ingestion_Update',
+  productName: 'blueMarble_test_2',
+  productType: ProductType.ORTHOPHOTO,
   status: 'Pending',
   parameters: {
     metadata: {
@@ -262,7 +264,7 @@ export const updatedLayer = {
     region: ['string'],
     productId: 'blueMarble_test_2',
     productVersion: '1.0',
-    productType: 'Orthophoto',
+    productType: ProductType.ORTHOPHOTO,
     productSubType: 'string',
     srsName: 'string',
     maxResolutionDeg: 0.072,
@@ -369,6 +371,8 @@ export const updateSwapJobRequest = {
   version: '2.0',
   internalId: '14460cdd-44ae-4a04-944f-29e907b6cd2a',
   type: 'Ingestion_Swap_Update',
+  productName: 'blueMarble_test_2',
+  productType: ProductType.RASTER_VECTOR_BEST,
   status: 'Pending',
   parameters: {
     metadata: {

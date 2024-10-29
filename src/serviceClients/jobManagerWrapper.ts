@@ -1,6 +1,13 @@
 import { Logger } from '@map-colonies/js-logger';
 import { inject, injectable } from 'tsyringe';
-import { NewRasterLayer, TileOutputFormat, UpdateRasterLayer, IngestionUpdateJobParams, IngestionNewJobParams } from '@map-colonies/mc-model-types';
+import {
+  NewRasterLayer,
+  TileOutputFormat,
+  UpdateRasterLayer,
+  IngestionUpdateJobParams,
+  IngestionNewJobParams,
+  ProductType,
+} from '@map-colonies/mc-model-types';
 import { ICreateJobBody, ICreateJobResponse, IJobResponse, OperationStatus, ITaskResponse, JobManagerClient } from '@map-colonies/mc-priority-queue';
 import { IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { trace, Tracer } from '@opentelemetry/api';
@@ -57,6 +64,8 @@ export class JobManagerWrapper extends JobManagerClient {
     version: string,
     tileOutputFormat: TileOutputFormat,
     displayPath: string,
+    productType: ProductType,
+    productName: string,
     catalogId: string,
     data: UpdateRasterLayer,
     jobType: string
@@ -70,6 +79,8 @@ export class JobManagerWrapper extends JobManagerClient {
         version,
         tileOutputFormat,
         displayPath,
+        productType,
+        productName,
         catalogId,
         data,
         jobType,
@@ -117,6 +128,8 @@ export class JobManagerWrapper extends JobManagerClient {
     version: string,
     tileOutputFormat: TileOutputFormat,
     displayPath: string,
+    productType: ProductType,
+    productName: string,
     catalogId: string,
     data: UpdateRasterLayer,
     jobType: string,
@@ -133,6 +146,8 @@ export class JobManagerWrapper extends JobManagerClient {
       version: (parseFloat(version) + 1).toFixed(1),
       internalId: catalogId,
       type: jobType,
+      productName: productName,
+      productType: productType,
       status: OperationStatus.PENDING,
       parameters: ingestionUpdateJobParams,
       domain: this.jobDomain,

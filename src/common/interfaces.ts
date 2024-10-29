@@ -35,4 +35,5 @@ export interface LayerDetails {
   productSubType: string;
   tileOutputFormat: TileOutputFormat;
   displayPath: string;
+  productName: string;
 }

@@ -163,6 +163,8 @@ export class IngestionManager {
       layerDetails.productVersion,
       layerDetails.tileOutputFormat,
       layerDetails.displayPath,
+      layerDetails.productType,
+      layerDetails.productName,
       catalogId,
       rasterUpdateLayer,
       updateJobAction
@@ -189,14 +191,30 @@ export class IngestionManager {
     await this.validateRequestInputs(partsData, inputFiles);
     //catalog call must be before map proxy to get productId and Type
     const layerDetails = await this.getLayer(catalogId);
-    const { productId, productVersion, productType, productSubType = '', tileOutputFormat, displayPath } = layerDetails.metadata as LayerDetails;
-    activeSpan?.addEvent('updateLayer.getLayer', { productId, productVersion, productType, productSubType, tileOutputFormat, displayPath });
+    const {
+      productId,
+      productVersion,
+      productType,
+      productSubType = '',
+      tileOutputFormat,
+      displayPath,
+      productName,
+    } = layerDetails.metadata as LayerDetails;
+    activeSpan?.addEvent('updateLayer.getLayer', {
+      productId,
+      productVersion,
+      productType,
+      productSubType,
+      tileOutputFormat,
+      displayPath,
+      productName,
+    });
 
     const layerName = getMapServingLayerName(productId, productType);
     await this.validateLayerExistsInMapProxy(layerName);
     await this.validateNoParallelJobs(productId, productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
-    return { productId, productVersion, productType, productSubType, tileOutputFormat, displayPath };
+    return { productId, productVersion, productType, productSubType, tileOutputFormat, displayPath, productName };
   }
 
   @withSpanAsyncV4

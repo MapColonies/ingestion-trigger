@@ -49,6 +49,8 @@ describe('jobManagerWrapper', () => {
           updatedLayerMetadata.productVersion,
           updatedLayerMetadata.tileOutputFormat,
           updatedLayerMetadata.displayPath,
+          updatedLayerMetadata.productType,
+          updatedLayerMetadata.productName,
           updatedLayerMetadata.id,
           layerRequest,
           updateJobType
@@ -68,6 +70,8 @@ describe('jobManagerWrapper', () => {
           updatedLayerMetadata.productVersion,
           updatedLayerMetadata.tileOutputFormat,
           updatedLayerMetadata.displayPath,
+          updatedLayerMetadata.productType,
+          updatedLayerMetadata.productName,
           updatedLayerMetadata.id,
           layerRequest,
           updateJobType
