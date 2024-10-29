@@ -194,7 +194,7 @@ describe('IngestionManager', () => {
     it('should not throw any errors when the request is valid and create update job', async () => {
       const layerRequest = updateLayerRequest.valid;
       const updatedLayerMetadata = updatedLayer.metadata;
-      const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+      const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType );
 
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
@@ -258,7 +258,7 @@ describe('IngestionManager', () => {
     it('should throw conflict error when there is a conflicting job running', async () => {
       const layerRequest = updateLayerRequest.valid;
       const updatedLayerMetadata = updatedLayer.metadata;
-      const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+      const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType );
 
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
@@ -290,7 +290,7 @@ describe('IngestionManager', () => {
     it('should throw not found error when there is no layer in mapProxy', async () => {
       const layerRequest = updateLayerRequest.valid;
       const updatedLayerMetadata = updatedLayer.metadata;
-      const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+      const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType );
 
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
