@@ -560,7 +560,7 @@ describe('Ingestion', function () {
       it('should return 200 status code with update request', async () => {
         const layerRequest = updateLayerRequest.valid;
         const updatedLayerMetadata = updatedLayer.metadata;
-        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
 
         const getJobsParams = {
           resourceId: updatedLayerMetadata.productId,
@@ -664,7 +664,7 @@ describe('Ingestion', function () {
       it('should return 404 status code when the layer is not in mapProxy', async () => {
         const layerRequest = updateLayerRequest.valid;
         const updatedLayerMetadata = updatedLayer.metadata;
-        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
 
         nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
         nock(mapProxyApiServiceUrl)
@@ -680,7 +680,7 @@ describe('Ingestion', function () {
       it('should return 409 status code when there are conflicting jobs', async () => {
         const layerRequest = updateLayerRequest.valid;
         const updatedLayerMetadata = updatedLayer.metadata;
-        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
 
         const getJobsParams = {
           resourceId: updatedLayerMetadata.productId,
@@ -735,7 +735,7 @@ describe('Ingestion', function () {
       it('should return 500 status code when failed to create new init update job', async () => {
         const layerRequest = updateLayerRequest.valid;
         const updatedLayerMetadata = updatedLayer.metadata;
-        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
 
         const getJobsParams = {
           resourceId: updatedLayerMetadata.productId,
@@ -762,7 +762,7 @@ describe('Ingestion', function () {
       it('should return 500 status code when unexpected error from mapproxy occurs', async () => {
         const layerRequest = updateLayerRequest.valid;
         const updatedLayerMetadata = updatedLayer.metadata;
-        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
 
         const getJobsParams = {
           resourceId: updatedLayerMetadata.productId,
