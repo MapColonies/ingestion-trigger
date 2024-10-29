@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.2.0](https://github.com/MapColonies/ingestion-trigger/compare/v3.1.0...v3.2.0) (2024-10-29)
+
+
+### Features
+
+* add productName and type to update job(MAPCO-5092) ([#22](https://github.com/MapColonies/ingestion-trigger/issues/22)) ([8867028](https://github.com/MapColonies/ingestion-trigger/commit/88670283662f26551374d2c726adcdd114826697))
+
 ## [3.1.0](https://github.com/MapColonies/ingestion-trigger/compare/v3.0.2...v3.1.0) (2024-10-27)
 
 
