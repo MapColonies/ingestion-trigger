@@ -8,6 +8,7 @@ import { InfoData } from '../../ingestion/schemas/infoDataSchema';
 import { GdalInfo } from '../../ingestion/schemas/gdalDataSchema';
 import { LogContext } from '../logger/logContext';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../validation/schemasValidator';
+import { GdalInfoError } from '../../ingestion/errors/ingestionErrors';
 
 @injectable()
 export class GdalUtilities {
@@ -35,8 +36,12 @@ export class GdalUtilities {
       const dataset: gdal.Dataset = await this.getDataset(filePath);
       const infoJsonString = await gdal.infoAsync(dataset, ['-json']);
       const info = await this.parseAndValidateGdalInfo(infoJsonString);
-      const { driverShortName, wgs84Extent, geoTransform, stac } = info;
-      const retrievedPixelSize = dataset.geoTransform ? dataset.geoTransform[1] : geoTransform[1];
+      const { driverShortName, wgs84Extent, stac } = info;
+      const retrievedPixelSize = dataset.geoTransform
+        ? dataset.geoTransform[1]
+        : ((): never => {
+            throw new GdalInfoError('dataset.geoTransform is null');
+          })();
 
       const infoData: InfoData = {
         crs: stac['proj:epsg'],
