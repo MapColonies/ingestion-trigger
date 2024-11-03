@@ -37,16 +37,14 @@ export class GdalUtilities {
       const infoJsonString = await gdal.infoAsync(dataset, ['-json']);
       const info = await this.parseAndValidateGdalInfo(infoJsonString);
       const { driverShortName, wgs84Extent, stac } = info;
-      const retrievedPixelSize = dataset.geoTransform
-        ? dataset.geoTransform[1]
-        : ((): never => {
-            throw new GdalInfoError('dataset.geoTransform is null');
-          })();
+      if (dataset.geoTransform === null) {
+        throw new GdalInfoError('dataset.geoTransform is null');
+      }
 
       const infoData: InfoData = {
         crs: stac['proj:epsg'],
         fileFormat: driverShortName,
-        pixelSize: retrievedPixelSize,
+        pixelSize: dataset.geoTransform[1],
         extentPolygon: wgs84Extent,
       };
 
