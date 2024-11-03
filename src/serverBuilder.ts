@@ -59,7 +59,7 @@ export class ServerBuilder {
     this.serverInstance.use(bodyParser.json(this.config.get<bodyParser.Options>('server.request.payload')));
     this.serverInstance.use(getTraceContexHeaderMiddleware());
 
-    const ignorePathRegex = new RegExp(`^${this.config.get<string>('openapiConfig.basePath')}/.*`, 'i');
+    const ignorePathRegex = new RegExp(`^${this.config.get<string>('openapiConfig.basePath')}|(explorer)/.*`, 'i');
     const apiSpecPath = this.config.get<string>('openapiConfig.filePath');
     this.serverInstance.use(OpenApiMiddleware({ apiSpec: apiSpecPath, validateRequests: true, ignorePaths: ignorePathRegex }));
     this.filePickerHandlerMiddleware();
