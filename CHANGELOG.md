@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.2.1](https://github.com/MapColonies/ingestion-trigger/compare/v3.2.0...v3.2.1) (2024-11-03)
+
+
+### Bug Fixes
+
+* change pixelSize retrieval(MAPCO-5110) ([#24](https://github.com/MapColonies/ingestion-trigger/issues/24)) ([bd26dd6](https://github.com/MapColonies/ingestion-trigger/commit/bd26dd6e6775a0bf95245b01f39461c34687542a))
+* fix file explorer ([#23](https://github.com/MapColonies/ingestion-trigger/issues/23)) ([0c69873](https://github.com/MapColonies/ingestion-trigger/commit/0c698730f96d6477ab1c5416308adf5c7c970162))
+
 ## [3.2.0](https://github.com/MapColonies/ingestion-trigger/compare/v3.1.0...v3.2.0) (2024-10-29)
 
 
