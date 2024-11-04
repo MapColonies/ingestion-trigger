@@ -1,4 +1,5 @@
 import { IRasterCatalogUpsertRequestBody, ProductType, TileOutputFormat } from '@map-colonies/mc-model-types';
+import { Polygon } from 'geojson';
 
 export interface IConfig {
   get: <T>(setting: string) => T;
@@ -36,4 +37,5 @@ export interface LayerDetails {
   tileOutputFormat: TileOutputFormat;
   displayPath: string;
   productName: string;
+  footprint: Polygon;
 }

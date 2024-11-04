@@ -157,18 +157,9 @@ export class IngestionManager {
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === layerDetails.productType && supportedSwapObj.productSubType === layerDetails.productSubType;
     });
+
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
-    return this.jobManagerWrapper.createInitUpdateJob(
-      layerDetails.productId,
-      layerDetails.productVersion,
-      layerDetails.tileOutputFormat,
-      layerDetails.displayPath,
-      layerDetails.productType,
-      layerDetails.productName,
-      catalogId,
-      rasterUpdateLayer,
-      updateJobAction
-    );
+    return this.jobManagerWrapper.createInitUpdateJob(layerDetails, catalogId, rasterUpdateLayer, updateJobAction);
   }
 
   @withSpanAsyncV4
@@ -199,6 +190,7 @@ export class IngestionManager {
       tileOutputFormat,
       displayPath,
       productName,
+      footprint,
     } = layerDetails.metadata as LayerDetails;
     activeSpan?.addEvent('updateLayer.getLayer', {
       productId,
@@ -214,7 +206,7 @@ export class IngestionManager {
     await this.validateLayerExistsInMapProxy(layerName);
     await this.validateNoParallelJobs(productId, productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
-    return { productId, productVersion, productType, productSubType, tileOutputFormat, displayPath, productName };
+    return { productId, productVersion, productType, productSubType, tileOutputFormat, displayPath, productName, footprint };
   }
 
   @withSpanAsyncV4
