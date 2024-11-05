@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { InputFiles, PolygonPart, ProductType, TileOutputFormat, UpdateRasterLayerMetadata } from '@map-colonies/mc-model-types';
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
+import { Polygon } from 'geojson';
 
 export const updateLayerRequest = {
   valid: {
@@ -205,6 +206,18 @@ export const updateJobRequest = {
       tileOutputFormat: TileOutputFormat.PNG,
       displayPath: 'd698bf1d-bb66-4292-a8b4-524cbeadf36f',
       jobTrackerServiceURL: 'http://jobTrackerServiceUrl',
+      footprint: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [-180, -90],
+            [-180, 90],
+            [180, 90],
+            [180, -90],
+            [-180, -90],
+          ],
+        ],
+      },
     },
   },
   domain: 'RASTER',
@@ -282,7 +295,7 @@ export const updatedLayer = {
           [-180, -90],
         ],
       ],
-    },
+    } as Polygon,
     includedInBests: [],
     productBoundingBox: '-180,-90,180,90',
     displayPath: 'd698bf1d-bb66-4292-a8b4-524cbeadf36f',
@@ -413,6 +426,18 @@ export const updateSwapJobRequest = {
     additionalParams: {
       tileOutputFormat: TileOutputFormat.PNG,
       jobTrackerServiceURL: 'http://jobTrackerServiceUrl',
+      footprint: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [-180, -90],
+            [-180, 90],
+            [180, 90],
+            [180, -90],
+            [-180, -90],
+          ],
+        ],
+      },
     },
   },
   domain: 'RASTER',
