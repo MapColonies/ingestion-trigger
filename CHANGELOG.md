@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.2.2](https://github.com/MapColonies/ingestion-trigger/compare/v3.2.1...v3.2.2) (2024-11-05)
+
+
+### Bug Fixes
+
+* add footprint to additionalParams in update/swap(MAPCO-5165) ([#25](https://github.com/MapColonies/ingestion-trigger/issues/25)) ([71e77b4](https://github.com/MapColonies/ingestion-trigger/commit/71e77b4a7531189ef4ff2bb6b803b60fe02e23b3))
+
 ### [3.2.1](https://github.com/MapColonies/ingestion-trigger/compare/v3.2.0...v3.2.1) (2024-11-03)
 
 
