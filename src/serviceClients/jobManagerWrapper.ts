@@ -109,7 +109,7 @@ export class JobManagerWrapper extends JobManagerClient {
     taskParams?: ITaskParameters[]
   ): Promise<ICreateJobResponse> {
     const createLayerTasksUrl = `/jobs`;
-    const { productId, productName, productType, productVersion: version, tileOutputFormat, displayPath, footprint } = layerDetails;
+    const { productId, productName, productType, productVersion, tileOutputFormat, displayPath, footprint } = layerDetails;
     const ingestionUpdateJobParams: IngestionUpdateJobParams = {
       ...data,
       additionalParams: {
@@ -121,7 +121,7 @@ export class JobManagerWrapper extends JobManagerClient {
     };
     const createJobRequest: CreateJobBody = {
       resourceId: productId,
-      version: (parseFloat(version) + 1).toFixed(1),
+      version: (parseFloat(productVersion) + 1).toFixed(1),
       internalId: catalogId,
       type: jobType,
       productName: productName,
