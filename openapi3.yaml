@@ -74,6 +74,7 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
           example: 5f7b3b3b-3b3b-3b3b-3b3b-3b3b3b3b3b3b
       requestBody:
         content:
