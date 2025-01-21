@@ -72,7 +72,7 @@ metrics:
 image:
   repository: ingestion-trigger
   # If commented, appVersion will be taken. See: _helpers.tpl
-  # tag: 'latest'
+  tag: 'latest'
 
 nameOverride: ""
 fullnameOverride: ""
