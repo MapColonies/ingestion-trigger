@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { GeoJSON, Geometry, MultiPolygon, Feature } from 'geojson';
+import { Geometry } from 'geojson';
 import { getIssues } from '@placemarkio/check-geojson';
-import booleanContains from '@turf/boolean-contains';
 import isValidGeoJson from '@turf/boolean-valid';
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
@@ -12,7 +11,7 @@ import { withSpanV4 } from '@map-colonies/telemetry';
 import { LogContext } from '../../utils/logger/logContext';
 import { SERVICES } from '../../common/constants';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
-import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';
+import { combineExtentPolygons, extractPolygons } from '../../utils/geometry';
 import { GeometryValidationError, PixelSizeError } from '../errors/ingestionErrors';
 import { isPixelSizeValid } from '../../utils/pixelSizeValidate';
 
@@ -45,14 +44,14 @@ export class PolygonPartValidator {
     this.logger.debug({ msg: 'created combined extent', logContext: logCtx, metadata: { combinedExtent } });
     //run on map and check that the geometry is in extent
     partsData.map((polygonPart, index) => {
-      this.validatePartGeometry(polygonPart, index, combinedExtent);
+      this.validatePartGeometry(polygonPart, index);
       this.validatePartPixelSize(polygonPart, index, infoDataFiles);
     });
     activeSpan?.addEvent('polygonPartValidator.validate.success');
   }
 
   @withSpanV4
-  private validatePartGeometry(polygonPart: PolygonPart, index: number, combinedExtent: Feature<MultiPolygon>): void {
+  private validatePartGeometry(polygonPart: PolygonPart, index: number): void {
     const logCtx = { ...this.logContext, function: this.validatePartGeometry.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.validatePartGeometry');
