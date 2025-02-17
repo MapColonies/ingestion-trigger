@@ -28,11 +28,6 @@ describe('PolygonPartValidator', () => {
       expect(result).toThrow(GeometryValidationError);
     });
 
-    it('should throw geometry validation error on partsData geometry not contained by extent', () => {
-      const result = () => polygonPartValidator.validate(polygonPartsMock.invalid.notContainedGeometry, infoDataMock);
-      expect(result).toThrow(GeometryValidationError);
-    });
-
     it('should throw pixelSize validation error on partsData when resolutionDeg isnt greater than pixelSize from infoData', () => {
       const result = () => polygonPartValidator.validate(polygonPartsMock.invalid.notValidResolutionDeg, infoDataMock);
       expect(result).toThrow(PixelSizeError);

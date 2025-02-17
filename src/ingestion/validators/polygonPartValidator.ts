@@ -71,20 +71,6 @@ export class PolygonPartValidator {
       });
       throw new GeometryValidationError(polygonPart.sourceName, index, 'Geometry is invalid');
     }
-    const containedByExtent = this.isContainedByExtent(polygonPart.footprint as Geometry, combinedExtent as GeoJSON);
-    this.logger.debug({
-      msg: `validated geometry of part ${polygonPart.sourceName} at index: ${index}. containedByExtent: ${containedByExtent}`,
-      logContext: logCtx,
-      metadata: { polygonPart },
-    });
-    if (!containedByExtent) {
-      this.logger.error({
-        msg: `Geometry of ${polygonPart.sourceName} at index: ${index} is not contained by combined extent`,
-        logContext: logCtx,
-        metadata: { polygonPart, combinedExtent },
-      });
-      throw new GeometryValidationError(polygonPart.sourceName, index, 'Geometry is not contained by combined extent');
-    }
   }
 
   @withSpanV4
@@ -98,23 +84,6 @@ export class PolygonPartValidator {
     }
     activeSpan?.addEvent('polygonPartValidator.validateGeometry.failed');
     return false;
-  }
-
-  @withSpanV4
-  private isContainedByExtent(footprint: Geometry, extent: GeoJSON): boolean {
-    const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('polygonPartValidator.isContainedByExtent');
-    const bufferedExtent = extentBuffer(this.extentBufferInMeters, extent);
-    if (!(booleanContains(bufferedExtent as unknown as Geometry, footprint) || booleanContains(extent as Geometry, footprint))) {
-      activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.false', {
-        providedExtent: JSON.stringify(extent),
-        bufferedExtent: JSON.stringify(bufferedExtent),
-        footprint: JSON.stringify(footprint),
-      });
-      return false;
-    }
-    activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.true');
-    return true;
   }
 
   @withSpanV4

@@ -451,14 +451,6 @@ describe('Ingestion', function () {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when partsData polygon geometry isnt contained by extent', async () => {
-        const layerRequest = newLayerRequest.invalid.notContainedPolygon;
-        const response = await requestSender.ingestNewLayer(layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-      });
-
       it('should return 400 status code when partsData resolutionDeg isnt greater than pixel size', async () => {
         const layerRequest = newLayerRequest.invalid.invalidResolutionDeg;
         const response = await requestSender.ingestNewLayer(layerRequest);
@@ -652,7 +644,7 @@ describe('Ingestion', function () {
       });
 
       it('should return 400 status code when there is a validation error', async () => {
-        const layerRequest = updateLayerRequest.invalid.notContainedPolygon;
+        const layerRequest = updateLayerRequest.invalid.metadata;
         const updatedLayerMetadata = updatedLayer.metadata;
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
