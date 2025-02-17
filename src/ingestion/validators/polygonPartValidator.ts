@@ -2,7 +2,6 @@
 import { GeoJSON, Geometry, MultiPolygon, Feature } from 'geojson';
 import { getIssues } from '@placemarkio/check-geojson';
 import booleanContains from '@turf/boolean-contains';
-import isValidGeoJson from '@turf/boolean-valid';
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import { IConfig } from 'config';
@@ -92,7 +91,7 @@ export class PolygonPartValidator {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.validateGeometry');
     const footprintIssues = getIssues(JSON.stringify(footprint));
-    if (footprint.type === 'Polygon' && footprintIssues.length === 0 && isValidGeoJson(footprint)) {
+    if (footprint.type === 'Polygon' && footprintIssues.length === 0) {
       activeSpan?.addEvent('polygonPartValidator.validateGeometry.success');
       return true;
     }
