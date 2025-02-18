@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.2.4](https://github.com/MapColonies/ingestion-trigger/compare/v3.2.3...v3.2.4) (2025-02-18)
+
+
+### Bug Fixes
+
+* manifest version ([#30](https://github.com/MapColonies/ingestion-trigger/issues/30)) ([8760088](https://github.com/MapColonies/ingestion-trigger/commit/876008863ecff4c3cca7174af05b3f52ee8f9d1d))
+
 ### [3.2.3](https://github.com/MapColonies/ingestion-trigger/compare/v3.2.2...v3.2.3) (2024-11-21)
 
 
