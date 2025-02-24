@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.2.5](https://github.com/MapColonies/ingestion-trigger/compare/v3.2.4...v3.2.5) (2025-02-24)
+
+
+### Bug Fixes
+
+* removing max_old_space_size from Dockerfile ([#34](https://github.com/MapColonies/ingestion-trigger/issues/34)) ([50a0cd8](https://github.com/MapColonies/ingestion-trigger/commit/50a0cd8762eca8c8caecc93adcfbc4d5f1300fde))
+
 ## [3.2.4](https://github.com/MapColonies/ingestion-trigger/compare/v3.2.3...v3.2.4) (2025-02-18)
 
 
