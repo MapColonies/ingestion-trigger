@@ -34,7 +34,7 @@ export class PolygonPartValidator {
   }
 
   @withSpanV4
-  public validate(partsData: PolygonPart[], infoDataFiles: InfoDataWithFile[]): void {
+  public validate(infoDataFiles: InfoDataWithFile[]): void {
     const logCtx = { ...this.logContext, function: this.validate.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.validate');
@@ -43,11 +43,6 @@ export class PolygonPartValidator {
     const combinedExtent = combineExtentPolygons(features);
     this.logger.debug({ msg: 'created combined extent', logContext: logCtx, metadata: { combinedExtent } });
     //run on map and check that the geometry is in extent
-    partsData.map((polygonPart, index) => {
-      this.validatePartGeometry(polygonPart, index, combinedExtent);
-      this.validatePartPixelSize(polygonPart, index, infoDataFiles);
-    });
-    activeSpan?.addEvent('polygonPartValidator.validate.success');
   }
 
   @withSpanV4

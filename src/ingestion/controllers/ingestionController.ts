@@ -1,5 +1,4 @@
 import { RequestHandler } from 'express';
-import { InputFiles, NewRasterLayer, UpdateRasterLayer } from '@map-colonies/mc-model-types';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
 import { HttpError } from 'express-openapi-validator/dist/framework/types';
@@ -9,6 +8,7 @@ import { SourcesValidationResponse, ResponseStatus, IRecordRequestParams } from 
 import { IngestionManager } from '../models/ingestionManager';
 import { InfoData } from '../schemas/infoDataSchema';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
+import { InputFiles, IngestionNewLayerRequest, IngestionUpdateLayerRequest } from '@map-colonies/raster-shared';
 
 type SourcesValidationHandler = RequestHandler<undefined, SourcesValidationResponse, unknown>;
 type SourcesInfoHandler = RequestHandler<undefined, InfoData[], unknown>;
@@ -24,7 +24,7 @@ export class IngestionController {
 
   public createLayer: NewLayerHandler = async (req, res, next) => {
     try {
-      const validNewLayerRequestBody: NewRasterLayer = await this.schemasValidator.validateNewLayerRequest(req.body);
+      const validNewLayerRequestBody: IngestionNewLayerRequest = await this.schemasValidator.validateNewLayerRequest(req.body);
       await this.ingestionManager.ingestNewLayer(validNewLayerRequestBody);
 
       res.status(StatusCodes.OK).send({ status: 'success' });
@@ -46,7 +46,7 @@ export class IngestionController {
     try {
       const catalogId = req.params.id;
       const updateLayerRequestBody: unknown = req.body;
-      const validUpdateLayerRequestBody: UpdateRasterLayer = await this.schemasValidator.validateUpdateLayerRequest(updateLayerRequestBody);
+      const validUpdateLayerRequestBody: IngestionUpdateLayerRequest = await this.schemasValidator.validateUpdateLayerRequest(updateLayerRequestBody);
       await this.ingestionManager.updateLayer(catalogId, validUpdateLayerRequestBody);
 
       res.status(StatusCodes.OK).send({ status: 'success' });

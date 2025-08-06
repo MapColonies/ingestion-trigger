@@ -29,9 +29,9 @@ export class GdalInfoManager {
     this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
   }
 
-  public async getInfoData(originDirectory: string, files: string[]): Promise<InfoDataWithFile[]> {
+  public async getInfoData(files: string[]): Promise<InfoDataWithFile[]> {
     const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
-    this.logger.debug({ msg: 'getting Gdal info data', logContext: logCtx, metadata: { originDirectory, files } });
+    this.logger.debug({ msg: 'getting Gdal info data', logContext: logCtx, metadata: { files } });
 
     const { spanOptions } = createSpanMetadata('gdalInfoManager.getInfoData', SpanKind.INTERNAL);
     const getInfoSpan = this.tracer.startSpan('gdalInfoManager.get_info process', spanOptions);
@@ -40,7 +40,7 @@ export class GdalInfoManager {
       return await context.with(trace.setSpan(context.active(), getInfoSpan), async () => {
         const filesGdalInfoData = await Promise.all(
           files.map(async (file) => {
-            const filePath = join(this.sourceMount, originDirectory, file);
+            const filePath = join(this.sourceMount, file);
             const infoData = await this.gdalUtilities.getInfoData(filePath);
             getInfoSpan.addEvent('gdalInfoManager.get_info.data', { fileName: file, fileInfo: JSON.stringify(infoData) });
             return { ...infoData, fileName: file };
@@ -54,7 +54,7 @@ export class GdalInfoManager {
       if (err instanceof Error) {
         errorMessage = `${customMessage}: ${err.message}`;
       }
-      this.logger.error({ msg: errorMessage, err, logContext: logCtx, metadata: { originDirectory, files } });
+      this.logger.error({ msg: errorMessage, err, logContext: logCtx, metadata: { files } });
       const error = new GdalInfoError(errorMessage);
       getInfoSpan.recordException(error);
       throw error;

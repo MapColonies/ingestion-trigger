@@ -5,10 +5,10 @@ import { createPartsDataSchema } from './partsDataSchema';
 import { createInputFilesSchema } from './inputFilesSchema';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export const createNewIngestionLayerSchema = (container: DependencyContainer) => {
+export const createNewIngestionLayerSchema = () => {
   return z.object({
     metadata: createNewMetadataSchema(),
     partsData: createPartsDataSchema(),
-    inputFiles: createInputFilesSchema(container),
+    inputFiles: createInputFilesSchema(),
   });
 };

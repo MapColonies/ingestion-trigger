@@ -30,37 +30,37 @@ export class SourceValidator {
   }
 
   @withSpanAsyncV4
-  public async validateGdalInfo(originDirectory: string, files: string[]): Promise<void> {
+  public async validateGdalInfo(files: string[]): Promise<void> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('sourceValidator.validateGdalInfo');
-    const gdalInfoData = await this.gdalInfoManager.getInfoData(originDirectory, files);
+    const gdalInfoData = await this.gdalInfoManager.getInfoData(files);
     await this.gdalInfoManager.validateInfoData(gdalInfoData);
     activeSpan?.addEvent('sourceValidator.validateGdalInfo.passed');
   }
 
   @withSpanV4
-  public validateGpkgFiles(originDirectory: string, files: string[]): void {
+  public validateGpkgFiles(files: string[]): void {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('sourceValidator.validateGpkgFiles');
-    this.gpkgManager.validateGpkgFiles(originDirectory, files);
+    this.gpkgManager.validateGpkgFiles(files);
     activeSpan?.addEvent('sourceValidator.validateGpkgFiles.passed');
   }
 
   @withSpanAsyncV4
-  public async validateFilesExist(srcDir: string, files: string[]): Promise<void> {
+  public async validateFilesExist(filesPath: string[]): Promise<void> {
     const logCtx = { ...this.logContext, function: this.validateFilesExist.name };
-    this.logger.debug({ msg: 'validating source files exist', logContext: logCtx, metadata: { srcDir, files } });
+    this.logger.debug({ msg: 'validating source files exist', logContext: logCtx, metadata: { filesPath } });
     const fullPaths: string[] = [];
 
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('sourceValidator.validateFilesExist');
 
-    const filePromises = files.map(async (file) => {
-      const fullPath = join(this.sourceMount, srcDir, file);
+    const filePromises = filesPath.map(async (filePath) => {
+      const fullPath = join(this.sourceMount, filePath);
       fullPaths.push(fullPath);
       return fsPromises.access(fullPath, fsConstants.F_OK).catch(() => {
-        this.logger.error({ msg: `File '${file}' not found at '${fullPath}'`, logContext: logCtx, metadata: { file, fullPath } });
-        const error = new FileNotFoundError(file, fullPath);
+        this.logger.error({ msg: `File '${filePath}' not found at '${fullPath}'`, logContext: logCtx, metadata: { fullPath } });
+        const error = new FileNotFoundError(filePath, fullPath);
         throw error;
       });
     });

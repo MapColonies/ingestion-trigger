@@ -8,6 +8,7 @@ import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../common/constants';
 import { IConfig, LayerDetails } from '../common/interfaces';
 import { ITaskParameters } from '../ingestion/interfaces';
+import { IngestionNewLayerRequest, IngestionUpdateLayerRequest } from '@map-colonies/raster-shared';
 
 @injectable()
 export class JobManagerWrapper extends JobManagerClient {
@@ -37,7 +38,7 @@ export class JobManagerWrapper extends JobManagerClient {
   }
 
   @withSpanAsyncV4
-  public async createInitJob(data: NewRasterLayer): Promise<ICreateJobResponse> {
+  public async createInitJob(data: IngestionNewLayerRequest): Promise<ICreateJobResponse> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('jobManagerWrapper.createInitJob');
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
@@ -45,7 +46,7 @@ export class JobManagerWrapper extends JobManagerClient {
       const jobResponse = await this.createNewJob(data, this.ingestionNewJobType, this.initTaskType, taskParams);
       return jobResponse;
     } catch (err) {
-      const message = 'failed to create a new init job ';
+      const message = 'failed to create a new init job';
       this.logger.error({ msg: message, err, layer: data });
       throw err;
     }
@@ -55,7 +56,7 @@ export class JobManagerWrapper extends JobManagerClient {
   public async createInitUpdateJob(
     layerDetails: LayerDetails,
     catalogId: string,
-    data: UpdateRasterLayer,
+    data: IngestionUpdateLayerRequest,
     jobType: string
   ): Promise<ICreateJobResponse> {
     const activeSpan = trace.getActiveSpan();
@@ -73,7 +74,7 @@ export class JobManagerWrapper extends JobManagerClient {
   }
 
   @withSpanAsyncV4
-  private async createNewJob(data: NewRasterLayer, jobType: string, taskType: string, taskParams?: ITaskParameters[]): Promise<ICreateJobResponse> {
+  private async createNewJob(data: IngestionNewLayerRequest, jobType: string, taskType: string, taskParams?: ITaskParameters[]): Promise<ICreateJobResponse> {
     const createLayerTasksUrl = `/jobs`;
     const ingestionNewJobParams: IngestionNewJobParams = {
       ...data,
@@ -103,7 +104,7 @@ export class JobManagerWrapper extends JobManagerClient {
   private async createUpdateJob(
     layerDetails: LayerDetails,
     catalogId: string,
-    data: UpdateRasterLayer,
+    data: IngestionUpdateLayerRequest,
     jobType: string,
     taskType: string,
     taskParams?: ITaskParameters[]

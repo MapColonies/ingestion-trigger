@@ -9,6 +9,6 @@ export const createUpdateLayerSchema = (container: DependencyContainer) => {
   return z.object({
     metadata: createUpdateMetadataSchema(),
     partsData: createPartsDataSchema(),
-    inputFiles: createInputFilesSchema(container),
+    inputFiles: createInputFilesSchema(),
   });
 };

@@ -26,61 +26,61 @@ export class GpkgManager {
   }
 
   @withSpanV4
-  public validateGpkgFiles(originDirectory: string, files: string[]): void {
+  public validateGpkgFiles(files: string[]): void {
     const logCtx = { ...this.logContext, function: this.validateGpkgFiles.name };
-    this.logger.debug({ msg: 'Validating GPKG files', logContext: logCtx, metadata: { originDirectory, files } });
-    this.validateGpkgIndex(originDirectory, files);
-    this.validateGpkgGrid(originDirectory, files);
-    this.validateTilesSize(originDirectory, files);
-    this.logger.debug({ msg: 'GPKG files are valid', logContext: logCtx, metadata: { originDirectory, files } });
+    this.logger.debug({ msg: 'Validating GPKG files', logContext: logCtx, metadata: { files } });
+    this.validateGpkgIndex(files);
+    this.validateGpkgGrid(files);
+    this.validateTilesSize(files);
+    this.logger.debug({ msg: 'GPKG files are valid', logContext: logCtx, metadata: { files } });
   }
 
   @withSpanV4
-  private validateGpkgIndex(originDirectory: string, files: string[]): void {
+  private validateGpkgIndex(files: string[]): void {
     const logCtx = { ...this.logContext, function: this.validateGpkgIndex.name };
-    this.readGpkgFiles(originDirectory, files, (file, sqlClient) => {
+    this.readGpkgFiles(files, (file, sqlClient) => {
       const isGpkgIndexExist = sqlClient.isGpkgIndexExist();
 
       if (!isGpkgIndexExist) {
         const message = `GPKG index does not exist in file: ${file}`;
-        this.logger.warn({ msg: message, logContext: logCtx, metadata: { originDirectory, files } });
+        this.logger.warn({ msg: message, logContext: logCtx, metadata: { files } });
         throw new InvalidIndexError(message);
       }
     });
   }
 
   @withSpanV4
-  private validateGpkgGrid(originDirectory: string, files: string[]): void {
+  private validateGpkgGrid(files: string[]): void {
     const logCtx = { ...this.logContext, function: this.validateGpkgGrid.name };
-    this.readGpkgFiles(originDirectory, files, (file, sqlClient) => {
+    this.readGpkgFiles(files, (file, sqlClient) => {
       const grid = sqlClient.getGrid();
 
       if (grid !== Grid.TWO_ON_ONE) {
         //should be configurable?
         const message = `Geopackage name: ${file} grid type ${grid} is not supported (grid should be ${Grid.TWO_ON_ONE})`;
-        this.logger.warn({ msg: message, logContext: logCtx, metadata: { originDirectory, file, grid } });
+        this.logger.warn({ msg: message, logContext: logCtx, metadata: { file, grid } });
         throw new UnsupportedGridError(message);
       }
     });
   }
 
   @withSpanV4
-  private validateTilesSize(originDirectory: string, files: string[]): void {
+  private validateTilesSize(files: string[]): void {
     const logCtx = { ...this.logContext, function: this.validateTilesSize.name };
-    this.readGpkgFiles(originDirectory, files, (file, sqlClient) => {
+    this.readGpkgFiles(files, (file, sqlClient) => {
       const tileSize = sqlClient.getGpkgTileSize();
       if (tileSize.width !== this.validTileSize || tileSize.height !== this.validTileSize) {
         const message = `Geopackage name: ${file} tile size is not supported (tile size should be ${this.validTileSize})`;
-        this.logger.warn({ msg: message, logContext: logCtx, metadata: { originDirectory, file, tileSize } });
+        this.logger.warn({ msg: message, logContext: logCtx, metadata: { file, tileSize } });
         throw new UnsupportedTileSizeError(message);
       }
     });
   }
 
   @withSpanV4
-  private readGpkgFiles(originDirectory: string, files: string[], readFn: (file: string, sqlClient: SQLiteClient) => void): void {
+  private readGpkgFiles(files: string[], readFn: (file: string, sqlClient: SQLiteClient) => void): void {
     files.forEach((file) => {
-      const sqliteClient = new SQLiteClient(this.logger, this.config, this.tracer, file, originDirectory);
+      const sqliteClient = new SQLiteClient(this.logger, this.config, this.tracer, file);
       readFn(file, sqliteClient);
     });
   }
