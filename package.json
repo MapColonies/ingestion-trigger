@@ -22,7 +22,7 @@
     "assets:copy": "copyfiles -f ./config/* ./dist/config && copyfiles -f ./bundledApi.yaml ./dist/ && copyfiles ./package.json dist",
     "clean": "rimraf dist",
     "install": "npx husky install",
-    "copySchema": "copyfiles -u 5 \"./node_modules/@map-colonies/mc-model-types/Schema/yaml/**/*\" ./Schema",
+    "copySchema": "copyfiles -u 5 \"./node_modules/@map-colonies/mc-model-types/Schema/yaml/**/*\" \"./node_modules/@map-colonies/raster-shared/dist/openapi/core/layerMetadata.yaml\" ./Schema",
     "bundleOpenApi": "openapi bundle --output ./bundledApi.yaml --ext yaml ./openapi3.yaml",
     "prebundleOpenApi": "npm run copySchema",
     "postbundleOpenApi": "rimraf Schema"
@@ -50,7 +50,7 @@
     "@map-colonies/js-logger": "^1.0.1",
     "@map-colonies/mc-model-types": "^17.9.1",
     "@map-colonies/mc-priority-queue": "^8.1.0",
-    "@map-colonies/mc-utils": "^3.1.0",
+    "@map-colonies/mc-utils": "^3.4.0",
     "@map-colonies/openapi-express-viewer": "^3.0.0",
     "@map-colonies/raster-shared": "file:../../common/raster-shared/map-colonies-raster-shared-3.1.4.tgz",
     "@map-colonies/read-pkg": "0.0.1",

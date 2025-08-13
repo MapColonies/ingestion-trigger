@@ -11,7 +11,7 @@ info:
 paths:
   /ingestion:
     post:
-      operationId: newIngestion
+      operationId: ingestNewLayer
       tags:
         - ingestion
       summary: start a process of creating new layer from raw data
@@ -19,12 +19,11 @@ paths:
         content:
           application/json:
             schema:
-              $ref: >-
-                ./Schema/ingestionTrigger/rasterLayer.yaml#/components/schemas/NewRasterLayer
-            examples:
-              NewRasterLayerExample:
-                $ref: >-
-                  ./Schema/ingestionTrigger/rasterLayerExample.yaml#/components/examples/NewRasterLayerExample
+              $ref: '#/components/schemas/IngestionNewLayerRequest'
+            # examples:
+            #   NewRasterLayerExample:
+            #     $ref: >-
+            #       ./Schema/ingestionTrigger/rasterLayerExample.yaml#/components/examples/NewRasterLayerExample
       responses:
         '200':
           description: OK
@@ -219,3 +218,82 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+
+components:
+  schemas:
+    IngestionNewLayerRequest:
+      type: object
+      properties:
+        metadata:
+          $ref: '#/components/schemas/IngestionNewLayerMetadata'
+        inputFiles:
+          $ref: '#/components/schemas/InputFiles'
+        callbackUrls:
+          $ref: '#/components/schemas/CallbackUrls'
+    IngestionNewLayerMetadata:
+      type: object
+      required:
+        - productId
+        - productName
+        - productType
+        - srs
+        - srsName
+        - transparency
+        - region
+      properties:
+        productId: 
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProductId
+        productName:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProductName
+        productType: 
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProductType
+        productSubType:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProductSubType
+        region:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Region
+        srs:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Srs
+        srsName:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/SrsName
+        transparency:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Transparency
+        producerName:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProducerName
+        scale:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Scale
+        description:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Description
+        classification:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Classification
+    InputFiles:
+      type: object
+      required:
+        - gpkgFilesPath
+        - metadataShapefilePath
+        - productShapefilePath
+      properties:
+        gpkgFilesPath:
+          type: array
+          items:
+            type: string
+            pattern: ^.+\.[Gg][Pp][Kk][Gg]$
+            description: gpkg source file paths
+          example: ['example.gpkg']
+        metadataShapefilePath:
+          type: string
+          pattern: ^(\/[\w\d-]+)+\/ShapeMetadata\.shp$
+          description: metadata shape file path
+          example: '/path/to/ShapeMetadata.shp'
+        productShapefilePath:
+          type: string
+          pattern: ^(\/[\w\d-]+)+\/Product\.shp$
+          description: product shape file path
+          example: '/path/to/Product.shp'
+    CallbackUrls:
+      type: array
+      items:
+        type: string
+        pattern: ^https?:\/\/[^\s/$.?#].[^\s]*$
+        description: callback url for ingestion status notifications
+      example: ['https://my-dns-for-callback']
+    

@@ -1,3 +1,4 @@
+import { GeoJSON, Geometry, MultiPolygon, Feature } from 'geojson';
 import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import { ProductType, NewRasterLayer, UpdateRasterLayer, PolygonPart } from '@map-colonies/mc-model-types';
@@ -180,7 +181,7 @@ export class IngestionManager {
       msg: 'started validation on update layer request',
       logCtx: logCtx,
     });
-    await this.validateRequestInputs(inputFiles);
+    await this.validateInputFiles(inputFiles);
     //catalog call must be before map proxy to get productId and Type
     const layerDetails = await this.getLayer(catalogId);
     const {
@@ -223,7 +224,7 @@ export class IngestionManager {
       logCtx: logCtx,
     });
 
-    await this.validateRequestInputs(inputFiles);
+    await this.validateInputFiles(inputFiles);
     //catalog ,mapproxy, jobmanager validation
     const layerName = getMapServingLayerName(metadata.productId, metadata.productType);
     await this.validateLayerDoesntExistInMapProxy(layerName);
@@ -279,7 +280,7 @@ export class IngestionManager {
       productType,
       isCleaned: false,
       shouldReturnTasks: false,
-      statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
+      statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS, OperationStatus.FAILED, OperationStatus.SUSPENDED],
       types: forbiddenParallel,
     };
     const jobs = await this.jobManagerWrapper.findJobs<Record<string, unknown>, ITaskParameters>(findJobParameters);
@@ -357,8 +358,8 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async validateRequestInputs(inputFiles: InputFiles): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateRequestInputs.name };
+  private async validateInputFiles(inputFiles: InputFiles): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateInputFiles.name };
 
     //validate files exist, gdal info and GPKG data
     const isValidSources: SourcesValidationResponse = await this.validateSources(inputFiles);
@@ -370,7 +371,7 @@ export class IngestionManager {
     }
     this.logger.debug({ msg: 'validated sources', logContext: logCtx });
 
-    //validate new ingestion payload against gpkg data for each part
+    //validate new ingestion product.shp against gpkg data extent
     const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
     this.polygonPartValidator.validate(infoData);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });

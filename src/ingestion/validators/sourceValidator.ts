@@ -5,16 +5,20 @@ import { Logger } from '@map-colonies/js-logger';
 import { IConfig } from 'config';
 import { trace, Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
-import { FileNotFoundError } from '../errors/ingestionErrors';
+import { FileNotFoundError, ValidationError } from '../errors/ingestionErrors';
 import { LogContext } from '../../utils/logger/logContext';
 import { SERVICES } from '../../common/constants';
 import { GpkgManager } from '../models/gpkgManager';
 import { GdalInfoManager } from '../models/gdalInfoManager';
+import { GeoJSON, Geometry, MultiPolygon, Feature } from 'geojson';
+import { extentBuffer } from '../../utils/geometry';
+import booleanContains from '@turf/boolean-contains';
 
 @injectable()
 export class SourceValidator {
   private readonly logContext: LogContext;
   private readonly sourceMount: string;
+  private readonly extentBufferInMeters: number;
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
@@ -27,6 +31,7 @@ export class SourceValidator {
       class: SourceValidator.name,
     };
     this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
+    this.extentBufferInMeters = this.config.get<number>('validationValuesByInfo.extentBufferInMeters');
   }
 
   @withSpanAsyncV4
@@ -67,5 +72,32 @@ export class SourceValidator {
     await Promise.all(filePromises);
     activeSpan?.addEvent('sourceValidator.validateFilesExist.valid');
     this.logger.debug({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullPaths } });
+  }
+  
+  @withSpanV4
+  private validateContainedByExtent(productGeometry: Geometry, sourceExtent: Geometry): void {
+    const logCtx = { ...this.logContext, function: this.validateContainedByExtent.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('sourceValidator.isContainedByExtent');
+    const bufferedExtent = extentBuffer(this.extentBufferInMeters, sourceExtent);
+    if (!booleanContains(bufferedExtent as unknown as Geometry, productGeometry)) {
+      activeSpan?.addEvent('sourceValidator.isContainedByExtent.false', {
+        providedExtent: JSON.stringify(sourceExtent),
+        bufferedExtent: JSON.stringify(bufferedExtent),
+        footprint: JSON.stringify(productGeometry),
+      });
+      
+      const errMsg = 'product geometry is not contained by the source combined extent';
+      this.logger.error({
+        msg: errMsg,
+        logContext: logCtx,
+        sourceExtent,
+        bufferedExtent,
+        productGeometry
+      });
+      throw new ValidationError(errMsg);
+    }
+    this.logger.debug('product geometry is contained by source combined extent');
+    activeSpan?.addEvent('sourceValidator.isContainedByExtent.true');
   }
 }
