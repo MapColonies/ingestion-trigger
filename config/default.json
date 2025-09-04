@@ -35,7 +35,7 @@
     }
   },
   "storageExplorer": {
-    "layerSourceDir": "/layerSources",
+    "layerSourceDir": "",
     "displayNameDir": "\\layerSources",
     "watchDirectory": "watch",
     "validFileExtensions": ["gpkg"]

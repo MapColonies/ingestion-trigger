@@ -223,14 +223,15 @@ export class IngestionManager {
       msg: 'started validation on new layer request',
       logCtx: logCtx,
     });
-
+    // validate inpust files (gpkgs, metadata shp, product shp files)
     await this.validateInputFiles(inputFiles);
-    //catalog ,mapproxy, jobmanager validation
+
+    // validate against catalog, mapproxy, job-manager
     const layerName = getMapServingLayerName(metadata.productId, metadata.productType);
     await this.validateLayerDoesntExistInMapProxy(layerName);
     await this.isInCatalog(metadata.productId, metadata.productType);
     await this.validateNoConflictingJobs(metadata.productId, metadata.productType);
-    this.logger.info({ msg: 'validation in catalog ,job manager and mapProxy passed', logContext: logCtx });
+    this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
   }
 
   @withSpanAsyncV4
@@ -373,7 +374,7 @@ export class IngestionManager {
 
     //validate new ingestion product.shp against gpkg data extent
     const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
-    this.polygonPartValidator.validate(infoData);
+    await this.polygonPartValidator.validate(infoData);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
   }
 }

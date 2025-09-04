@@ -14,6 +14,9 @@ import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';
 import { GeometryValidationError, PixelSizeError } from '../errors/ingestionErrors';
 import { isPixelSizeValid } from '../../utils/pixelSizeValidate';
+import { ShapefileChunkReader, ReaderOptions, ChunkProcessor } from '@map-colonies/mc-utils';
+import { ShapeHandler} from '../../utils/shapeReader';
+import { writeFile } from 'node:fs/promises';
 
 @injectable()
 export class PolygonPartValidator {
@@ -23,7 +26,8 @@ export class PolygonPartValidator {
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
-    @inject(SERVICES.TRACER) public readonly tracer: Tracer
+    @inject(SERVICES.TRACER) public readonly tracer: Tracer,
+    @inject(ShapeHandler) private readonly shapeHandler: ShapeHandler
   ) {
     this.logContext = {
       fileName: __filename,
@@ -34,7 +38,7 @@ export class PolygonPartValidator {
   }
 
   @withSpanV4
-  public validate(infoDataFiles: InfoDataWithFile[]): void {
+  public async validate(infoDataFiles: InfoDataWithFile[]): Promise<void> {
     const logCtx = { ...this.logContext, function: this.validate.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.validate');
@@ -42,7 +46,10 @@ export class PolygonPartValidator {
     const features = extractPolygons(infoDataFiles);
     const combinedExtent = combineExtentPolygons(features);
     this.logger.debug({ msg: 'created combined extent', logContext: logCtx, metadata: { combinedExtent } });
-    //run on map and check that the geometry is in extent
+    //read "product.shp" file to check is contained within gpkg extent.
+    const productFeature = await this.shapeHandler.read('/path/to/the/shapefile.shp');
+    // implement validation vs gpkg extent instead of this writeFile
+    await writeFile('./test.json', JSON.stringify(productFeature?.geometry), 'utf-8');
   }
 
   @withSpanV4
