@@ -217,6 +217,15 @@ components:
         pattern: ^https?:\/\/[^\s/$.?#].[^\s]*$
         description: callback url for ingestion status notifications
       example: ['https://my-dns-for-callback']
+    GpkgFilesPath:
+      type: array
+      minItems: 1
+      maxItems: 1
+      items:
+        type: string
+        pattern: ^.+\.[Gg][Pp][Kk][Gg]$
+        description: gpkg source file paths
+      example: ['example.gpkg']
     IngestionNewLayerMetadata:
       type: object
       required:
@@ -264,9 +273,9 @@ components:
     IngestionUpdateLayerMetadata:
       type: object
       required:
-        - metadata
+        - classification
       properties:
-        metadata:
+        classification:
           $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Classification
     IngestionUpdateLayerRequest:
       type: object
@@ -285,21 +294,18 @@ components:
         - productShapefilePath
       properties:
         gpkgFilesPath:
-          type: array
-          minItems: 1
-          maxItems: 1
-          items:
-            type: string
-            pattern: ^.+\.[Gg][Pp][Kk][Gg]$
-            description: gpkg source file paths
-          example: ['example.gpkg']
+          $ref: '#/components/schemas/GpkgFilesPath'
         metadataShapefilePath:
-          type: string
-          pattern: ^(\/[\w\d-]+)+\/ShapeMetadata\.shp$
-          description: metadata shape file path
-          example: '/path/to/ShapeMetadata.shp'
+          $ref: '#/components/schemas/MetadataShapefilePath'
         productShapefilePath:
-          type: string
-          pattern: ^(\/[\w\d-]+)+\/Product\.shp$
-          description: product shape file path
-          example: '/path/to/Product.shp'
+          $ref: '#/components/schemas/ProductShapefilePath'
+    MetadataShapefilePath:
+      type: string
+      pattern: ^(\/[\w\d-]+)+\/ShapeMetadata\.shp$
+      description: metadata shape file path
+      example: '/path/to/ShapeMetadata.shp'
+    ProductShapefilePath:
+      type: string
+      pattern: ^(\/[\w\d-]+)+\/Product\.shp$
+      description: product shape file path
+      example: '/path/to/Product.shp'
