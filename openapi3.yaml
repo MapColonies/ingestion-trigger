@@ -20,10 +20,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/IngestionNewLayerRequest'
-            # examples:
-            #   NewRasterLayerExample:
-            #     $ref: >-
-            #       ./Schema/ingestionTrigger/rasterLayerExample.yaml#/components/examples/NewRasterLayerExample
       responses:
         '200':
           description: OK
@@ -65,26 +61,19 @@ paths:
       operationId: updateLayer
       tags:
         - ingestion
-      summary: start a process of creating update to exists layer from raw data
+      summary: start a process of updating an existing layer from raw data
       parameters:
         - name: id
           in: path
           description: The id of the layer to update
           required: true
           schema:
-            type: string
-            format: uuid
-          example: 5f7b3b3b-3b3b-3b3b-3b3b-3b3b3b3b3b3b
+            $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/LayerId
       requestBody:
         content:
           application/json:
             schema:
-              $ref: >-
-                ./Schema/ingestionTrigger/rasterLayer.yaml#/components/schemas/UpdateRasterLayer
-            examples:
-              UpdateRasterLayerExample:
-                $ref: >-
-                  ./Schema/ingestionTrigger/rasterLayerExample.yaml#/components/examples/UpdateRasterLayerExample
+              $ref: '#/components/schemas/IngestionUpdateLayerRequest'
       responses:
         '200':
           description: OK
@@ -221,15 +210,13 @@ paths:
 
 components:
   schemas:
-    IngestionNewLayerRequest:
-      type: object
-      properties:
-        metadata:
-          $ref: '#/components/schemas/IngestionNewLayerMetadata'
-        inputFiles:
-          $ref: '#/components/schemas/InputFiles'
-        callbackUrls:
-          $ref: '#/components/schemas/CallbackUrls'
+    CallbackUrls:
+      type: array
+      items:
+        type: string
+        pattern: ^https?:\/\/[^\s/$.?#].[^\s]*$
+        description: callback url for ingestion status notifications
+      example: ['https://my-dns-for-callback']
     IngestionNewLayerMetadata:
       type: object
       required:
@@ -241,11 +228,11 @@ components:
         - transparency
         - region
       properties:
-        productId: 
+        productId:
           $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProductId
         productName:
           $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProductName
-        productType: 
+        productType:
           $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProductType
         productSubType:
           $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProductSubType
@@ -265,6 +252,31 @@ components:
           $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Description
         classification:
           $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Classification
+    IngestionNewLayerRequest:
+      type: object
+      properties:
+        metadata:
+          $ref: '#/components/schemas/IngestionNewLayerMetadata'
+        inputFiles:
+          $ref: '#/components/schemas/InputFiles'
+        callbackUrls:
+          $ref: '#/components/schemas/CallbackUrls'
+    IngestionUpdateLayerMetadata:
+      type: object
+      required:
+        - metadata
+      properties:
+        metadata:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Classification
+    IngestionUpdateLayerRequest:
+      type: object
+      properties:
+        metadata:
+          $ref: '#/components/schemas/IngestionUpdateLayerMetadata'
+        inputFiles:
+          $ref: '#/components/schemas/InputFiles'
+        callbackUrls:
+          $ref: '#/components/schemas/CallbackUrls'
     InputFiles:
       type: object
       required:
@@ -274,6 +286,8 @@ components:
       properties:
         gpkgFilesPath:
           type: array
+          minItems: 1
+          maxItems: 1
           items:
             type: string
             pattern: ^.+\.[Gg][Pp][Kk][Gg]$
@@ -289,11 +303,3 @@ components:
           pattern: ^(\/[\w\d-]+)+\/Product\.shp$
           description: product shape file path
           example: '/path/to/Product.shp'
-    CallbackUrls:
-      type: array
-      items:
-        type: string
-        pattern: ^https?:\/\/[^\s/$.?#].[^\s]*$
-        description: callback url for ingestion status notifications
-      example: ['https://my-dns-for-callback']
-    
