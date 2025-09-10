@@ -73,7 +73,7 @@ export class SourceValidator {
     activeSpan?.addEvent('sourceValidator.validateFilesExist.valid');
     this.logger.debug({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullPaths } });
   }
-  
+
   @withSpanV4
   private validateContainedByExtent(productGeometry: Geometry, sourceExtent: Geometry): void {
     const logCtx = { ...this.logContext, function: this.validateContainedByExtent.name };
@@ -86,14 +86,14 @@ export class SourceValidator {
         bufferedExtent: JSON.stringify(bufferedExtent),
         footprint: JSON.stringify(productGeometry),
       });
-      
+
       const errMsg = 'product geometry is not contained by the source combined extent';
       this.logger.error({
         msg: errMsg,
         logContext: logCtx,
         sourceExtent,
         bufferedExtent,
-        productGeometry
+        productGeometry,
       });
       throw new ValidationError(errMsg);
     }
