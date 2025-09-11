@@ -1,14 +1,15 @@
 import { Logger } from '@map-colonies/js-logger';
-import { inject, injectable } from 'tsyringe';
-import { NewRasterLayer, UpdateRasterLayer, IngestionUpdateJobParams, IngestionNewJobParams } from '@map-colonies/mc-model-types';
-import { ICreateJobBody, ICreateJobResponse, IJobResponse, OperationStatus, ITaskResponse, JobManagerClient } from '@map-colonies/mc-priority-queue';
+import { ICreateJobBody, ICreateJobResponse, IJobResponse, ITaskResponse, JobManagerClient, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { IHttpRetryConfig } from '@map-colonies/mc-utils';
-import { trace, Tracer } from '@opentelemetry/api';
+import type { IngestionNewJobParams, IngestionSwapUpdateJobParams, IngestionUpdateJobParams } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { trace, Tracer } from '@opentelemetry/api';
+import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
 import { IConfig, LayerDetails } from '../common/interfaces';
 import { ITaskParameters } from '../ingestion/interfaces';
-import { IngestionNewLayerRequest, IngestionUpdateLayerRequest } from '@map-colonies/raster-shared';
+import type { IngestionNewLayer } from '../ingestion/schemas/ingestionLayerSchema';
+import type { IngestionUpdateLayer } from '../ingestion/schemas/updateLayerSchema';
 
 @injectable()
 export class JobManagerWrapper extends JobManagerClient {
@@ -38,7 +39,7 @@ export class JobManagerWrapper extends JobManagerClient {
   }
 
   @withSpanAsyncV4
-  public async createInitJob(data: IngestionNewLayerRequest): Promise<ICreateJobResponse> {
+  public async createInitJob(data: IngestionNewLayer): Promise<ICreateJobResponse> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('jobManagerWrapper.createInitJob');
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
@@ -56,7 +57,7 @@ export class JobManagerWrapper extends JobManagerClient {
   public async createInitUpdateJob(
     layerDetails: LayerDetails,
     catalogId: string,
-    data: IngestionUpdateLayerRequest,
+    data: IngestionUpdateLayer,
     jobType: string
   ): Promise<ICreateJobResponse> {
     const activeSpan = trace.getActiveSpan();
@@ -74,7 +75,12 @@ export class JobManagerWrapper extends JobManagerClient {
   }
 
   @withSpanAsyncV4
-  private async createNewJob(data: IngestionNewLayerRequest, jobType: string, taskType: string, taskParams?: ITaskParameters[]): Promise<ICreateJobResponse> {
+  private async createNewJob(
+    data: IngestionNewLayer,
+    jobType: string,
+    taskType: string,
+    taskParams?: ITaskParameters[]
+  ): Promise<ICreateJobResponse> {
     const createLayerTasksUrl = `/jobs`;
     const ingestionNewJobParams: IngestionNewJobParams = {
       ...data,
@@ -104,14 +110,14 @@ export class JobManagerWrapper extends JobManagerClient {
   private async createUpdateJob(
     layerDetails: LayerDetails,
     catalogId: string,
-    data: IngestionUpdateLayerRequest,
+    data: IngestionUpdateLayer,
     jobType: string,
     taskType: string,
     taskParams?: ITaskParameters[]
   ): Promise<ICreateJobResponse> {
     const createLayerTasksUrl = `/jobs`;
     const { productId, productName, productType, productVersion, tileOutputFormat, displayPath, footprint } = layerDetails;
-    const ingestionUpdateJobParams: IngestionUpdateJobParams = {
+    const ingestionUpdateJobParams: IngestionUpdateJobParams | IngestionSwapUpdateJobParams = {
       ...data,
       additionalParams: {
         footprint,
@@ -144,4 +150,4 @@ export class JobManagerWrapper extends JobManagerClient {
 
 export type JobResponse = IJobResponse<Record<string, unknown>, ITaskParameters>;
 export type TaskResponse = ITaskResponse<ITaskParameters>;
-export type CreateJobBody = ICreateJobBody<IngestionNewJobParams | IngestionUpdateJobParams, ITaskParameters>;
+export type CreateJobBody = ICreateJobBody<IngestionNewJobParams | IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ITaskParameters>;
