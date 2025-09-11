@@ -5,8 +5,8 @@ export interface SourcesValidationResponse {
   message: string;
 }
 
-export interface ResponseStatus {
-  status: string;
+export interface ResponseId {
+  id: string;
 }
 
 export interface IRecordRequestParams {
