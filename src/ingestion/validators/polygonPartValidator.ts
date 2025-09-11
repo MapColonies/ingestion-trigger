@@ -15,7 +15,7 @@ import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../util
 import { GeometryValidationError, PixelSizeError } from '../errors/ingestionErrors';
 import { isPixelSizeValid } from '../../utils/pixelSizeValidate';
 import { ShapefileChunkReader, ReaderOptions, ChunkProcessor } from '@map-colonies/mc-utils';
-import { ShapeHandler} from '../../utils/shapeReader';
+import { ShapeHandler } from '../../utils/shapeReader';
 import { writeFile } from 'node:fs/promises';
 
 @injectable()
@@ -42,14 +42,15 @@ export class PolygonPartValidator {
     const logCtx = { ...this.logContext, function: this.validate.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.validate');
-    //create combined extent
+    // create combined extent
     const features = extractPolygons(infoDataFiles);
     const combinedExtent = combineExtentPolygons(features);
     this.logger.debug({ msg: 'created combined extent', logContext: logCtx, metadata: { combinedExtent } });
-    //read "product.shp" file to check is contained within gpkg extent.
-    const productFeature = await this.shapeHandler.read('/path/to/the/shapefile.shp');
-    // implement validation vs gpkg extent instead of this writeFile
-    await writeFile('./test.json', JSON.stringify(productFeature?.geometry), 'utf-8');
+    // // read "product.shp" file to check is contained within gpkg extent.
+    // const productFeature = await this.shapeHandler.read('/path/to/the/shapefile.shp');
+    // // implement validation vs gpkg extent instead of this writeFile
+    // await writeFile('./test.json', JSON.stringify(productFeature?.geometry), 'utf-8');
+    await new Promise((resolve) => resolve(true)); // TODO: REMOVE!
   }
 
   @withSpanV4
