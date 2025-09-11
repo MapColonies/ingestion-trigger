@@ -1,19 +1,19 @@
+import { ConflictError } from '@map-colonies/error-types';
+import { InputFiles } from '@map-colonies/raster-shared';
 import { RequestHandler } from 'express';
+import { HttpError } from 'express-openapi-validator/dist/framework/types';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
-import { HttpError } from 'express-openapi-validator/dist/framework/types';
-import { ConflictError } from '@map-colonies/error-types';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
-import { SourcesValidationResponse, ResponseStatus, IRecordRequestParams } from '../interfaces';
+import { FileNotFoundError, GdalInfoError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
+import type { IRecordRequestParams, ResponseId, SourcesValidationResponse } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 import { InfoData } from '../schemas/infoDataSchema';
-import { FileNotFoundError, GdalInfoError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
-import { InputFiles, IngestionNewLayerRequest, IngestionUpdateLayerRequest } from '@map-colonies/raster-shared';
 
 type SourcesValidationHandler = RequestHandler<undefined, SourcesValidationResponse, unknown>;
 type SourcesInfoHandler = RequestHandler<undefined, InfoData[], unknown>;
-type NewLayerHandler = RequestHandler<undefined, ResponseStatus, unknown>;
-type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseStatus, unknown>;
+type NewLayerHandler = RequestHandler<undefined, ResponseId, unknown>;
+type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseId, unknown>;
 
 @injectable()
 export class IngestionController {
@@ -24,10 +24,10 @@ export class IngestionController {
 
   public createLayer: NewLayerHandler = async (req, res, next) => {
     try {
-      const validNewLayerRequestBody: IngestionNewLayerRequest = await this.schemasValidator.validateNewLayerRequest(req.body);
-      await this.ingestionManager.ingestNewLayer(validNewLayerRequestBody);
+      const validNewLayerRequestBody = await this.schemasValidator.validateNewLayerRequest(req.body);
+      const response = await this.ingestionManager.ingestNewLayer(validNewLayerRequestBody);
 
-      res.status(StatusCodes.OK).send({ status: 'success' });
+      res.status(StatusCodes.OK).send(response);
     } catch (error) {
       if (error instanceof ValidationError) {
         (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
@@ -45,11 +45,10 @@ export class IngestionController {
   public updateLayer: UpdateLayerHandler = async (req, res, next) => {
     try {
       const catalogId = req.params.id;
-      const updateLayerRequestBody: unknown = req.body;
-      const validUpdateLayerRequestBody: IngestionUpdateLayerRequest = await this.schemasValidator.validateUpdateLayerRequest(updateLayerRequestBody);
-      await this.ingestionManager.updateLayer(catalogId, validUpdateLayerRequestBody);
+      const validUpdateLayerRequestBody = await this.schemasValidator.validateUpdateLayerRequest(req.body);
+      const response = await this.ingestionManager.updateLayer(catalogId, validUpdateLayerRequestBody);
 
-      res.status(StatusCodes.OK).send({ status: 'success' });
+      res.status(StatusCodes.OK).send(response);
     } catch (error) {
       if (error instanceof ValidationError) {
         (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
