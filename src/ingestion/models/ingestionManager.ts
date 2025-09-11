@@ -1,27 +1,27 @@
-import { GeoJSON, Geometry, MultiPolygon, Feature } from 'geojson';
-import { inject, injectable } from 'tsyringe';
-import { Logger } from '@map-colonies/js-logger';
-import { ProductType, NewRasterLayer, UpdateRasterLayer, PolygonPart } from '@map-colonies/mc-model-types';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
-import { ICreateJobResponse, IJobResponse, OperationStatus, IFindJobsByCriteriaBody } from '@map-colonies/mc-priority-queue';
-import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
+import { Logger } from '@map-colonies/js-logger';
+import { ProductType } from '@map-colonies/mc-model-types';
+import { ICreateJobResponse, IFindJobsByCriteriaBody, IJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
+import { InputFiles } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
+import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { SourceValidator } from '../validators/sourceValidator';
-import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import { SourcesValidationResponse } from '../interfaces';
-import { GpkgError } from '../../serviceClients/database/errors';
-import { LogContext } from '../../utils/logger/logContext';
-import { InfoDataWithFile } from '../schemas/infoDataSchema';
-import { PolygonPartValidator } from '../validators/polygonPartValidator';
-import { CatalogClient } from '../../serviceClients/catalogClient';
 import { IConfig, IFindResponseRecord, ISupportedIngestionSwapTypes, LayerDetails } from '../../common/interfaces';
+import { CatalogClient } from '../../serviceClients/catalogClient';
+import { GpkgError } from '../../serviceClients/database/errors';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
-import { ITaskParameters } from '../interfaces';
-import { getMapServingLayerName } from '../../utils/layerNameGenerator';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
+import { getMapServingLayerName } from '../../utils/layerNameGenerator';
+import { LogContext } from '../../utils/logger/logContext';
+import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
+import type { ITaskParameters, SourcesValidationResponse } from '../interfaces';
+import { InfoDataWithFile } from '../schemas/infoDataSchema';
+import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
+import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
+import { PolygonPartValidator } from '../validators/polygonPartValidator';
+import { SourceValidator } from '../validators/sourceValidator';
 import { GdalInfoManager } from './gdalInfoManager';
-import { IngestionNewLayerRequest, IngestionUpdateLayerRequest, InputFiles } from '@map-colonies/raster-shared';
 
 @injectable()
 export class IngestionManager {
@@ -113,34 +113,36 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  public async ingestNewLayer(rasterIngestionLayer: IngestionNewLayerRequest): Promise<void> {
+  public async ingestNewLayer(newLayer: IngestionNewLayer): Promise<Pick<ICreateJobResponse, 'id'>> {
     const logCtx: LogContext = { ...this.logContext, function: this.ingestNewLayer.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('IngestionManager.ingestNewLayer');
 
-    await this.validateNewLayer(rasterIngestionLayer);
+    await this.validateNewLayer(newLayer);
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
-    const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(rasterIngestionLayer);
+    const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(newLayer);
 
     activeSpan
       ?.setStatus({ code: SpanStatusCode.OK })
       .addEvent('ingestionManager.ingestLayer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
     this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
+
+    return { id: response.id };
   }
 
   @withSpanAsyncV4
-  public async updateLayer(catalogId: string, rasterUpdateLayer: IngestionUpdateLayerRequest): Promise<void> {
+  public async updateLayer(catalogId: string, updateLayer: IngestionUpdateLayer): Promise<Pick<ICreateJobResponse, 'id'>> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayer.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('IngestionManager.updateLayer');
 
-    const layerDetails: LayerDetails = await this.validateAndGetUpdatedLayerParams(catalogId, rasterUpdateLayer);
+    const layerDetails: LayerDetails = await this.validateAndGetUpdatedLayerParams(catalogId, updateLayer);
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
-    const response = await this.setAndCreateUpdateJob(catalogId, layerDetails, rasterUpdateLayer);
+    const response = await this.setAndCreateUpdateJob(catalogId, layerDetails, updateLayer);
     this.logger.info({
       msg: `new update job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `,
       logContext: logCtx,
@@ -148,28 +150,26 @@ export class IngestionManager {
     activeSpan
       ?.setStatus({ code: SpanStatusCode.OK })
       .addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
+
+    return { id: response.id };
   }
 
   @withSpanAsyncV4
-  private async setAndCreateUpdateJob(
-    catalogId: string,
-    layerDetails: LayerDetails,
-    rasterUpdateLayer: IngestionUpdateLayerRequest
-  ): Promise<ICreateJobResponse> {
+  private async setAndCreateUpdateJob(catalogId: string, layerDetails: LayerDetails, updateLayer: IngestionUpdateLayer): Promise<ICreateJobResponse> {
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === layerDetails.productType && supportedSwapObj.productSubType === layerDetails.productSubType;
     });
 
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
-    return this.jobManagerWrapper.createInitUpdateJob(layerDetails, catalogId, rasterUpdateLayer, updateJobAction);
+    return this.jobManagerWrapper.createInitUpdateJob(layerDetails, catalogId, updateLayer, updateJobAction);
   }
 
   @withSpanAsyncV4
-  private async validateAndGetUpdatedLayerParams(catalogId: string, rasterUpdateLayer: IngestionUpdateLayerRequest): Promise<LayerDetails> {
+  private async validateAndGetUpdatedLayerParams(catalogId: string, updateLayer: IngestionUpdateLayer): Promise<LayerDetails> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateAndGetUpdatedLayerParams.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.validateAndGetUpdatedLayerParams');
-    const { metadata, inputFiles } = rasterUpdateLayer;
+    const { metadata, inputFiles } = updateLayer;
     this.logger.debug({
       msg: 'started update layer validation',
       catalogId: catalogId,
@@ -212,7 +212,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async validateNewLayer(rasterIngestionLayer: IngestionNewLayerRequest): Promise<void> {
+  private async validateNewLayer(rasterIngestionLayer: IngestionNewLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateNewLayer.name };
     const { metadata, inputFiles } = rasterIngestionLayer;
     this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, inputFiles }, logCtx: logCtx });
