@@ -26,8 +26,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: >-
-                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/successMessage
+                $ref: '#/components/schemas/SuccessfulResponse'
         '400':
           description: Bad request
           content:
@@ -80,8 +79,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: >-
-                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/successMessage
+                $ref: '#/components/schemas/SuccessfulResponse'
         '400':
           description: Bad request
           content:
@@ -309,3 +307,11 @@ components:
       pattern: ^(\/[\w\d-]+)+\/Product\.shp$
       description: product shape file path
       example: '/path/to/Product.shp'
+    SuccessfulResponse:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
