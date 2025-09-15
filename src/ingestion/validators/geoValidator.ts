@@ -19,7 +19,7 @@ import { ShapeHandler } from '../../utils/shapeReader';
 import { writeFile } from 'node:fs/promises';
 
 @injectable()
-export class PolygonPartValidator {
+export class GeoValidator {
   private readonly logContext: LogContext;
   private readonly extentBufferInMeters: number;
   private readonly resolutionFixedPointTolerance: number;
@@ -31,7 +31,7 @@ export class PolygonPartValidator {
   ) {
     this.logContext = {
       fileName: __filename,
-      class: PolygonPartValidator.name,
+      class: GeoValidator.name,
     };
     this.extentBufferInMeters = this.config.get<number>('validationValuesByInfo.extentBufferInMeters');
     this.resolutionFixedPointTolerance = this.config.get<number>('validationValuesByInfo.resolutionFixedPointTolerance');
@@ -42,8 +42,9 @@ export class PolygonPartValidator {
     const logCtx = { ...this.logContext, function: this.validate.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.validate');
-    // create combined extent
+    // create combined extent from gpkg info data result
     const features = extractPolygons(infoDataFiles);
+    //combine all gpkgs sources files geometries (footprints)
     const combinedExtent = combineExtentPolygons(features);
     this.logger.debug({ msg: 'created combined extent', logContext: logCtx, metadata: { combinedExtent } });
     // // read "product.shp" file to check is contained within gpkg extent.
@@ -53,41 +54,6 @@ export class PolygonPartValidator {
     await new Promise((resolve) => resolve(true)); // TODO: REMOVE!
   }
 
-  @withSpanV4
-  private validatePartGeometry(polygonPart: PolygonPart, index: number, combinedExtent: Feature<MultiPolygon>): void {
-    const logCtx = { ...this.logContext, function: this.validatePartGeometry.name };
-    const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('polygonPartValidator.validatePartGeometry');
-    const validGeo = this.validateGeometry(polygonPart.footprint as Geometry);
-    this.logger.debug({
-      msg: `validated geometry of part ${polygonPart.sourceName} at index: ${index} . validGeo: ${validGeo}`,
-      logContext: logCtx,
-      metadata: { polygonPart },
-      logCtx: logCtx,
-    });
-    if (!validGeo) {
-      this.logger.error({
-        msg: `invalid geometry in part: ${polygonPart.sourceName} at index: ${index} `,
-        logContext: logCtx,
-        metadata: { polygonPart },
-      });
-      throw new GeometryValidationError(polygonPart.sourceName, index, 'Geometry is invalid');
-    }
-    const containedByExtent = this.isContainedByExtent(polygonPart.footprint as Geometry, combinedExtent as GeoJSON);
-    this.logger.debug({
-      msg: `validated geometry of part ${polygonPart.sourceName} at index: ${index}. containedByExtent: ${containedByExtent}`,
-      logContext: logCtx,
-      metadata: { polygonPart },
-    });
-    if (!containedByExtent) {
-      this.logger.error({
-        msg: `Geometry of ${polygonPart.sourceName} at index: ${index} is not contained by combined extent`,
-        logContext: logCtx,
-        metadata: { polygonPart, combinedExtent },
-      });
-      throw new GeometryValidationError(polygonPart.sourceName, index, 'Geometry is not contained by combined extent');
-    }
-  }
 
   @withSpanV4
   private validateGeometry(footprint: Geometry): boolean {
@@ -117,28 +83,5 @@ export class PolygonPartValidator {
     }
     activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.true');
     return true;
-  }
-
-  @withSpanV4
-  private validatePartPixelSize(polygonPart: PolygonPart, index: number, infoDataFiles: InfoDataWithFile[]): void {
-    const logCtx = { ...this.logContext, function: this.validatePartPixelSize.name };
-    const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('polygonPartValidator.validatePartPixelSize');
-    const polygonPartResolutionDegree = polygonPart.resolutionDegree;
-    for (let i = 0; i < infoDataFiles.length; i++) {
-      const infoDataPixelSize = infoDataFiles[i].pixelSize;
-      const isValidPixelSize = isPixelSizeValid(polygonPartResolutionDegree, infoDataPixelSize, this.resolutionFixedPointTolerance);
-      if (!isValidPixelSize) {
-        const sourceFileName = infoDataFiles[i].fileName;
-        const errorMsg = `PixelSize of ${polygonPart.sourceName} at index: ${index} is not bigger than source pixelSize of: ${infoDataPixelSize} in source file: ${sourceFileName}`;
-        this.logger.error({
-          msg: errorMsg,
-          logContext: logCtx,
-          polygonPart: { polygonPart, index, infoDataPixelSize, sourceFileName },
-        });
-        throw new PixelSizeError(polygonPart.sourceName, index, `ResolutionDeg is not bigger that pixelSize in ${sourceFileName}`);
-      }
-    }
-    activeSpan?.addEvent('polygonPartValidator.validatePartPixelSize.valid');
   }
 }

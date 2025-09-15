@@ -1,15 +1,8 @@
 import { ShapefileChunkReader, ReaderOptions, ChunkProcessor, ShapefileChunk } from '@map-colonies/mc-utils';
-import jsLogger, { Logger } from '@map-colonies/js-logger';
-
-import { RequestHandler } from 'express';
-import { StatusCodes } from 'http-status-codes';
+import { Logger } from '@map-colonies/js-logger';
 import { inject, injectable } from 'tsyringe';
-import { HttpError } from 'express-openapi-validator/dist/framework/types';
-import { InputFiles, IngestionNewLayerRequest, IngestionUpdateLayerRequest } from '@map-colonies/raster-shared';
 import { SERVICES } from '../common/constants';
 import { IConfig } from 'config';
-import { GeoJsonProperties, Geometry } from 'geojson';
-import { feature } from '@turf/turf';
 import { Feature } from 'geojson';
 
 @injectable()

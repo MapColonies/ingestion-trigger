@@ -19,7 +19,7 @@ import type { ITaskParameters, SourcesValidationResponse } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
-import { PolygonPartValidator } from '../validators/polygonPartValidator';
+import { GeoValidator } from '../validators/geoValidator';
 import { SourceValidator } from '../validators/sourceValidator';
 import { GdalInfoManager } from './gdalInfoManager';
 
@@ -37,7 +37,7 @@ export class IngestionManager {
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     private readonly sourceValidator: SourceValidator,
     private readonly gdalInfoManager: GdalInfoManager,
-    private readonly polygonPartValidator: PolygonPartValidator,
+    private readonly geoValidator: GeoValidator,
     private readonly catalogClient: CatalogClient,
     private readonly jobManagerWrapper: JobManagerWrapper,
     private readonly mapProxyClient: MapProxyClient
@@ -71,13 +71,14 @@ export class IngestionManager {
   @withSpanAsyncV4
   public async validateSources(inputFiles: InputFiles): Promise<SourcesValidationResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateSources.name };
-    const { gpkgFilesPath } = inputFiles;
+    const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = inputFiles;
+    const inputFilesPaths: string[] = [...gpkgFilesPath, metadataShapefilePath, productShapefilePath];
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('IngestionManager.validateSources');
     try {
       this.logger.info({ msg: 'Starting source validation process', logContext: logCtx, metadata: { gpkgFilesPath } });
 
-      await this.sourceValidator.validateFilesExist(gpkgFilesPath);
+      await this.sourceValidator.validateFilesExist(inputFilesPaths);
       this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
 
       await this.sourceValidator.validateGdalInfo(gpkgFilesPath);
@@ -118,7 +119,7 @@ export class IngestionManager {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('IngestionManager.ingestNewLayer');
 
-    await this.validateNewLayer(newLayer);
+    await this.ingestionNewValidations(newLayer);
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
@@ -212,8 +213,8 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async validateNewLayer(rasterIngestionLayer: IngestionNewLayer): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateNewLayer.name };
+  private async ingestionNewValidations(rasterIngestionLayer: IngestionNewLayer): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.ingestionNewValidations.name };
     const { metadata, inputFiles } = rasterIngestionLayer;
     this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, inputFiles }, logCtx: logCtx });
     this.logger.info({
@@ -223,7 +224,7 @@ export class IngestionManager {
       msg: 'started validation on new layer request',
       logCtx: logCtx,
     });
-    // validate inpust files (gpkgs, metadata shp, product shp files)
+    // validate input files (gpkgs, metadata shp, product shp files)
     await this.validateInputFiles(inputFiles);
 
     // validate against catalog, mapproxy, job-manager
@@ -374,7 +375,7 @@ export class IngestionManager {
 
     //validate new ingestion product.shp against gpkg data extent
     const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
-    await this.polygonPartValidator.validate(infoData);
+    await this.geoValidator.validate(infoData);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
   }
 }
