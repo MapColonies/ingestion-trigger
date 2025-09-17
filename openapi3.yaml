@@ -266,7 +266,7 @@ components:
           $ref: '#/components/schemas/IngestionNewLayerMetadata'
         inputFiles:
           $ref: '#/components/schemas/InputFiles'
-        IngestionResolution:
+        ingestionResolution:
           $ref: '#/components/schemas/IngestionResolution'
         callbackUrls:
           $ref: '#/components/schemas/CallbackUrls'
@@ -290,7 +290,7 @@ components:
           $ref: '#/components/schemas/IngestionUpdateLayerMetadata'
         inputFiles:
           $ref: '#/components/schemas/InputFiles'
-        IngestionResolution:
+        ingestionResolution:
           $ref: '#/components/schemas/IngestionResolution'
         callbackUrls:
           $ref: '#/components/schemas/CallbackUrls'
