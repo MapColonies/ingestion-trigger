@@ -221,9 +221,9 @@ components:
       maxItems: 1
       items:
         type: string
-        pattern: ^.+\.[Gg][Pp][Kk][Gg]$
+        pattern: ^((\/[\w-]+)+)\/([\wא-ת\.-]+)\.gpkg$
         description: gpkg source file paths
-      example: ['example.gpkg']
+      example: ['/path/to/example.gpkg']
     IngestionNewLayerMetadata:
       type: object
       required:
@@ -299,12 +299,12 @@ components:
           $ref: '#/components/schemas/ProductShapefilePath'
     MetadataShapefilePath:
       type: string
-      pattern: ^(\/[\w\d-]+)+\/ShapeMetadata\.shp$
+      pattern: ^(\/[\w-]+)+\/ShapeMetadata\.shp$
       description: metadata shape file path
       example: '/path/to/ShapeMetadata.shp'
     ProductShapefilePath:
       type: string
-      pattern: ^(\/[\w\d-]+)+\/Product\.shp$
+      pattern: ^(\/[\w-]+)+\/Product\.shp$
       description: product shape file path
       example: '/path/to/Product.shp'
     SuccessfulResponse:
