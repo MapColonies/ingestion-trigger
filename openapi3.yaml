@@ -261,6 +261,11 @@ components:
           $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Classification
     IngestionNewLayerRequest:
       type: object
+      required:
+        - metadata
+        - inputFiles
+        - ingestionResolution
+        - callbackUrls
       properties:
         metadata:
           $ref: '#/components/schemas/IngestionNewLayerMetadata'
@@ -285,6 +290,11 @@ components:
           $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Classification
     IngestionUpdateLayerRequest:
       type: object
+      required:
+        - metadata
+        - inputFiles
+        - ingestionResolution
+        - callbackUrls
       properties:
         metadata:
           $ref: '#/components/schemas/IngestionUpdateLayerMetadata'
