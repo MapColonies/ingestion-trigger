@@ -16,6 +16,7 @@ paths:
         - ingestion
       summary: start a process of creating new layer from raw data
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -69,6 +70,7 @@ paths:
           schema:
             $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/LayerId
       requestBody:
+        required: true
         content:
           application/json:
             schema:
