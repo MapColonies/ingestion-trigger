@@ -6,7 +6,7 @@ export interface SourcesValidationResponse {
 }
 
 export interface ResponseId {
-  id: string;
+  jobId: string;
 }
 
 export interface IRecordRequestParams {

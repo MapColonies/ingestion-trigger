@@ -330,11 +330,10 @@ components:
       description: product shape file path
       example: '/path/to/Product.shp'
     SuccessfulResponse:
-      # TODO: is this the correct structure?
       type: object
       required:
-        - id
+        - jobId
       properties:
-        id:
+        jobId:
           type: string
           format: uuid

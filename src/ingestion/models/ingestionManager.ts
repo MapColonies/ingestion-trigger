@@ -15,7 +15,7 @@ import { MapProxyClient } from '../../serviceClients/mapProxyClient';
 import { getMapServingLayerName } from '../../utils/layerNameGenerator';
 import { LogContext } from '../../utils/logger/logContext';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import type { ITaskParameters, SourcesValidationResponse } from '../interfaces';
+import type { ITaskParameters, ResponseId, SourcesValidationResponse } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
@@ -114,7 +114,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  public async ingestNewLayer(newLayer: IngestionNewLayer): Promise<Pick<ICreateJobResponse, 'id'>> {
+  public async ingestNewLayer(newLayer: IngestionNewLayer): Promise<ResponseId> {
     const logCtx: LogContext = { ...this.logContext, function: this.ingestNewLayer.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('IngestionManager.ingestNewLayer');
@@ -130,11 +130,11 @@ export class IngestionManager {
       .addEvent('ingestionManager.ingestLayer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
     this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
 
-    return { id: response.id };
+    return { jobId: response.id };
   }
 
   @withSpanAsyncV4
-  public async updateLayer(catalogId: string, updateLayer: IngestionUpdateLayer): Promise<Pick<ICreateJobResponse, 'id'>> {
+  public async updateLayer(catalogId: string, updateLayer: IngestionUpdateLayer): Promise<ResponseId> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayer.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('IngestionManager.updateLayer');
@@ -152,7 +152,7 @@ export class IngestionManager {
       ?.setStatus({ code: SpanStatusCode.OK })
       .addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
 
-    return { id: response.id };
+    return { jobId: response.id };
   }
 
   @withSpanAsyncV4
