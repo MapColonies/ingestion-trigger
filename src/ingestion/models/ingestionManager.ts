@@ -22,6 +22,8 @@ import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
 import { GeoValidator } from '../validators/geoValidator';
 import { SourceValidator } from '../validators/sourceValidator';
 import { GdalInfoManager } from './gdalInfoManager';
+import { ProductManager } from './productManager';
+import { MultiPolygon } from 'geojson';
 
 @injectable()
 export class IngestionManager {
@@ -40,7 +42,8 @@ export class IngestionManager {
     private readonly geoValidator: GeoValidator,
     private readonly catalogClient: CatalogClient,
     private readonly jobManagerWrapper: JobManagerWrapper,
-    private readonly mapProxyClient: MapProxyClient
+    private readonly mapProxyClient: MapProxyClient,
+    private readonly productManager: ProductManager
   ) {
     this.logContext = {
       fileName: __filename,
@@ -216,6 +219,7 @@ export class IngestionManager {
   private async ingestionNewValidations(rasterIngestionLayer: IngestionNewLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.ingestionNewValidations.name };
     const { metadata, inputFiles } = rasterIngestionLayer;
+    const { productShapefilePath } = inputFiles;
     this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, inputFiles }, logCtx: logCtx });
     this.logger.info({
       productId: metadata.productId,
@@ -362,6 +366,7 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async validateInputFiles(inputFiles: InputFiles): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateInputFiles.name };
+    const { productShapefilePath } = inputFiles;
 
     //validate files exist, gdal info and GPKG data
     const isValidSources: SourcesValidationResponse = await this.validateSources(inputFiles);
@@ -375,7 +380,9 @@ export class IngestionManager {
 
     //validate new ingestion product.shp against gpkg data extent
     const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
-    await this.geoValidator.validate(infoData);
+    const productFeature = await this.productManager.read(productShapefilePath);
+    // TODO: Fix next validation by product geometry
+    // await this.geoValidator.validate(infoData,productFeature!.geometry);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
   }
 }

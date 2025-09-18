@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { GeoJSON, Geometry, MultiPolygon, Feature } from 'geojson';
+import { GeoJSON, Geometry, MultiPolygon, Feature, Polygon } from 'geojson';
 import { getIssues } from '@placemarkio/check-geojson';
 import booleanContains from '@turf/boolean-contains';
 import { inject, injectable } from 'tsyringe';
@@ -12,11 +12,12 @@ import { LogContext } from '../../utils/logger/logContext';
 import { SERVICES } from '../../common/constants';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';
-import { GeometryValidationError, PixelSizeError } from '../errors/ingestionErrors';
+import { GeometryValidationError, PixelSizeError, UnsupportedEntityError } from '../errors/ingestionErrors';
 import { isPixelSizeValid } from '../../utils/pixelSizeValidate';
 import { ShapefileChunkReader, ReaderOptions, ChunkProcessor } from '@map-colonies/mc-utils';
 import { ShapeHandler } from '../../utils/shapeReader';
 import { writeFile } from 'node:fs/promises';
+import { ProductManager } from '../models/productManager';
 
 @injectable()
 export class GeoValidator {
@@ -27,7 +28,7 @@ export class GeoValidator {
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
-    @inject(ShapeHandler) private readonly shapeHandler: ShapeHandler
+    @inject(ShapeHandler) private readonly productManager: ProductManager
   ) {
     this.logContext = {
       fileName: __filename,
@@ -38,7 +39,7 @@ export class GeoValidator {
   }
 
   @withSpanV4
-  public async validate(infoDataFiles: InfoDataWithFile[]): Promise<void> {
+  public async validate(infoDataFiles: InfoDataWithFile[], productGeometry: MultiPolygon | Polygon): Promise<void> {
     const logCtx = { ...this.logContext, function: this.validate.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.validate');
@@ -47,37 +48,47 @@ export class GeoValidator {
     //combine all gpkgs sources files geometries (footprints)
     const combinedExtent = combineExtentPolygons(features);
     this.logger.debug({ msg: 'created combined extent', logContext: logCtx, metadata: { combinedExtent } });
-    // // read "product.shp" file to check is contained within gpkg extent.
-    // const productFeature = await this.shapeHandler.read('/path/to/the/shapefile.shp');
-    // // implement validation vs gpkg extent instead of this writeFile
-    // await writeFile('./test.json', JSON.stringify(productFeature?.geometry), 'utf-8');
-    await new Promise((resolve) => resolve(true)); // TODO: REMOVE!
-  }
-
-
-  @withSpanV4
-  private validateGeometry(footprint: Geometry): boolean {
-    const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('polygonPartValidator.validateGeometry');
-    const footprintIssues = getIssues(JSON.stringify(footprint));
-    if (footprint.type === 'Polygon' && footprintIssues.length === 0) {
-      activeSpan?.addEvent('polygonPartValidator.validateGeometry.success');
-      return true;
+    const gpkgBufferedExtent = extentBuffer(this.extentBufferInMeters, combinedExtent);
+    if(gpkgBufferedExtent === undefined) {
+      throw new Error('error while buffer gpkg extent');
     }
-    activeSpan?.addEvent('polygonPartValidator.validateGeometry.failed');
-    return false;
+    // // read "product.shp" file to check is contained within gpkg extent.
+    this.hasFootprintCooleration(productGeometry, gpkgBufferedExtent.geometry);
   }
 
+
+  // @withSpanV4
+  // private validateGeometry(footprint: Geometry): boolean {
+  //   const activeSpan = trace.getActiveSpan();
+  //   activeSpan?.updateName('polygonPartValidator.validateGeometry');
+  //   const footprintIssues = getIssues(JSON.stringify(footprint));
+  //   if (footprint.type === 'Polygon' && footprintIssues.length === 0) {
+  //     activeSpan?.addEvent('polygonPartValidator.validateGeometry.success');
+  //     return true;
+  //   }
+  //   activeSpan?.addEvent('polygonPartValidator.validateGeometry.failed');
+  //   return false;
+  // }
+
   @withSpanV4
-  private isContainedByExtent(footprint: Geometry, extent: GeoJSON): boolean {
+  private hasFootprintCooleration(gpkgGeometry: Geometry, productGeometry: MultiPolygon | Polygon): boolean {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.isContainedByExtent');
-    const bufferedExtent = extentBuffer(this.extentBufferInMeters, extent);
-    if (!(booleanContains(bufferedExtent as unknown as Geometry, footprint) || booleanContains(extent as Geometry, footprint))) {
+    if (productGeometry.type === 'MultiPolygon') {
+      productGeometry.coordinates.forEach(coordinate => {
+        const polygon: Polygon = { type: 'Polygon', coordinates: coordinate };
+        if (!(booleanContains(gpkgGeometry, polygon))) {
+          activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.false', {
+            gpkgGeometry: JSON.stringify(gpkgGeometry),
+            productFootprint: JSON.stringify(productGeometry),
+          });
+          return false;
+        }
+      });
+    } else if (!(booleanContains(gpkgGeometry, productGeometry))) {
       activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.false', {
-        providedExtent: JSON.stringify(extent),
-        bufferedExtent: JSON.stringify(bufferedExtent),
-        footprint: JSON.stringify(footprint),
+        gpkgGeometry: JSON.stringify(gpkgGeometry),
+        productFootprint: JSON.stringify(productGeometry),
       });
       return false;
     }

@@ -9,8 +9,8 @@ export const combineExtentPolygons = (features: Feature<Polygon>[]): Feature<Mul
   return combinedFeature.features[0] as Feature<MultiPolygon>;
 };
 
-export const extentBuffer = (extentBuffer: number, extent: GeoJSON): Feature<Polygon | MultiPolygon> | undefined => {
-  return buffer(extent as Feature, extentBuffer, { units: 'meters' });
+export const extentBuffer = (extentBuffer: number, extent: Feature): Feature<Polygon | MultiPolygon> | undefined => {
+  return buffer(extent, extentBuffer, { units: 'meters' });
 };
 
 export const extractPolygons = (infoData: InfoData[]): Feature<Polygon>[] => {
