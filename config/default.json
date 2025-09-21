@@ -47,6 +47,9 @@
     "resolutionFixedPointTolerance": 12,
     "extentBufferInMeters": 50
   },
+  "productReader": {
+    "maxVerticesPerChunk": 10000
+  },
   "services": {
     "jobManagerURL": "",
     "mapProxyApiServiceUrl": "",

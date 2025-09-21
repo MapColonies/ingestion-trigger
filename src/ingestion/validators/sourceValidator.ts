@@ -10,7 +10,7 @@ import { LogContext } from '../../utils/logger/logContext';
 import { SERVICES } from '../../common/constants';
 import { GpkgManager } from '../models/gpkgManager';
 import { GdalInfoManager } from '../models/gdalInfoManager';
-import { GeoJSON, Geometry, MultiPolygon, Feature } from 'geojson';
+import { GeoJSON, Geometry, MultiPolygon, Feature, Polygon } from 'geojson';
 import { extentBuffer } from '../../utils/geometry';
 import booleanContains from '@turf/boolean-contains';
 
@@ -75,7 +75,7 @@ export class SourceValidator {
   }
 
   @withSpanV4
-  private validateContainedByExtent(productGeometry: Geometry, sourceExtent: Geometry): void {
+  private validateContainedByExtent(productGeometry: Geometry, sourceExtent: Feature<Polygon | MultiPolygon>): void {
     const logCtx = { ...this.logContext, function: this.validateContainedByExtent.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('sourceValidator.isContainedByExtent');

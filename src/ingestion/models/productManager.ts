@@ -7,11 +7,23 @@ import { SERVICES } from "../../common/constants";
 import { withSpanAsyncV4 } from "@map-colonies/telemetry";
 import { BadRequestError } from '@map-colonies/error-types';
 import { ChunkProcessor, ReaderOptions, ShapefileChunk, ShapefileChunkReader } from "@map-colonies/mc-utils";
-import { Feature, Geometry, MultiPoint } from "geojson";
-import { Polygon } from "gdal-async";
+import { Feature, Geometry, Polygon, MultiPolygon } from "geojson";
 import { chunk } from "lodash";
+import { multiPolygonSchema, polygonSchema } from "@map-colonies/raster-shared";
+import { polygon } from "@turf/turf";
+import z from "zod";
 
-type ProudctGeometry = MultiPoint | Polygon | undefined;
+export type AllowedProductGeometry = Polygon | MultiPolygon;
+const productGeometrySchema = z.union([
+  polygonSchema,
+  multiPolygonSchema
+]);
+
+//export type ProudctGeometry = Polygon | MultiPolygon;
+export const ProudctGeometry = {
+  POLYGON: 'Polygon',
+  MULTI_POLYGON: 'MultiPolygon',
+} as const;
 
 @injectable()
 export class ProductManager {
@@ -19,20 +31,21 @@ export class ProductManager {
   private readonly options: ReaderOptions;
   private readonly reader: ShapefileChunkReader;
   private readonly processor: ChunkProcessor;
-  private readonly features: Feature[] = [];
-  private readonly productFee: Feature | undefined;
+  private readonly features: Feature<Geometry>[] = [];
+  private readonly maxVerticesPerChunk: number;
   public constructor(
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer
   ) {
+    this.maxVerticesPerChunk = this.config.get('productReader.maxVerticesPerChunk');
     this.logContext = {
       fileName: __filename,
       class: ProductManager.name,
     };
     this.options = {
       // would be taken from config
-      maxVerticesPerChunk: 10000,
+      maxVerticesPerChunk: this.maxVerticesPerChunk,
       logger: this.logger
     };
     this.reader = new ShapefileChunkReader(this.options);
@@ -41,16 +54,25 @@ export class ProductManager {
     }
   }
 
-
-  public async read(shapefilePath: string): Promise<Feature | undefined> {
+  public async read(shapefilePath: string): Promise<AllowedProductGeometry> {
     try {
+      this.logger.info({ msg: `start reading product shapefile in path: ${shapefilePath}` });
       await this.reader.readAndProcess(shapefilePath, this.processor);
-      if (this.features.length > 1){
+      if (this.features.length > 1) {
         throw new BadRequestError("product shapefile contains more than a single feature");
       }
-      return this.features[0];
+
+      const productGeometry = this.features[0].geometry;
+      this.logger.debug({ msg: `parse validate product geometry`, productGeometry });
+      const validProductGeometry = productGeometrySchema.parse(productGeometry);
+      return validProductGeometry;
     } catch (error) {
-      console.log('error', error);
+      this.logger.error({
+        msg: `an unexpected error occurred during product shape read, error: ${error}`,
+        shapefilePath,
+        productGeometrySchema
+      });
+      throw error;
     }
   };
 

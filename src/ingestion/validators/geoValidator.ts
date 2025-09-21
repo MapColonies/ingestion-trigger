@@ -15,9 +15,8 @@ import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../util
 import { GeometryValidationError, PixelSizeError, UnsupportedEntityError } from '../errors/ingestionErrors';
 import { isPixelSizeValid } from '../../utils/pixelSizeValidate';
 import { ShapefileChunkReader, ReaderOptions, ChunkProcessor } from '@map-colonies/mc-utils';
-import { ShapeHandler } from '../../utils/shapeReader';
 import { writeFile } from 'node:fs/promises';
-import { ProductManager } from '../models/productManager';
+import { AllowedProductGeometry, ProductManager, ProudctGeometry } from '../models/productManager';
 
 @injectable()
 export class GeoValidator {
@@ -28,7 +27,6 @@ export class GeoValidator {
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
-    @inject(ShapeHandler) private readonly productManager: ProductManager
   ) {
     this.logContext = {
       fileName: __filename,
@@ -39,7 +37,7 @@ export class GeoValidator {
   }
 
   @withSpanV4
-  public async validate(infoDataFiles: InfoDataWithFile[], productGeometry: MultiPolygon | Polygon): Promise<void> {
+  public async validate(infoDataFiles: InfoDataWithFile[], productGeometry: AllowedProductGeometry): Promise<void> {
     const logCtx = { ...this.logContext, function: this.validate.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartValidator.validate');
@@ -49,36 +47,22 @@ export class GeoValidator {
     const combinedExtent = combineExtentPolygons(features);
     this.logger.debug({ msg: 'created combined extent', logContext: logCtx, metadata: { combinedExtent } });
     const gpkgBufferedExtent = extentBuffer(this.extentBufferInMeters, combinedExtent);
-    if(gpkgBufferedExtent === undefined) {
+    if (gpkgBufferedExtent === undefined) {
       throw new Error('error while buffer gpkg extent');
     }
-    // // read "product.shp" file to check is contained within gpkg extent.
-    this.hasFootprintCooleration(productGeometry, gpkgBufferedExtent.geometry);
+    // // read "product.shp" file to check is contained within gpkg extent
+    this.hasFootprintCooleration(gpkgBufferedExtent.geometry, productGeometry);
   }
 
-
-  // @withSpanV4
-  // private validateGeometry(footprint: Geometry): boolean {
-  //   const activeSpan = trace.getActiveSpan();
-  //   activeSpan?.updateName('polygonPartValidator.validateGeometry');
-  //   const footprintIssues = getIssues(JSON.stringify(footprint));
-  //   if (footprint.type === 'Polygon' && footprintIssues.length === 0) {
-  //     activeSpan?.addEvent('polygonPartValidator.validateGeometry.success');
-  //     return true;
-  //   }
-  //   activeSpan?.addEvent('polygonPartValidator.validateGeometry.failed');
-  //   return false;
-  // }
-
   @withSpanV4
-  private hasFootprintCooleration(gpkgGeometry: Geometry, productGeometry: MultiPolygon | Polygon): boolean {
+  private hasFootprintCooleration(gpkgGeometry: Geometry, productGeometry: AllowedProductGeometry): boolean {
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('polygonPartValidator.isContainedByExtent');
-    if (productGeometry.type === 'MultiPolygon') {
+    activeSpan?.updateName('polygonPartValidator.hasFootprintCooleration');
+    if (productGeometry.type === ProudctGeometry.MULTI_POLYGON) {
       productGeometry.coordinates.forEach(coordinate => {
         const polygon: Polygon = { type: 'Polygon', coordinates: coordinate };
         if (!(booleanContains(gpkgGeometry, polygon))) {
-          activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.false', {
+          activeSpan?.addEvent('polygonPartValidator.hasFootprintCooleration.false', {
             gpkgGeometry: JSON.stringify(gpkgGeometry),
             productFootprint: JSON.stringify(productGeometry),
           });
@@ -86,13 +70,13 @@ export class GeoValidator {
         }
       });
     } else if (!(booleanContains(gpkgGeometry, productGeometry))) {
-      activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.false', {
+      activeSpan?.addEvent('polygonPartValidator.hasFootprintCooleration.false', {
         gpkgGeometry: JSON.stringify(gpkgGeometry),
         productFootprint: JSON.stringify(productGeometry),
       });
       return false;
     }
-    activeSpan?.addEvent('polygonPartValidator.isContainedByExtent.true');
+    activeSpan?.addEvent('polygonPartValidator.hasFootprintCooleration.true');
     return true;
   }
 }

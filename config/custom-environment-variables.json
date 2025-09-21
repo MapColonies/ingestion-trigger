@@ -70,6 +70,12 @@
       "__format": "number"
     }
   },
+  "productReader": {
+    "maxVerticesPerChunk": {
+      "__name": "PRODUCT_READER_MAX_VERTICES_PER_CHUNK",
+      "__format": "number"
+    }
+  },
   "services": {
     "jobManagerURL": "JOB_MANAGER_URL",
     "mapProxyApiServiceUrl": "MAP_PROXY_API_SERVICE_URL",

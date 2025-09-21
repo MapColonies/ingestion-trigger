@@ -1,4 +1,4 @@
-import { ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { ProductType } from '@map-colonies/mc-model-types';
 import { ICreateJobResponse, IFindJobsByCriteriaBody, IJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
@@ -23,7 +23,8 @@ import { GeoValidator } from '../validators/geoValidator';
 import { SourceValidator } from '../validators/sourceValidator';
 import { GdalInfoManager } from './gdalInfoManager';
 import { ProductManager } from './productManager';
-import { MultiPolygon } from 'geojson';
+import { Feature, Polygon, MultiPolygon } from 'geojson';
+
 
 @injectable()
 export class IngestionManager {
@@ -219,7 +220,6 @@ export class IngestionManager {
   private async ingestionNewValidations(rasterIngestionLayer: IngestionNewLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.ingestionNewValidations.name };
     const { metadata, inputFiles } = rasterIngestionLayer;
-    const { productShapefilePath } = inputFiles;
     this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, inputFiles }, logCtx: logCtx });
     this.logger.info({
       productId: metadata.productId,
@@ -234,7 +234,7 @@ export class IngestionManager {
     // validate against catalog, mapproxy, job-manager
     const layerName = getMapServingLayerName(metadata.productId, metadata.productType);
     await this.validateLayerDoesntExistInMapProxy(layerName);
-    await this.isInCatalog(metadata.productId, metadata.productType);
+    await this.validateLayerDoesntExistInCatalog(metadata.productId, metadata.productType);
     await this.validateNoConflictingJobs(metadata.productId, metadata.productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
   }
@@ -328,8 +328,8 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async isInCatalog(productId: string, productType: ProductType): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.isInCatalog.name };
+  private async validateLayerDoesntExistInCatalog(productId: string, productType: ProductType): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateLayerDoesntExistInCatalog.name };
     const existsInCatalog = await this.catalogClient.exists(productId, productType);
     if (existsInCatalog) {
       const message = `ProductId: ${productId} ProductType: ${productType}, already exists in catalog`;
@@ -381,8 +381,7 @@ export class IngestionManager {
     //validate new ingestion product.shp against gpkg data extent
     const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
     const productFeature = await this.productManager.read(productShapefilePath);
-    // TODO: Fix next validation by product geometry
-    // await this.geoValidator.validate(infoData,productFeature!.geometry);
+    await this.geoValidator.validate(infoData, productFeature);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
   }
 }

@@ -17,6 +17,7 @@ data:
   LOG_LEVEL: {{ .Values.env.logLevel | quote }}
   LOG_PRETTY_PRINT_ENABLED: {{ .Values.env.logPrettyPrintEnabled | quote }}
   JOB_DOMAIN: {{ .Values.global.domain | quote }}
+  PRODUCT_READER_MAX_VERTICES_PER_CHUNK: {{ .Values.env.productReader.maxVerticesPerChunk | quote }}
   JOB_MANAGER_URL: {{ $serviceUrls.jobManager | quote }}
   MAP_PROXY_API_SERVICE_URL: {{ $serviceUrls.mapproxyApi | quote }}
   CATALOG_SERVICE_URL: {{ $serviceUrls.catalogManager | quote }}
