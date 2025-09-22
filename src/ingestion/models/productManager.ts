@@ -10,8 +10,9 @@ import { ChunkProcessor, ReaderOptions, ShapefileChunk, ShapefileChunkReader } f
 import { Feature, Geometry, Polygon, MultiPolygon } from "geojson";
 import { chunk } from "lodash";
 import { multiPolygonSchema, polygonSchema } from "@map-colonies/raster-shared";
-import { polygon } from "@turf/turf";
+import { dirname, format, parse } from 'path';
 import z from "zod";
+import { unzipFileStream } from "../../utils/unzipper";
 
 export type AllowedProductGeometry = Polygon | MultiPolygon;
 const productGeometrySchema = z.union([
@@ -31,7 +32,7 @@ export class ProductManager {
   private readonly options: ReaderOptions;
   private readonly reader: ShapefileChunkReader;
   private readonly processor: ChunkProcessor;
-  private readonly features: Feature<Geometry>[] = [];
+  private features: Feature<Geometry>[] = [];
   private readonly maxVerticesPerChunk: number;
   public constructor(
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
@@ -46,6 +47,7 @@ export class ProductManager {
     this.options = {
       // would be taken from config
       maxVerticesPerChunk: this.maxVerticesPerChunk,
+      generateFeatureId: true,
       logger: this.logger
     };
     this.reader = new ShapefileChunkReader(this.options);
@@ -54,13 +56,16 @@ export class ProductManager {
     }
   }
 
-  public async read(shapefilePath: string): Promise<AllowedProductGeometry> {
+  public async extractAndRead(filePath: string): Promise<AllowedProductGeometry> {
     try {
-      this.logger.info({ msg: `start reading product shapefile in path: ${shapefilePath}` });
-      await this.reader.readAndProcess(shapefilePath, this.processor);
+      await this.extractProductZip(filePath);
+      this.logger.info({ msg: `start reading product shapefile in path: ${filePath}` });
+      // rename zip extention to '.shp'
+      const productShpFilePath = format({ ...parse(filePath), base: '', ext: '.shp' });
+      await this.reader.readAndProcess(productShpFilePath, this.processor);
       if (this.features.length > 1) {
         const errorMessage = "product shapefile contains more than a single feature";
-        this.logger.error({msg: errorMessage, shapefilePath})
+        this.logger.error({ msg: errorMessage, productShpFilePath })
         throw new BadRequestError(errorMessage);
       }
 
@@ -70,16 +75,29 @@ export class ProductManager {
       return validProductGeometry;
     } catch (error) {
       this.logger.error({
-        msg: `an unexpected error occurred during product shape read, error: ${error}`,
-        shapefilePath,
+        msg: `an unexpected error occurred during product shape read, error: ${error}`
       });
       throw error;
     }
   };
 
+  private async extractProductZip(productZipFilePath: string): Promise<void> {
+    try {
+      const parentDirname = dirname(productZipFilePath);
+      this.logger.info({ msg: `extracting product file zip in path: ${parentDirname}` });
+      await unzipFileStream(productZipFilePath, parentDirname);
+    } catch (error) {
+      console.log("error", error);
+    }
+  }
+
   private async process(chunk: ShapefileChunk): Promise<void> {
     this.logger.debug({ msg: 'start processing', features: chunk.features, count: chunk.features.length });
     this.logger.info(`Processing chunk ${chunk.id} with ${chunk.features.length} features`);
+    // reset features array before each process
+    if (this.features.length > 0) {
+      this.features = [];
+    }
     for await (const feature of chunk.features) {
       this.features.push(feature);
     };

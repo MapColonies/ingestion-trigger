@@ -24,6 +24,7 @@ import { SourceValidator } from '../validators/sourceValidator';
 import { GdalInfoManager } from './gdalInfoManager';
 import { ProductManager } from './productManager';
 import { Feature, Polygon, MultiPolygon } from 'geojson';
+import { dirname } from 'path'
 
 
 @injectable()
@@ -380,7 +381,7 @@ export class IngestionManager {
 
     //validate new ingestion product.shp against gpkg data extent
     const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
-    const productFeature = await this.productManager.read(productShapefilePath);
+    const productFeature = await this.productManager.extractAndRead(productShapefilePath);
     await this.geoValidator.validate(infoData, productFeature);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
   }

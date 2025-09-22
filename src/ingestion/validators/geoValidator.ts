@@ -44,11 +44,11 @@ export class GeoValidator {
       throw new Error('buffered gpkg extent is undefined');
     }
     // // read "product.shp" file to check is contained within gpkg extent
-    const hasFootprintCorrelation = this.hasFootprintColeration(gpkgBufferedExtent.geometry, productGeometry);
+    const hasFootprintCorrelation = this.hasFootprintCorrelation(gpkgBufferedExtent.geometry, productGeometry);
     if (!hasFootprintCorrelation) {
       const errorMessage = 'product footprint is not contained by gpkg combined extent';
       this.logger.error({
-        msg: `errorMessage`,
+        msg: errorMessage,
         logContext: logCtx,
         metadata: { gpkgBufferedExtent, productGeometry },
       });

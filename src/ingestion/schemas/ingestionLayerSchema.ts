@@ -10,6 +10,8 @@ export const createNewIngestionLayerSchema = () => {
   return z.object({
     metadata: createNewMetadataSchema(),
     inputFiles: createInputFilesSchema(),
+    // TODO: handle when raster-shared ingestionResolution PR is merged 
+    // ingestionResolution: ingestionResolutionSchema,
     callbackUrls: callbackUrlsArraySchema,
   });
 };
