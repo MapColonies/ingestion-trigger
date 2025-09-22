@@ -59,7 +59,9 @@ export class ProductManager {
       this.logger.info({ msg: `start reading product shapefile in path: ${shapefilePath}` });
       await this.reader.readAndProcess(shapefilePath, this.processor);
       if (this.features.length > 1) {
-        throw new BadRequestError("product shapefile contains more than a single feature");
+        const errorMessage = "product shapefile contains more than a single feature";
+        this.logger.error({msg: errorMessage, shapefilePath})
+        throw new BadRequestError(errorMessage);
       }
 
       const productGeometry = this.features[0].geometry;
@@ -70,7 +72,6 @@ export class ProductManager {
       this.logger.error({
         msg: `an unexpected error occurred during product shape read, error: ${error}`,
         shapefilePath,
-        productGeometrySchema
       });
       throw error;
     }
