@@ -44,6 +44,6 @@ export interface TileSize {
   height: number;
 }
 
-export interface ITaskParameters {
-  blockDuplication?: boolean;
+export interface ValidationsTaskParameters {
+  checksums: string[];
 }

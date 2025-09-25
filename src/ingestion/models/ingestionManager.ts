@@ -18,7 +18,7 @@ import { MapProxyClient } from '../../serviceClients/mapProxyClient';
 import { getMapServingLayerName } from '../../utils/layerNameGenerator';
 import { LogContext } from '../../utils/logger/logContext';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import type { ITaskParameters, ResponseId, SourcesValidationResponse } from '../interfaces';
+import type { ValidationsTaskParameters, ResponseId, SourcesValidationResponse } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
@@ -125,12 +125,16 @@ export class IngestionManager {
     const logCtx: LogContext = { ...this.logContext, function: this.ingestNewLayer.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('IngestionManager.ingestNewLayer');
-
+    
     await this.ingestionNewValidations(newLayer);
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
+    
+    const { metadataShapefilePath } = newLayer.inputFiles;
+    this.logger.info({ msg: `calucalting checksum for metadata shape zip in path: ${metadataShapefilePath}`, logContext: logCtx });
+    const checksum = await this.calculateChecksum(metadataShapefilePath);
 
-    const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(newLayer);
+    const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(newLayer, checksum);
 
     activeSpan
       ?.setStatus({ code: SpanStatusCode.OK })
@@ -171,7 +175,7 @@ export class IngestionManager {
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
     // TODO: call function that appends hash to updateLayer
     const checksum = await this.calculateChecksum(updateLayer.inputFiles.metadataShapefilePath);
-    return this.jobManagerWrapper.createInitUpdateJob(layerDetails, catalogId, updateLayer, updateJobAction);
+    return this.jobManagerWrapper.createInitUpdateJob(layerDetails, catalogId, updateLayer, updateJobAction, checksum);
   }
 
   @withSpanAsyncV4
@@ -240,26 +244,8 @@ export class IngestionManager {
     const layerName = getMapServingLayerName(metadata.productId, metadata.productType);
     await this.validateLayerDoesntExistInMapProxy(layerName);
     await this.validateLayerDoesntExistInCatalog(metadata.productId, metadata.productType);
-    await this.validateNoConflictingJobs(metadata.productId, metadata.productType);
+    await this.validateNoParallelJobs(metadata.productId, metadata.productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
-  }
-
-  @withSpanAsyncV4
-  private async validateNoConflictingJobs(productId: string, productType: ProductType): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateNoConflictingJobs.name };
-    const jobs = await this.getJobs(productId, productType);
-    if (jobs.length !== 0) {
-      const message = `ProductId: ${productId} ProductType: ${productType}, there is at least one conflicting job already running for that layer`;
-      this.logger.error({
-        productId: productId,
-        productType: productType,
-        msg: message,
-        logCtx: logCtx,
-      });
-      const error = new ConflictError(message);
-      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
-      throw error;
-    }
   }
 
   @withSpanAsyncV4
@@ -285,7 +271,7 @@ export class IngestionManager {
     productId: string,
     productType: ProductType,
     forbiddenParallel?: string[]
-  ): Promise<IJobResponse<Record<string, unknown>, ITaskParameters>[]> {
+  ): Promise<IJobResponse<Record<string, unknown>, ValidationsTaskParameters>[]> {
     const findJobParameters: IFindJobsByCriteriaBody = {
       resourceId: productId,
       productType,
@@ -294,7 +280,7 @@ export class IngestionManager {
       statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS, OperationStatus.FAILED, OperationStatus.SUSPENDED],
       types: forbiddenParallel,
     };
-    const jobs = await this.jobManagerWrapper.findJobs<Record<string, unknown>, ITaskParameters>(findJobParameters);
+    const jobs = await this.jobManagerWrapper.findJobs<Record<string, unknown>, ValidationsTaskParameters>(findJobParameters);
     return jobs;
   }
 
