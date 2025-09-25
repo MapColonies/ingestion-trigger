@@ -16,7 +16,7 @@ export class JobManagerWrapper extends JobManagerClient {
   private readonly jobDomain: string;
   private readonly ingestionNewJobType: string;
   private readonly updateJobType: string;
-  private readonly initTaskType: string;
+  private readonly validationsTaskType: string;
   private readonly jobTrackerServiceUrl: string;
 
   public constructor(
@@ -33,7 +33,7 @@ export class JobManagerWrapper extends JobManagerClient {
     );
     this.jobDomain = config.get<string>('jobManager.jobDomain');
     this.ingestionNewJobType = config.get<string>('jobManager.ingestionNewJobType');
-    this.initTaskType = config.get<string>('jobManager.initTaskType');
+    this.validationsTaskType = config.get<string>('jobManager.validationsTaskType');
     this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
     this.jobTrackerServiceUrl = config.get<string>('services.jobTrackerServiceURL');
   }
@@ -44,7 +44,7 @@ export class JobManagerWrapper extends JobManagerClient {
     activeSpan?.updateName('jobManagerWrapper.createInitJob');
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
     try {
-      const jobResponse = await this.createNewJob(data, this.ingestionNewJobType, this.initTaskType, taskParams);
+      const jobResponse = await this.createNewJob(data, this.ingestionNewJobType, this.validationsTaskType, taskParams);
       return jobResponse;
     } catch (err) {
       const message = 'failed to create a new init job';
@@ -65,11 +65,11 @@ export class JobManagerWrapper extends JobManagerClient {
     const taskParams: ITaskParameters[] = [{ blockDuplication: true }];
 
     try {
-      const jobResponse = await this.createUpdateJob(layerDetails, catalogId, data, jobType, this.initTaskType, taskParams);
+      const jobResponse = await this.createUpdateJob(layerDetails, catalogId, data, jobType, this.validationsTaskType, taskParams);
       return jobResponse;
     } catch (err) {
       const message = 'failed to create a new init update job ';
-      this.logger.error({ msg: message, jobType: jobType, taskType: this.initTaskType, err, layer: data });
+      this.logger.error({ msg: message, jobType: jobType, taskType: this.validationsTaskType, err, layer: data });
       throw err;
     }
   }

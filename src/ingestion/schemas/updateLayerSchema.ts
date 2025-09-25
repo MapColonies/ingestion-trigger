@@ -1,4 +1,4 @@
-import { callbackUrlsArraySchema } from '@map-colonies/raster-shared';
+import { callbackUrlsArraySchema, ingestionResolutionSchema } from '@map-colonies/raster-shared';
 import { z } from 'zod';
 import { createInputFilesSchema } from './inputFilesSchema';
 import { createUpdateMetadataSchema } from './updateMetadataSchema';
@@ -10,6 +10,7 @@ export const createUpdateLayerSchema = () => {
   return z.object({
     metadata: createUpdateMetadataSchema(),
     inputFiles: createInputFilesSchema(),
+    ingestionResolution: ingestionResolutionSchema,
     callbackUrls: callbackUrlsArraySchema,
   });
 };
