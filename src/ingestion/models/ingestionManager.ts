@@ -1,9 +1,12 @@
-import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from '@map-colonies/error-types';
+import { constants, createReadStream } from 'node:fs';
+import { join } from 'node:path';
+import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { ProductType } from '@map-colonies/mc-model-types';
 import { ICreateJobResponse, IFindJobsByCriteriaBody, IJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { InputFiles } from '@map-colonies/raster-shared';
-import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
+import { Xxh64 } from '@node-rs/xxhash';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
@@ -23,9 +26,6 @@ import { GeoValidator } from '../validators/geoValidator';
 import { SourceValidator } from '../validators/sourceValidator';
 import { GdalInfoManager } from './gdalInfoManager';
 import { ProductManager } from './productManager';
-import { Feature, Polygon, MultiPolygon } from 'geojson';
-import { dirname } from 'path'
-
 
 @injectable()
 export class IngestionManager {
@@ -34,6 +34,7 @@ export class IngestionManager {
   private readonly supportedIngestionSwapTypes: ISupportedIngestionSwapTypes[];
   private readonly updateJobType: string;
   private readonly swapUpdateJobType: string;
+  private readonly sourceMount: string;
 
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
@@ -55,6 +56,7 @@ export class IngestionManager {
     this.supportedIngestionSwapTypes = this.config.get<ISupportedIngestionSwapTypes[]>('jobManager.supportedIngestionSwapTypes');
     this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
     this.swapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
+    this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
   }
 
   @withSpanAsyncV4
@@ -167,6 +169,8 @@ export class IngestionManager {
     });
 
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
+    // TODO: call function that appends hash to updateLayer
+    const checksum = await this.calculateChecksum(updateLayer.inputFiles.metadataShapefilePath);
     return this.jobManagerWrapper.createInitUpdateJob(layerDetails, catalogId, updateLayer, updateJobAction);
   }
 
@@ -369,7 +373,7 @@ export class IngestionManager {
     const logCtx: LogContext = { ...this.logContext, function: this.validateInputFiles.name };
     const { productShapefilePath } = inputFiles;
 
-    //validate files exist, gdal info and GPKG data
+    // validate files exist, gdal info and GPKG data
     const isValidSources: SourcesValidationResponse = await this.validateSources(inputFiles);
     if (!isValidSources.isValid) {
       const errorMessage = isValidSources.message;
@@ -379,10 +383,37 @@ export class IngestionManager {
     }
     this.logger.debug({ msg: 'validated sources', logContext: logCtx });
 
-    //validate new ingestion product.shp against gpkg data extent
+    // validate new ingestion product.shp against gpkg data extent
     const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
     const productFeature = await this.productManager.extractAndRead(productShapefilePath);
     await this.geoValidator.validate(infoData, productFeature);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
+  }
+
+  @withSpanV4
+  private async calculateChecksum(filePath: string): Promise<string> {
+    const logCtx: LogContext = { ...this.logContext, function: this.calculateChecksum.name };
+
+    // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+    const hasher = new Xxh64();
+    const fullPath = join(this.sourceMount, filePath);
+    const stream = createReadStream(fullPath, { mode: constants.R_OK });
+
+    const checksum = await new Promise<string>((resolve, reject) => {
+      stream.on('data', (chunk) => {
+        hasher.update(chunk);
+      });
+      stream.on('end', () => {
+        // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+        const checksum = hasher.digest().toString(16);
+        this.logger.info({ msg: 'calculated checksum', checksum, logContext: logCtx });
+        resolve(checksum);
+      });
+      stream.on('error', (error) => {
+        this.logger.error({ msg: 'error calculating checksum', error, logContext: logCtx });
+        reject(error);
+      });
+    });
+    return checksum;
   }
 }
