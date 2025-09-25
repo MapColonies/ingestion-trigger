@@ -1,22 +1,22 @@
-import jsLogger from '@map-colonies/js-logger';
-import nock from 'nock';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
+import jsLogger from '@map-colonies/js-logger';
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
+import { getMapServingLayerName } from '@map-colonies/raster-shared';
 import { trace } from '@opentelemetry/api';
-import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
-import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
-import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
-import { jobResponse, newJobRequest, newLayerRequest, runningJobResponse } from '../../../mocks/newIngestionRequestMockData';
+import nock from 'nock';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../../../../src/ingestion/errors/ingestionErrors';
-import { GpkgError } from '../../../../src/serviceClients/database/errors';
 import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
-import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
+import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
 import { PolygonPartValidator } from '../../../../src/ingestion/validators/polygonPartValidator';
-import { configMock, registerDefaultConfig, clear as clearConfig } from '../../../mocks/configMock';
+import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { CatalogClient } from '../../../../src/serviceClients/catalogClient';
+import { GpkgError } from '../../../../src/serviceClients/database/errors';
 import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
-import { getMapServingLayerName } from '../../../../src/utils/layerNameGenerator';
+import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
+import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
+import { jobResponse, newJobRequest, newLayerRequest, runningJobResponse } from '../../../mocks/newIngestionRequestMockData';
+import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
 import {
   updateJobRequest,
   updateLayerRequest,

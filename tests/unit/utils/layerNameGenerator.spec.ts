@@ -1,5 +1,4 @@
-import { RasterProductTypes } from '@map-colonies/raster-shared';
-import { getMapServingLayerName } from '../../../src/utils/layerNameGenerator';
+import { getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
 import { init as initMockConfig } from '../../mocks/configMock';
 
 describe('layerNameGenerator', () => {
