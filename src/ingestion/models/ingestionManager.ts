@@ -130,7 +130,7 @@ export class IngestionManager {
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
-    const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(newLayer);
+    const response: ICreateJobResponse = await this.jobManagerWrapper.createValidationJob(newLayer);
 
     activeSpan
       ?.setStatus({ code: SpanStatusCode.OK })
@@ -169,9 +169,7 @@ export class IngestionManager {
     });
 
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
-    // TODO: call function that appends hash to updateLayer
-    const checksum = await this.calculateChecksum(updateLayer.inputFiles.metadataShapefilePath);
-    return this.jobManagerWrapper.createInitUpdateJob(layerDetails, catalogId, updateLayer, updateJobAction);
+    return this.jobManagerWrapper.createValidationUpdateJob(layerDetails, catalogId, updateLayer, updateJobAction);
   }
 
   @withSpanAsyncV4
