@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { InputFiles, PolygonPart, TileOutputFormat, UpdateRasterLayerMetadata } from '@map-colonies/mc-model-types';
+import { InputFiles, PolygonPart, TileOutputFormat } from '@map-colonies/mc-model-types';
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
-import { RasterProductTypes } from '@map-colonies/raster-shared';
+import { RasterProductTypes, type UpdateRasterLayerMetadata } from '@map-colonies/raster-shared';
 import { Polygon } from 'geojson';
 
 export const updateLayerRequest = {
