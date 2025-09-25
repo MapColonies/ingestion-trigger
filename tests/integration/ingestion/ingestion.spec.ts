@@ -1,5 +1,5 @@
 import httpStatusCodes from 'http-status-codes';
-import { InputFiles, ProductType } from '@map-colonies/mc-model-types';
+import { InputFiles } from '@map-colonies/mc-model-types';
 import gdal from 'gdal-async';
 import { SqliteError } from 'better-sqlite3';
 import nock from 'nock';
@@ -587,7 +587,7 @@ describe('Ingestion', function () {
       it('should return 200 status code with swap update request', async () => {
         const layerRequest = updateLayerRequest.valid;
         const updatedLayerMetadata = updatedSwapLayer.metadata;
-        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
 
         const getJobsParams = {
           resourceId: updatedLayerMetadata.productId,

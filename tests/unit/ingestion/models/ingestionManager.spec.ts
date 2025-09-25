@@ -1,7 +1,6 @@
 import jsLogger from '@map-colonies/js-logger';
 import nock from 'nock';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
-import { ProductType } from '@map-colonies/mc-model-types';
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
 import { trace } from '@opentelemetry/api';
 import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
@@ -226,7 +225,7 @@ describe('IngestionManager', () => {
     it('should not throw any errors when the request is valid and create update swap job', async () => {
       const layerRequest = updateLayerRequest.valid;
       const updatedLayerMetadata = updatedSwapLayer.metadata;
-      const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+      const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
 
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());

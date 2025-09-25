@@ -2,9 +2,8 @@ import { constants, createReadStream } from 'node:fs';
 import { join } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
-import { ProductType } from '@map-colonies/mc-model-types';
 import { ICreateJobResponse, IFindJobsByCriteriaBody, IJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
-import { InputFiles } from '@map-colonies/raster-shared';
+import { InputFiles, type RasterProductTypes } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 import { Xxh64 } from '@node-rs/xxhash';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
@@ -243,7 +242,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async validateNoConflictingJobs(productId: string, productType: ProductType): Promise<void> {
+  private async validateNoConflictingJobs(productId: string, productType: RasterProductTypes): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateNoConflictingJobs.name };
     const jobs = await this.getJobs(productId, productType);
     if (jobs.length !== 0) {
@@ -261,7 +260,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async validateNoParallelJobs(productId: string, productType: ProductType): Promise<void> {
+  private async validateNoParallelJobs(productId: string, productType: RasterProductTypes): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateNoParallelJobs.name };
     const jobs = await this.getJobs(productId, productType, this.forbiddenJobTypes);
     if (jobs.length !== 0) {
@@ -281,7 +280,7 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async getJobs(
     productId: string,
-    productType: ProductType,
+    productType: RasterProductTypes,
     forbiddenParallel?: string[]
   ): Promise<IJobResponse<Record<string, unknown>, ITaskParameters>[]> {
     const findJobParameters: IFindJobsByCriteriaBody = {
@@ -331,7 +330,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async validateLayerDoesntExistInCatalog(productId: string, productType: ProductType): Promise<void> {
+  private async validateLayerDoesntExistInCatalog(productId: string, productType: RasterProductTypes): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateLayerDoesntExistInCatalog.name };
     const existsInCatalog = await this.catalogClient.exists(productId, productType);
     if (existsInCatalog) {

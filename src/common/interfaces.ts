@@ -1,4 +1,5 @@
-import { IRasterCatalogUpsertRequestBody, ProductType, TileOutputFormat } from '@map-colonies/mc-model-types';
+import { IRasterCatalogUpsertRequestBody, TileOutputFormat } from '@map-colonies/mc-model-types';
+import type { RasterProductTypes } from '@map-colonies/raster-shared';
 import { Polygon } from 'geojson';
 
 export interface IConfig {
@@ -25,14 +26,14 @@ export interface IUpdateRecordResponse {
 }
 
 export interface ISupportedIngestionSwapTypes {
-  productType: ProductType;
+  productType: RasterProductTypes;
   productSubType: string;
 }
 
 export interface LayerDetails {
   productId: string;
   productVersion: string;
-  productType: ProductType;
+  productType: RasterProductTypes;
   productSubType: string;
   tileOutputFormat: TileOutputFormat;
   displayPath: string;

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { InputFiles, ProductType, Transparency, NewRasterLayerMetadata, PolygonPart } from '@map-colonies/mc-model-types';
+import { InputFiles, Transparency, NewRasterLayerMetadata, PolygonPart } from '@map-colonies/mc-model-types';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
+import { RasterProductTypes } from '@map-colonies/raster-shared';
 import { Polygon } from 'geojson';
 
 const polygonTest: Polygon = {
@@ -21,7 +22,7 @@ export const newLayerRequest = {
     metadata: {
       productId: 'BLUE_2',
       productName: 'string',
-      productType: ProductType.ORTHOPHOTO,
+      productType: RasterProductTypes.ORTHOPHOTO,
       productSubType: 'string',
       description: 'string',
       srs: '4326',
@@ -107,7 +108,7 @@ export const newLayerRequest = {
       metadata: {
         productId: 'BLUE_2',
         productName: 'string',
-        productType: ProductType.ORTHOPHOTO,
+        productType: RasterProductTypes.ORTHOPHOTO,
         productSubType: 'string',
         description: 'string',
         srs: '4326',
@@ -155,7 +156,7 @@ export const newLayerRequest = {
       metadata: {
         productId: 'BLUE_2',
         productName: 'string',
-        productType: ProductType.ORTHOPHOTO,
+        productType: RasterProductTypes.ORTHOPHOTO,
         productSubType: 'string',
         description: 'string',
         srs: '4326',
@@ -203,7 +204,7 @@ export const newLayerRequest = {
       metadata: {
         productId: 'BLUE_2',
         productName: 'string',
-        productType: ProductType.ORTHOPHOTO,
+        productType: RasterProductTypes.ORTHOPHOTO,
         productSubType: 'string',
         description: 'string',
         srs: '4326',
@@ -250,7 +251,7 @@ export const newLayerRequest = {
       metadata: {
         productId: 'BLUE_2',
         productName: 'string',
-        productType: ProductType.ORTHOPHOTO,
+        productType: RasterProductTypes.ORTHOPHOTO,
         productSubType: 'string',
         description: 'string',
         srs: '4326',
@@ -298,7 +299,7 @@ export const newLayerRequest = {
       metadata: {
         productId: 'BLUE_2',
         productName: 'string',
-        productType: ProductType.ORTHOPHOTO,
+        productType: RasterProductTypes.ORTHOPHOTO,
         productSubType: 'string',
         description: 'string',
         srs: '4326',
@@ -346,7 +347,7 @@ export const newLayerRequest = {
       metadata: {
         productId: 'BLUE_2',
         productName: 'string',
-        productType: ProductType.ORTHOPHOTO,
+        productType: RasterProductTypes.ORTHOPHOTO,
         productSubType: 'string',
         description: 'string',
         srs: '4326',
@@ -394,7 +395,7 @@ export const newLayerRequest = {
       metadata: {
         productId: 'BLUE_2',
         productName: 'string',
-        productType: ProductType.ORTHOPHOTO,
+        productType: RasterProductTypes.ORTHOPHOTO,
         productSubType: 'string',
         description: 'string',
         srs: '4326',
@@ -431,7 +432,7 @@ export const newLayerRequest = {
       metadata: {
         productId: 'BLUE_2',
         productName: 'string',
-        productType: ProductType.ORTHOPHOTO,
+        productType: RasterProductTypes.ORTHOPHOTO,
         productSubType: 'string',
         description: 'string',
         srs: '4326',
