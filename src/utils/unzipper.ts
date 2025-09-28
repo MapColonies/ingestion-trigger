@@ -1,6 +1,5 @@
 import { createReadStream } from 'fs';
 import { Extract } from 'unzipper';
-import * as path from 'path'; // Optional, not used directly
 
 export const unzipFileStream = (zipFilePath: string, destinationPath: string): Promise<void> => {
     return new Promise((resolve, reject) => {

@@ -74,30 +74,4 @@ export class SourceValidator {
     this.logger.debug({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullPaths } });
   }
 
-  @withSpanV4
-  private validateContainedByExtent(productGeometry: Geometry, sourceExtent: Feature<Polygon | MultiPolygon>): void {
-    const logCtx = { ...this.logContext, function: this.validateContainedByExtent.name };
-    const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('sourceValidator.isContainedByExtent');
-    const bufferedExtent = extentBuffer(this.extentBufferInMeters, sourceExtent);
-    if (!booleanContains(bufferedExtent as unknown as Geometry, productGeometry)) {
-      activeSpan?.addEvent('sourceValidator.isContainedByExtent.false', {
-        providedExtent: JSON.stringify(sourceExtent),
-        bufferedExtent: JSON.stringify(bufferedExtent),
-        footprint: JSON.stringify(productGeometry),
-      });
-
-      const errMsg = 'product geometry is not contained by the source combined extent';
-      this.logger.error({
-        msg: errMsg,
-        logContext: logCtx,
-        sourceExtent,
-        bufferedExtent,
-        productGeometry,
-      });
-      throw new ValidationError(errMsg);
-    }
-    this.logger.debug('product geometry is contained by source combined extent');
-    activeSpan?.addEvent('sourceValidator.isContainedByExtent.true');
-  }
 }

@@ -87,9 +87,10 @@ export class JobManagerWrapper extends JobManagerClient {
       ...data,
       additionalParams: { jobTrackerServiceURL: this.jobTrackerServiceUrl },
     };
+    const initialProductVersion = '1.0';
     const createJobRequest: CreateJobBody = {
       resourceId: data.metadata.productId,
-      version: '1.0',
+      version: initialProductVersion,
       type: jobType,
       status: OperationStatus.PENDING,
       parameters: ingestionNewJobParams,

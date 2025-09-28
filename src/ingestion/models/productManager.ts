@@ -87,7 +87,10 @@ export class ProductManager {
       this.logger.info({ msg: `extracting product file zip in path: ${parentDirname}` });
       await unzipFileStream(productZipFilePath, parentDirname);
     } catch (error) {
-      console.log("error", error);
+      this.logger.error({
+        msg: `an unexpected error occurred during product shape zip extract, error: ${error}`
+      });
+      throw error;
     }
   }
 

@@ -138,8 +138,8 @@ export class IngestionManager {
 
     activeSpan
       ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.ingestLayer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
-    this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
+      .addEvent('ingestionManager.ingestNewLayer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
+    this.logger.info({ msg: `new ingestion job and validations task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]}`, logContext: logCtx });
 
     return { jobId: response.id };
   }
@@ -245,7 +245,7 @@ export class IngestionManager {
     await this.validateLayerDoesntExistInMapProxy(layerName);
     await this.validateLayerDoesntExistInCatalog(metadata.productId, metadata.productType);
     await this.validateNoParallelJobs(metadata.productId, metadata.productType);
-    this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
+    this.logger.info({ msg: 'validation in catalog, job-manager and mapproxy passed', logContext: logCtx });
   }
 
   @withSpanAsyncV4
@@ -371,8 +371,8 @@ export class IngestionManager {
 
     // validate new ingestion product.shp against gpkg data extent
     const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
-    const productFeature = await this.productManager.extractAndRead(productShapefilePath);
-    await this.geoValidator.validate(infoData, productFeature);
+    const productGeometry = await this.productManager.extractAndRead(productShapefilePath);
+    await this.geoValidator.validate(infoData, productGeometry);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
   }
 
