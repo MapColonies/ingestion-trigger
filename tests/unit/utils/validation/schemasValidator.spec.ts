@@ -1,21 +1,22 @@
 import { BadRequestError } from '@map-colonies/error-types';
+import jsLogger from '@map-colonies/js-logger';
+import { Transparency } from '@map-colonies/mc-model-types';
+import { RasterProductTypes } from '@map-colonies/raster-shared';
 import { IConfig } from 'config';
 import { DependencyContainer } from 'tsyringe';
-import { ProductType, Transparency } from '@map-colonies/mc-model-types';
-import jsLogger from '@map-colonies/js-logger';
 import { getApp } from '../../../../src/app';
+import { SERVICES } from '../../../../src/common/constants';
+import { pixelSizeRange } from '../../../../src/ingestion/schemas/infoDataSchema';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
 import { fakeDataToValidate, mockMetadata, mockPart } from '../../../mocks/schemasValidatorMockData';
-import { SERVICES } from '../../../../src/common/constants';
 import {
-  GPKG_REGEX,
-  PRODUCT_ID_REGEX,
   CLASSIFICATION_REGEX,
+  GPKG_REGEX,
   horizontalAccuracyCE90Range,
+  PRODUCT_ID_REGEX,
   resolutionDegRange,
   resolutionMeterRange,
 } from '../../../utils/constants';
-import { pixelSizeRange } from '../../../../src/ingestion/schemas/infoDataSchema';
 
 let schemasValidator: SchemasValidator;
 let appContainer: DependencyContainer;
@@ -183,7 +184,7 @@ describe('SchemasValidator', () => {
       expect(result).toHaveProperty('productName');
       expect(typeof result.productName).toBe('string');
       expect(result).toHaveProperty('productType');
-      expect(Object.values(ProductType)).toContain(result.productType);
+      expect(Object.values(RasterProductTypes)).toContain(result.productType);
       expect(result).toHaveProperty('srs');
       expect(result.srs).toBe('4326');
       expect(result).toHaveProperty('srsName');

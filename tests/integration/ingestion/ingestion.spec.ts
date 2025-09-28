@@ -1,19 +1,19 @@
-import httpStatusCodes from 'http-status-codes';
-import { InputFiles, ProductType } from '@map-colonies/mc-model-types';
-import gdal from 'gdal-async';
-import { SqliteError } from 'better-sqlite3';
-import nock from 'nock';
+import { InputFiles } from '@map-colonies/mc-model-types';
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
+import { getMapServingLayerName } from '@map-colonies/raster-shared';
+import { SqliteError } from 'better-sqlite3';
+import gdal from 'gdal-async';
+import httpStatusCodes from 'http-status-codes';
+import nock from 'nock';
 import { getApp } from '../../../src/app';
+import { Grid } from '../../../src/ingestion/interfaces';
+import { GpkgManager } from '../../../src/ingestion/models/gpkgManager';
 import { infoDataSchemaArray } from '../../../src/ingestion/schemas/infoDataSchema';
 import { SourceValidator } from '../../../src/ingestion/validators/sourceValidator';
 import { SQLiteClient } from '../../../src/serviceClients/database/SQLiteClient';
 import { ZodValidator } from '../../../src/utils/validation/zodValidator';
-import { Grid } from '../../../src/ingestion/interfaces';
-import { GpkgManager } from '../../../src/ingestion/models/gpkgManager';
-import { fakeIngestionSources } from '../../mocks/sourcesRequestBody';
 import { jobResponse, newJobRequest, newLayerRequest } from '../../mocks/newIngestionRequestMockData';
-import { getMapServingLayerName } from '../../../src/utils/layerNameGenerator';
+import { fakeIngestionSources } from '../../mocks/sourcesRequestBody';
 import {
   updateJobRequest,
   updateLayerRequest,
@@ -22,8 +22,8 @@ import {
   updatedLayer,
   updatedSwapLayer,
 } from '../../mocks/updateRequestMockData';
-import { IngestionRequestSender } from './helpers/ingestionRequestSender';
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
+import { IngestionRequestSender } from './helpers/ingestionRequestSender';
 
 describe('Ingestion', function () {
   let requestSender: IngestionRequestSender;
@@ -587,7 +587,7 @@ describe('Ingestion', function () {
       it('should return 200 status code with swap update request', async () => {
         const layerRequest = updateLayerRequest.valid;
         const updatedLayerMetadata = updatedSwapLayer.metadata;
-        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
 
         const getJobsParams = {
           resourceId: updatedLayerMetadata.productId,

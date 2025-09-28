@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
+import type { Checksum } from '../utils/hash/interface';
 
 export interface SourcesValidationResponse {
   isValid: boolean;
@@ -44,6 +45,6 @@ export interface TileSize {
   height: number;
 }
 
-export interface ValidationsTaskParameters {
-  checksums: string[];
+export interface ValidationTaskParameters {
+  checksums: Checksum[];
 }

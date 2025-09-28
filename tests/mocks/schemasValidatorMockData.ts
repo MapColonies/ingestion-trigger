@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-
-import { ProductType, Transparency } from '@map-colonies/mc-model-types';
-import { scaleRange, horizontalAccuracyCE90Range, resolutionDegRange, resolutionMeterRange } from '../utils/constants';
+import { Transparency } from '@map-colonies/mc-model-types';
+import { RasterProductTypes } from '@map-colonies/raster-shared';
+import { horizontalAccuracyCE90Range, resolutionDegRange, resolutionMeterRange, scaleRange } from '../utils/constants';
 
 export const fakeDataToValidate = {
   inputFiles: {
@@ -459,7 +459,7 @@ export const mockMetadata = {
     invalid: '',
   },
   productType: {
-    valid: ProductType.ORTHOPHOTO,
+    valid: RasterProductTypes.ORTHOPHOTO,
     invalid: 'InvalidType',
   },
   srs: {

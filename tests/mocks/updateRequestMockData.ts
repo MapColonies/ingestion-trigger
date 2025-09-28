@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { InputFiles, PolygonPart, ProductType, TileOutputFormat, UpdateRasterLayerMetadata } from '@map-colonies/mc-model-types';
+import { InputFiles, PolygonPart, TileOutputFormat } from '@map-colonies/mc-model-types';
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
+import { RasterProductTypes, type UpdateRasterLayerMetadata } from '@map-colonies/raster-shared';
 import { Polygon } from 'geojson';
 
 export const updateLayerRequest = {
@@ -164,7 +165,7 @@ export const updateJobRequest = {
   internalId: '14460cdd-44ae-4a04-944f-29e907b6cd2a',
   type: 'Ingestion_Update',
   productName: 'blueMarble_test_2',
-  productType: ProductType.ORTHOPHOTO,
+  productType: RasterProductTypes.ORTHOPHOTO,
   status: 'Pending',
   parameters: {
     metadata: {
@@ -277,7 +278,7 @@ export const updatedLayer = {
     region: ['string'],
     productId: 'blueMarble_test_2',
     productVersion: '1.0',
-    productType: ProductType.ORTHOPHOTO,
+    productType: RasterProductTypes.ORTHOPHOTO,
     productSubType: 'string',
     srsName: 'string',
     maxResolutionDeg: 0.072,
@@ -351,7 +352,7 @@ export const updatedSwapLayer = {
     region: ['string'],
     productId: 'blueMarble_test_2',
     productVersion: '1.0',
-    productType: 'RasterVectorBest',
+    productType: RasterProductTypes.RASTER_VECTOR_BEST,
     productSubType: 'testProductSubType',
     srsName: 'string',
     maxResolutionDeg: 0.072,
@@ -385,7 +386,7 @@ export const updateSwapJobRequest = {
   internalId: '14460cdd-44ae-4a04-944f-29e907b6cd2a',
   type: 'Ingestion_Swap_Update',
   productName: 'blueMarble_test_2',
-  productType: ProductType.RASTER_VECTOR_BEST,
+  productType: RasterProductTypes.RASTER_VECTOR_BEST,
   status: 'Pending',
   parameters: {
     metadata: {

@@ -7,16 +7,17 @@ import { trace, Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
 import { IConfig, LayerDetails } from '../common/interfaces';
-import { ValidationsTaskParameters } from '../ingestion/interfaces';
+import { ValidationTaskParameters } from '../ingestion/interfaces';
 import type { IngestionNewLayer } from '../ingestion/schemas/ingestionLayerSchema';
 import type { IngestionUpdateLayer } from '../ingestion/schemas/updateLayerSchema';
+import type { Checksum } from '../utils/hash/interface';
 
 @injectable()
 export class JobManagerWrapper extends JobManagerClient {
   private readonly jobDomain: string;
   private readonly ingestionNewJobType: string;
   private readonly updateJobType: string;
-  private readonly validationsTaskType: string;
+  private readonly validationTaskType: string;
   private readonly jobTrackerServiceUrl: string;
 
   public constructor(
@@ -33,44 +34,44 @@ export class JobManagerWrapper extends JobManagerClient {
     );
     this.jobDomain = config.get<string>('jobManager.jobDomain');
     this.ingestionNewJobType = config.get<string>('jobManager.ingestionNewJobType');
-    this.validationsTaskType = config.get<string>('jobManager.validationsTaskType');
+    this.validationTaskType = config.get<string>('jobManager.validationTaskType');
     this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
     this.jobTrackerServiceUrl = config.get<string>('services.jobTrackerServiceURL');
   }
 
   @withSpanAsyncV4
-  public async createInitJob(data: IngestionNewLayer, checksum: string): Promise<ICreateJobResponse> {
+  public async createValidationJob(data: IngestionNewLayer, checksum: Checksum): Promise<ICreateJobResponse> {
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('jobManagerWrapper.createInitJob');
-    const taskParams: ValidationsTaskParameters = { checksums: [checksum] };
+    activeSpan?.updateName('jobManagerWrapper.createValidationJob');
+    const taskParams: ValidationTaskParameters = { checksums: [checksum] };
     try {
-      const jobResponse = await this.createNewJob(data, this.ingestionNewJobType, this.validationsTaskType, taskParams);
+      const jobResponse = await this.createNewJob(data, this.ingestionNewJobType, this.validationTaskType, taskParams);
       return jobResponse;
     } catch (err) {
-      const message = 'failed to create a new init job';
+      const message = 'failed to create a new validation job';
       this.logger.error({ msg: message, err, layer: data });
       throw err;
     }
   }
 
   @withSpanAsyncV4
-  public async createInitUpdateJob(
+  public async createValidationUpdateJob(
     layerDetails: LayerDetails,
     catalogId: string,
     data: IngestionUpdateLayer,
     jobType: string,
-    checksum: string
+    checksum: Checksum
   ): Promise<ICreateJobResponse> {
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('jobManagerWrapper.createInitUpdateJob');
-    const taskParams: ValidationsTaskParameters = { checksums: [checksum] };
+    activeSpan?.updateName('jobManagerWrapper.createValidationUpdateJob');
+    const taskParams: ValidationTaskParameters = { checksums: [checksum] };
 
     try {
-      const jobResponse = await this.createUpdateJob(layerDetails, catalogId, data, jobType, this.validationsTaskType, taskParams);
+      const jobResponse = await this.createUpdateJob(layerDetails, catalogId, data, jobType, this.validationTaskType, taskParams);
       return jobResponse;
     } catch (err) {
-      const message = 'failed to create a new init update job ';
-      this.logger.error({ msg: message, jobType: jobType, taskType: this.validationsTaskType, err, layer: data });
+      const message = 'failed to create a new validation update job';
+      this.logger.error({ msg: message, jobType: jobType, taskType: this.validationTaskType, err, layer: data });
       throw err;
     }
   }
@@ -80,7 +81,7 @@ export class JobManagerWrapper extends JobManagerClient {
     data: IngestionNewLayer,
     jobType: string,
     taskType: string,
-    taskParams: ValidationsTaskParameters
+    taskParams: ValidationTaskParameters
   ): Promise<ICreateJobResponse> {
     const createLayerTasksUrl = `/jobs`;
     const ingestionNewJobParams: IngestionNewJobParams = {
@@ -97,7 +98,7 @@ export class JobManagerWrapper extends JobManagerClient {
       productName: data.metadata.productName,
       productType: data.metadata.productType,
       domain: this.jobDomain,
-      tasks: [{ type: taskType, parameters: taskParams }]
+      tasks: [{ type: taskType, parameters: taskParams }],
     };
     const res = await this.post<ICreateJobResponse>(createLayerTasksUrl, createJobRequest);
     return res;
@@ -110,7 +111,7 @@ export class JobManagerWrapper extends JobManagerClient {
     data: IngestionUpdateLayer,
     jobType: string,
     taskType: string,
-    taskParams: ValidationsTaskParameters
+    taskParams: ValidationTaskParameters
   ): Promise<ICreateJobResponse> {
     const createLayerTasksUrl = `/jobs`;
     const { productId, productName, productType, productVersion, tileOutputFormat, displayPath, footprint } = layerDetails;
@@ -133,13 +134,16 @@ export class JobManagerWrapper extends JobManagerClient {
       status: OperationStatus.PENDING,
       parameters: ingestionUpdateJobParams,
       domain: this.jobDomain,
-      tasks: [{ type: taskType, parameters: taskParams }]
+      tasks: [{ type: taskType, parameters: taskParams }],
     };
     const res = await this.post<ICreateJobResponse>(createLayerTasksUrl, createJobRequest);
     return res;
   }
 }
 
-export type JobResponse = IJobResponse<Record<string, unknown>, ValidationsTaskParameters>;
-export type TaskResponse = ITaskResponse<ValidationsTaskParameters>;
-export type CreateJobBody = ICreateJobBody<IngestionNewJobParams | IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationsTaskParameters>;
+export type JobResponse = IJobResponse<Record<string, unknown>, ValidationTaskParameters>;
+export type TaskResponse = ITaskResponse<ValidationTaskParameters>;
+export type CreateJobBody = ICreateJobBody<
+  IngestionNewJobParams | IngestionUpdateJobParams | IngestionSwapUpdateJobParams,
+  ValidationTaskParameters
+>;

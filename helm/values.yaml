@@ -42,7 +42,7 @@ jobDefinitions:
     swapUpdate:
       type: ""
   tasks:
-    init:
+    validation:
       type: ""
 
 storage:

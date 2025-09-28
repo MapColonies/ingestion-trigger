@@ -1,0 +1,37 @@
+import type { HashAlgorithm } from './constants';
+
+export interface Checksum {
+  algorithm: HashAlgorithm;
+  checksum: string;
+  fileName: string;
+}
+
+/**
+ * Interface describing a hash processor instance.
+ * This interface is designed to be compatible with various hashing libraries
+ * while providing a consistent API for calculating checksums.
+ */
+export interface HashProcessor {
+  /**
+   * The hashing algorithm used by the processor
+   */
+  algorithm: HashAlgorithm;
+
+  /**
+   * Updates the hash content with a chunk of data
+   * @param data - The data to include in the hash calculation
+   * @returns The hash calculator instance for chaining
+   */
+  update: (data: Buffer | string) => HashProcessor;
+
+  /**
+   * Finalizes the hash calculation and returns the result
+   * @returns The final hash value
+   */
+  digest: () => Buffer | bigint;
+
+  /**
+   * Optional method to reset the hash calculator state
+   */
+  reset?: () => void;
+}

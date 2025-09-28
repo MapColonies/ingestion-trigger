@@ -1,12 +1,9 @@
-import { constants, createReadStream } from 'node:fs';
 import { join } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
-import { ProductType } from '@map-colonies/mc-model-types';
 import { ICreateJobResponse, IFindJobsByCriteriaBody, IJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
-import { InputFiles } from '@map-colonies/raster-shared';
-import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
-import { Xxh64 } from '@node-rs/xxhash';
+import { getMapServingLayerName, InputFiles, type RasterProductTypes } from '@map-colonies/raster-shared';
+import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
@@ -15,10 +12,10 @@ import { CatalogClient } from '../../serviceClients/catalogClient';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
-import { getMapServingLayerName } from '../../utils/layerNameGenerator';
+import { Checksum } from '../../utils/hash/checksum';
 import { LogContext } from '../../utils/logger/logContext';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import type { ValidationsTaskParameters, ResponseId, SourcesValidationResponse } from '../interfaces';
+import type { ResponseId, SourcesValidationResponse, ValidationTaskParameters } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
@@ -46,7 +43,8 @@ export class IngestionManager {
     private readonly catalogClient: CatalogClient,
     private readonly jobManagerWrapper: JobManagerWrapper,
     private readonly mapProxyClient: MapProxyClient,
-    private readonly productManager: ProductManager
+    private readonly productManager: ProductManager,
+    private readonly checksum: Checksum
   ) {
     this.logContext = {
       fileName: __filename,
@@ -132,14 +130,14 @@ export class IngestionManager {
     
     const { metadataShapefilePath } = newLayer.inputFiles;
     this.logger.info({ msg: `calucalting checksum for metadata shape zip in path: ${metadataShapefilePath}`, logContext: logCtx });
-    const checksum = await this.calculateChecksum(metadataShapefilePath);
+    const checksum = await this.checksum.calculate(metadataShapefilePath);
 
-    const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(newLayer, checksum);
+    const response: ICreateJobResponse = await this.jobManagerWrapper.createValidationJob(newLayer, checksum);
 
     activeSpan
       ?.setStatus({ code: SpanStatusCode.OK })
       .addEvent('ingestionManager.ingestNewLayer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
-    this.logger.info({ msg: `new ingestion job and validations task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]}`, logContext: logCtx });
+    this.logger.info({ msg: `new ingestion job and validation task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]}`, logContext: logCtx });
 
     return { jobId: response.id };
   }
@@ -173,9 +171,10 @@ export class IngestionManager {
     });
 
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
-    // TODO: call function that appends hash to updateLayer
-    const checksum = await this.calculateChecksum(updateLayer.inputFiles.metadataShapefilePath);
-    return this.jobManagerWrapper.createInitUpdateJob(layerDetails, catalogId, updateLayer, updateJobAction, checksum);
+    const metadataShapefilePath = join(this.sourceMount, updateLayer.inputFiles.metadataShapefilePath);
+    const checksum = await this.checksum.calculate(metadataShapefilePath);
+
+    return this.jobManagerWrapper.createValidationUpdateJob(layerDetails, catalogId, updateLayer, updateJobAction, checksum);
   }
 
   @withSpanAsyncV4
@@ -249,7 +248,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async validateNoParallelJobs(productId: string, productType: ProductType): Promise<void> {
+  private async validateNoParallelJobs(productId: string, productType: RasterProductTypes): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateNoParallelJobs.name };
     const jobs = await this.getJobs(productId, productType, this.forbiddenJobTypes);
     if (jobs.length !== 0) {
@@ -269,9 +268,9 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async getJobs(
     productId: string,
-    productType: ProductType,
+    productType: RasterProductTypes,
     forbiddenParallel?: string[]
-  ): Promise<IJobResponse<Record<string, unknown>, ValidationsTaskParameters>[]> {
+  ): Promise<IJobResponse<Record<string, unknown>, ValidationTaskParameters>[]> {
     const findJobParameters: IFindJobsByCriteriaBody = {
       resourceId: productId,
       productType,
@@ -280,7 +279,7 @@ export class IngestionManager {
       statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS, OperationStatus.FAILED, OperationStatus.SUSPENDED],
       types: forbiddenParallel,
     };
-    const jobs = await this.jobManagerWrapper.findJobs<Record<string, unknown>, ValidationsTaskParameters>(findJobParameters);
+    const jobs = await this.jobManagerWrapper.findJobs<Record<string, unknown>, ValidationTaskParameters>(findJobParameters);
     return jobs;
   }
 
@@ -319,7 +318,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async validateLayerDoesntExistInCatalog(productId: string, productType: ProductType): Promise<void> {
+  private async validateLayerDoesntExistInCatalog(productId: string, productType: RasterProductTypes): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateLayerDoesntExistInCatalog.name };
     const existsInCatalog = await this.catalogClient.exists(productId, productType);
     if (existsInCatalog) {
@@ -374,32 +373,5 @@ export class IngestionManager {
     const productGeometry = await this.productManager.extractAndRead(productShapefilePath);
     await this.geoValidator.validate(infoData, productGeometry);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
-  }
-
-  @withSpanV4
-  private async calculateChecksum(filePath: string): Promise<string> {
-    const logCtx: LogContext = { ...this.logContext, function: this.calculateChecksum.name };
-
-    // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-    const hasher = new Xxh64();
-    const fullPath = join(this.sourceMount, filePath);
-    const stream = createReadStream(fullPath, { mode: constants.R_OK });
-
-    const checksum = await new Promise<string>((resolve, reject) => {
-      stream.on('data', (chunk) => {
-        hasher.update(chunk);
-      });
-      stream.on('end', () => {
-        // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-        const checksum = hasher.digest().toString(16);
-        this.logger.info({ msg: 'calculated checksum', checksum, logContext: logCtx });
-        resolve(checksum);
-      });
-      stream.on('error', (error) => {
-        this.logger.error({ msg: 'error calculating checksum', error, logContext: logCtx });
-        reject(error);
-      });
-    });
-    return checksum;
   }
 }
