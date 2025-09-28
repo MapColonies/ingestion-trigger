@@ -1,11 +1,9 @@
-import { constants, createReadStream } from 'node:fs';
 import { join } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { ICreateJobResponse, IFindJobsByCriteriaBody, IJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { getMapServingLayerName, InputFiles, type RasterProductTypes } from '@map-colonies/raster-shared';
-import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
-import { Xxh64 } from '@node-rs/xxhash';
+import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
@@ -14,9 +12,10 @@ import { CatalogClient } from '../../serviceClients/catalogClient';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
+import { Checksum } from '../../utils/hash/checksum';
 import { LogContext } from '../../utils/logger/logContext';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import type { ITaskParameters, ResponseId, SourcesValidationResponse } from '../interfaces';
+import type { ResponseId, SourcesValidationResponse, ValidationsTaskParameters } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
@@ -44,7 +43,8 @@ export class IngestionManager {
     private readonly catalogClient: CatalogClient,
     private readonly jobManagerWrapper: JobManagerWrapper,
     private readonly mapProxyClient: MapProxyClient,
-    private readonly productManager: ProductManager
+    private readonly productManager: ProductManager,
+    private readonly checksum: Checksum
   ) {
     this.logContext = {
       fileName: __filename,
@@ -167,7 +167,10 @@ export class IngestionManager {
     });
 
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
-    return this.jobManagerWrapper.createValidationUpdateJob(layerDetails, catalogId, updateLayer, updateJobAction);
+    const metadataShapefilePath = join(this.sourceMount, updateLayer.inputFiles.metadataShapefilePath);
+    const checksum = await this.checksum.calculate(metadataShapefilePath);
+
+    return this.jobManagerWrapper.createValidationUpdateJob(layerDetails, catalogId, updateLayer, updateJobAction, checksum);
   }
 
   @withSpanAsyncV4
@@ -281,7 +284,7 @@ export class IngestionManager {
     productId: string,
     productType: RasterProductTypes,
     forbiddenParallel?: string[]
-  ): Promise<IJobResponse<Record<string, unknown>, ITaskParameters>[]> {
+  ): Promise<IJobResponse<Record<string, unknown>, ValidationsTaskParameters>[]> {
     const findJobParameters: IFindJobsByCriteriaBody = {
       resourceId: productId,
       productType,
@@ -290,7 +293,7 @@ export class IngestionManager {
       statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS, OperationStatus.FAILED, OperationStatus.SUSPENDED],
       types: forbiddenParallel,
     };
-    const jobs = await this.jobManagerWrapper.findJobs<Record<string, unknown>, ITaskParameters>(findJobParameters);
+    const jobs = await this.jobManagerWrapper.findJobs<Record<string, unknown>, ValidationsTaskParameters>(findJobParameters);
     return jobs;
   }
 
@@ -384,32 +387,5 @@ export class IngestionManager {
     const productFeature = await this.productManager.extractAndRead(productShapefilePath);
     await this.geoValidator.validate(infoData, productFeature);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
-  }
-
-  @withSpanV4
-  private async calculateChecksum(filePath: string): Promise<string> {
-    const logCtx: LogContext = { ...this.logContext, function: this.calculateChecksum.name };
-
-    // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-    const hasher = new Xxh64();
-    const fullPath = join(this.sourceMount, filePath);
-    const stream = createReadStream(fullPath, { mode: constants.R_OK });
-
-    const checksum = await new Promise<string>((resolve, reject) => {
-      stream.on('data', (chunk) => {
-        hasher.update(chunk);
-      });
-      stream.on('end', () => {
-        // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-        const checksum = hasher.digest().toString(16);
-        this.logger.info({ msg: 'calculated checksum', checksum, logContext: logCtx });
-        resolve(checksum);
-      });
-      stream.on('error', (error) => {
-        this.logger.error({ msg: 'error calculating checksum', error, logContext: logCtx });
-        reject(error);
-      });
-    });
-    return checksum;
   }
 }
