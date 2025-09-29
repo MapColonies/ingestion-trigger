@@ -2,12 +2,12 @@ import { join } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { ICreateJobResponse, IFindJobsByCriteriaBody, OperationStatus } from '@map-colonies/mc-priority-queue';
-import { getMapServingLayerName, InputFiles, type RasterProductTypes } from '@map-colonies/raster-shared';
+import { getMapServingLayerName, type InputFiles, type RasterProductTypes } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { IConfig, IFindResponseRecord, ISupportedIngestionSwapTypes, LayerDetails } from '../../common/interfaces';
+import { IConfig, ISupportedIngestionSwapTypes, LayerDetails } from '../../common/interfaces';
 import { CatalogClient } from '../../serviceClients/catalogClient';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
@@ -18,6 +18,7 @@ import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../err
 import type { ResponseId, SourcesValidationResponse } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
+import { layerDetailsSchema } from '../schemas/layerDetailsSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
 import { GeoValidator } from '../validators/geoValidator';
 import { SourceValidator } from '../validators/sourceValidator';
@@ -186,11 +187,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async updateValidations(
-    catalogId: string,
-    layerDetails: LayerDetails,
-    updateLayer: IngestionUpdateLayer
-  ): Promise<LayerDetails> {
+  private async updateValidations(catalogId: string, layerDetails: LayerDetails, updateLayer: IngestionUpdateLayer): Promise<LayerDetails> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateValidations.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.updateValidations');
@@ -343,39 +340,21 @@ export class IngestionManager {
 
   @withSpanAsyncV4
   private async getLayerDetails(catalogId: string): Promise<LayerDetails> {
-    const layerDetails = await this.catalogClient.findById(catalogId);
+    const layersDetails = await this.catalogClient.findById(catalogId);
     const getLayerSpan = trace.getActiveSpan();
-    if (layerDetails.length === 0) {
+    if (layersDetails.length === 0) {
       const message = `there isn't a layer with id of ${catalogId}`;
       const error = new NotFoundError(message);
       getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
-    } else if (layerDetails.length !== 1) {
+    } else if (layersDetails.length !== 1) {
       const message = `found more than one layer with id of ${catalogId}, please check the catalog layers`;
       const error = new ConflictError(message);
       getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
     }
 
-    const {
-      productId,
-      productVersion,
-      productType,
-      productSubType = '',
-      tileOutputFormat,
-      displayPath,
-      productName,
-      footprint,
-    } = layerDetails[0].metadata as LayerDetails;
-    return {
-      productId,
-      productVersion,
-      productType,
-      productSubType,
-      tileOutputFormat,
-      displayPath,
-      productName,
-      footprint,
-    };
+    const layerDetails = layerDetailsSchema.parse(layersDetails[0].metadata);
+    return layerDetails;
   }
 }
