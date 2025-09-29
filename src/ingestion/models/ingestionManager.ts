@@ -129,7 +129,7 @@ export class IngestionManager {
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
-    const { metadataShapefilePath } = newLayer.inputFiles;
+    const metadataShapefilePath = join(this.sourceMount, newLayer.inputFiles.metadataShapefilePath);
     this.logger.info({ msg: `calucalting checksum for metadata shape zip in path: ${metadataShapefilePath}`, logContext: logCtx });
     const checksum = await this.checksum.calculate(metadataShapefilePath);
 
