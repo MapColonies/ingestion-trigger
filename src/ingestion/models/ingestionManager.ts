@@ -151,11 +151,13 @@ export class IngestionManager {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.updateLayer');
 
-    const layerDetails: LayerDetails = await this.validateAndGetUpdatedLayerParams(catalogId, updateLayer);
+    const layerDetails = await this.getLayerDetails(catalogId);
+
+    await this.updateValidations(catalogId, layerDetails, updateLayer);
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
-    const { id: jobId, taskIds } = await this.setAndCreateUpdateJob(catalogId, layerDetails, updateLayer);
+    const { id: jobId, taskIds } = await this.createUpdateJob(catalogId, layerDetails, updateLayer);
     this.logger.info({
       msg: `new update job and validation task were created. jobId: ${jobId}, taskId: ${taskIds[0]} `,
       logContext: logCtx,
@@ -168,8 +170,8 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async setAndCreateUpdateJob(catalogId: string, layerDetails: LayerDetails, updateLayer: IngestionUpdateLayer): Promise<ICreateJobResponse> {
-    const logCtx: LogContext = { ...this.logContext, function: this.setAndCreateUpdateJob.name };
+  private async createUpdateJob(catalogId: string, layerDetails: LayerDetails, updateLayer: IngestionUpdateLayer): Promise<ICreateJobResponse> {
+    const logCtx: LogContext = { ...this.logContext, function: this.createUpdateJob.name };
 
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === layerDetails.productType && supportedSwapObj.productSubType === layerDetails.productSubType;
@@ -184,10 +186,16 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async validateAndGetUpdatedLayerParams(catalogId: string, updateLayer: IngestionUpdateLayer): Promise<LayerDetails> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateAndGetUpdatedLayerParams.name };
+  private async updateValidations(
+    catalogId: string,
+    layerDetails: LayerDetails,
+    updateLayer: IngestionUpdateLayer
+  ): Promise<LayerDetails> {
+    const logCtx: LogContext = { ...this.logContext, function: this.updateValidations.name };
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('ingestionManager.validateAndGetUpdatedLayerParams');
+    activeSpan?.updateName('ingestionManager.updateValidations');
+
+    const { productId, productVersion, productType, productSubType, tileOutputFormat, displayPath, productName, footprint } = layerDetails;
     const { metadata, inputFiles } = updateLayer;
     this.logger.debug({
       msg: 'started update layer validation',
@@ -201,27 +209,6 @@ export class IngestionManager {
       logCtx: logCtx,
     });
     await this.validateInputFiles(inputFiles);
-    // catalog call must be before map proxy to get productId and Type
-    const layerDetails = await this.getLayer(catalogId);
-    const {
-      productId,
-      productVersion,
-      productType,
-      productSubType = '',
-      tileOutputFormat,
-      displayPath,
-      productName,
-      footprint,
-    } = layerDetails.metadata as LayerDetails;
-    activeSpan?.addEvent('updateLayer.getLayer', {
-      productId,
-      productVersion,
-      productType,
-      productSubType,
-      tileOutputFormat,
-      displayPath,
-      productName,
-    });
 
     const layerName = getMapServingLayerName(productId, productType);
     await this.validateLayerExistsInMapProxy(layerName);
@@ -302,7 +289,7 @@ export class IngestionManager {
     const logCtx: LogContext = { ...this.logContext, function: this.validateLayerExistsInMapProxy.name };
     const exists = await this.mapProxyClient.exists(layerName);
     if (!exists) {
-      const message = `Failed to create update job for layer: ${layerName}, layer doesnt exist on MapProxy`;
+      const message = `Failed to create update job for layer: ${layerName}, layer doesn't exist on MapProxy`;
       this.logger.error({
         layerName: layerName,
         msg: message,
@@ -355,7 +342,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async getLayer(catalogId: string): Promise<IFindResponseRecord> {
+  private async getLayerDetails(catalogId: string): Promise<LayerDetails> {
     const layerDetails = await this.catalogClient.findById(catalogId);
     const getLayerSpan = trace.getActiveSpan();
     if (layerDetails.length === 0) {
@@ -369,6 +356,26 @@ export class IngestionManager {
       getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
     }
-    return layerDetails[0];
+
+    const {
+      productId,
+      productVersion,
+      productType,
+      productSubType = '',
+      tileOutputFormat,
+      displayPath,
+      productName,
+      footprint,
+    } = layerDetails[0].metadata as LayerDetails;
+    return {
+      productId,
+      productVersion,
+      productType,
+      productSubType,
+      tileOutputFormat,
+      displayPath,
+      productName,
+      footprint,
+    };
   }
 }
