@@ -333,7 +333,15 @@ components:
       type: object
       required:
         - jobId
+        - taskIds
       properties:
         jobId:
           type: string
           format: uuid
+        taskIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+            minItems: 1
+            maxItems: 1
