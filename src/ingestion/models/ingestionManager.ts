@@ -169,12 +169,15 @@ export class IngestionManager {
 
   @withSpanAsyncV4
   private async setAndCreateUpdateJob(catalogId: string, layerDetails: LayerDetails, updateLayer: IngestionUpdateLayer): Promise<ICreateJobResponse> {
+    const logCtx: LogContext = { ...this.logContext, function: this.setAndCreateUpdateJob.name };
+
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === layerDetails.productType && supportedSwapObj.productSubType === layerDetails.productSubType;
     });
 
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
     const metadataShapefilePath = join(this.sourceMount, updateLayer.inputFiles.metadataShapefilePath);
+    this.logger.info({ msg: `calucalting checksum for metadata shape zip in path: ${metadataShapefilePath}`, logContext: logCtx });
     const checksum = await this.checksum.calculate(metadataShapefilePath);
 
     return this.jobManagerWrapper.createValidationUpdateJob(layerDetails, catalogId, updateLayer, updateJobAction, checksum);
