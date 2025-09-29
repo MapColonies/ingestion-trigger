@@ -32,7 +32,7 @@ export class Checksum {
     const logCtx: LogContext = { ...this.logContext, function: this.calculate.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('checksum.calculate');
-    this.logger.debug({ msg: 'calculating checksum', logContext: logCtx });
+    this.logger.debug({ msg: 'calculating checksum', filePath, logContext: logCtx });
 
     const stream = createReadStream(filePath, { mode: constants.R_OK });
 
