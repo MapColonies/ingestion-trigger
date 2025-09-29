@@ -13,6 +13,7 @@ import { GpkgError } from '../../serviceClients/database/errors';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
 import { Checksum } from '../../utils/hash/checksum';
+import { Checksum as IChecksum } from '../../utils/hash/interface';
 import { LogContext } from '../../utils/logger/logContext';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
 import type { ResponseId, SourcesValidationResponse } from '../interfaces';
@@ -129,10 +130,7 @@ export class IngestionManager {
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
-    const metadataShapefilePath = join(this.sourceMount, newLayer.inputFiles.metadataShapefilePath);
-    this.logger.info({ msg: `calucalting checksum for metadata shape zip in path: ${metadataShapefilePath}`, logContext: logCtx });
-    const checksum = await this.checksum.calculate(metadataShapefilePath);
-
+    const checksum = await this.getFileChecksum(newLayer.inputFiles.metadataShapefilePath);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createValidationJob(newLayer, checksum);
 
     activeSpan
@@ -172,17 +170,12 @@ export class IngestionManager {
 
   @withSpanAsyncV4
   private async createUpdateJob(catalogId: string, layerDetails: LayerDetails, updateLayer: IngestionUpdateLayer): Promise<ICreateJobResponse> {
-    const logCtx: LogContext = { ...this.logContext, function: this.createUpdateJob.name };
-
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === layerDetails.productType && supportedSwapObj.productSubType === layerDetails.productSubType;
     });
 
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
-    const metadataShapefilePath = join(this.sourceMount, updateLayer.inputFiles.metadataShapefilePath);
-    this.logger.info({ msg: `calucalting checksum for metadata shape zip in path: ${metadataShapefilePath}`, logContext: logCtx });
-    const checksum = await this.checksum.calculate(metadataShapefilePath);
-
+    const checksum = await this.getFileChecksum(updateLayer.inputFiles.metadataShapefilePath);
     return this.jobManagerWrapper.createValidationUpdateJob(layerDetails, catalogId, updateLayer, updateJobAction, checksum);
   }
 
@@ -361,5 +354,15 @@ export class IngestionManager {
 
     const layerDetails = layerDetailsSchema.parse(layersDetails[0].metadata);
     return layerDetails;
+  }
+
+  @withSpanAsyncV4
+  private async getFileChecksum(filePath: string): Promise<IChecksum> {
+    const logCtx: LogContext = { ...this.logContext, function: this.newLayer.name };
+
+    const fullFilePath = join(this.sourceMount, filePath);
+    this.logger.info({ msg: `calucalting checksum for: ${fullFilePath}`, logContext: logCtx });
+    const checksum = await this.checksum.calculate(fullFilePath);
+    return checksum;
   }
 }
