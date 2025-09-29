@@ -125,7 +125,7 @@ export class IngestionManager {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.newLayer');
 
-    await this.newValidations(newLayer);
+    await this.newLayerValidations(newLayer);
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
@@ -154,7 +154,7 @@ export class IngestionManager {
 
     const layerDetails = await this.getLayerDetails(catalogId);
 
-    await this.updateValidations(catalogId, layerDetails, updateLayer);
+    await this.updateLayerValidations(catalogId, layerDetails, updateLayer);
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
@@ -187,10 +187,10 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async updateValidations(catalogId: string, layerDetails: LayerDetails, updateLayer: IngestionUpdateLayer): Promise<LayerDetails> {
-    const logCtx: LogContext = { ...this.logContext, function: this.updateValidations.name };
+  private async updateLayerValidations(catalogId: string, layerDetails: LayerDetails, updateLayer: IngestionUpdateLayer): Promise<LayerDetails> {
+    const logCtx: LogContext = { ...this.logContext, function: this.updateLayerValidations.name };
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('ingestionManager.updateValidations');
+    activeSpan?.updateName('ingestionManager.updateLayerValidations');
 
     const { productId, productVersion, productType, productSubType, tileOutputFormat, displayPath, productName, footprint } = layerDetails;
     const { metadata, inputFiles } = updateLayer;
@@ -215,8 +215,9 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async newValidations(newLayer: IngestionNewLayer): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.newValidations.name };
+  private async newLayerValidations(newLayer: IngestionNewLayer): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.newLayerValidations.name };
+
     const { metadata, inputFiles } = newLayer;
     this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, inputFiles }, logCtx: logCtx });
     this.logger.info({
