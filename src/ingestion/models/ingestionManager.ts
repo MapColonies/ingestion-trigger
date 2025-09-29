@@ -330,24 +330,6 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async getLayer(catalogId: string): Promise<IFindResponseRecord> {
-    const layerDetails = await this.catalogClient.findById(catalogId);
-    const getLayerSpan = trace.getActiveSpan();
-    if (layerDetails.length === 0) {
-      const message = `there isnt a layer with id of ${catalogId}`;
-      const error = new NotFoundError(message);
-      getLayerSpan?.setAttribute('exception.type', error.status);
-      throw error;
-    } else if (layerDetails.length !== 1) {
-      const message = `found more than one layer with id of ${catalogId}, Please check the catalog layers`;
-      const error = new ConflictError(message);
-      getLayerSpan?.setAttribute('exception.type', error.status);
-      throw error;
-    }
-    return layerDetails[0];
-  }
-
-  @withSpanAsyncV4
   private async validateInputFiles(inputFiles: InputFiles): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateInputFiles.name };
     const { productShapefilePath } = inputFiles;
@@ -367,5 +349,23 @@ export class IngestionManager {
     const productGeometry = await this.productManager.extractAndRead(productShapefilePath);
     await this.geoValidator.validate(infoData, productGeometry);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
+  }
+
+  @withSpanAsyncV4
+  private async getLayer(catalogId: string): Promise<IFindResponseRecord> {
+    const layerDetails = await this.catalogClient.findById(catalogId);
+    const getLayerSpan = trace.getActiveSpan();
+    if (layerDetails.length === 0) {
+      const message = `there isn't a layer with id of ${catalogId}`;
+      const error = new NotFoundError(message);
+      getLayerSpan?.setAttribute('exception.type', error.status);
+      throw error;
+    } else if (layerDetails.length !== 1) {
+      const message = `found more than one layer with id of ${catalogId}, please check the catalog layers`;
+      const error = new ConflictError(message);
+      getLayerSpan?.setAttribute('exception.type', error.status);
+      throw error;
+    }
+    return layerDetails[0];
   }
 }
