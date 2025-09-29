@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
+import { ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import type { Checksum } from '../utils/hash/interface';
 
 export interface SourcesValidationResponse {
@@ -6,8 +7,8 @@ export interface SourcesValidationResponse {
   message: string;
 }
 
-export interface ResponseId {
-  jobId: string;
+export interface ResponseId extends Omit<ICreateJobResponse, 'id'> {
+  jobId: ICreateJobResponse['id'];
 }
 
 export interface IRecordRequestParams {

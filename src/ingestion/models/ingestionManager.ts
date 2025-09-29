@@ -123,23 +123,26 @@ export class IngestionManager {
     const logCtx: LogContext = { ...this.logContext, function: this.ingestNewLayer.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('IngestionManager.ingestNewLayer');
-    
+
     await this.ingestionNewValidations(newLayer);
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
-    
+
     const { metadataShapefilePath } = newLayer.inputFiles;
     this.logger.info({ msg: `calucalting checksum for metadata shape zip in path: ${metadataShapefilePath}`, logContext: logCtx });
     const checksum = await this.checksum.calculate(metadataShapefilePath);
 
-    const response: ICreateJobResponse = await this.jobManagerWrapper.createValidationJob(newLayer, checksum);
+    const { id: jobId, taskIds } = await this.jobManagerWrapper.createValidationJob(newLayer, checksum);
 
     activeSpan
       ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.ingestNewLayer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
-    this.logger.info({ msg: `new ingestion job and validation task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]}`, logContext: logCtx });
+      .addEvent('ingestionManager.ingestNewLayer.success', { triggerSuccess: true, jobId, taskId: taskIds[0] });
+    this.logger.info({
+      msg: `new ingestion job and validation task were created. jobId: ${jobId}, taskId: ${taskIds[0]}`,
+      logContext: logCtx,
+    });
 
-    return { jobId: response.id };
+    return { jobId, taskIds };
   }
 
   @withSpanAsyncV4
@@ -152,16 +155,16 @@ export class IngestionManager {
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
-    const response = await this.setAndCreateUpdateJob(catalogId, layerDetails, updateLayer);
+    const { id: jobId, taskIds } = await this.setAndCreateUpdateJob(catalogId, layerDetails, updateLayer);
     this.logger.info({
-      msg: `new update job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `,
+      msg: `new update job and init task were created. jobId: ${jobId}, taskId: ${taskIds[0]} `,
       logContext: logCtx,
     });
     activeSpan
       ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
+      .addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId: taskIds[0] });
 
-    return { jobId: response.id };
+    return { jobId, taskIds };
   }
 
   @withSpanAsyncV4
@@ -195,7 +198,7 @@ export class IngestionManager {
       logCtx: logCtx,
     });
     await this.validateInputFiles(inputFiles);
-    //catalog call must be before map proxy to get productId and Type
+    // catalog call must be before map proxy to get productId and Type
     const layerDetails = await this.getLayer(catalogId);
     const {
       productId,
