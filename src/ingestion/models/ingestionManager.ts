@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
-import { ICreateJobResponse, IFindJobsByCriteriaBody, IJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
+import { ICreateJobResponse, IFindJobsByCriteriaBody, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { getMapServingLayerName, InputFiles, type RasterProductTypes } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
@@ -15,7 +15,7 @@ import { MapProxyClient } from '../../serviceClients/mapProxyClient';
 import { Checksum } from '../../utils/hash/checksum';
 import { LogContext } from '../../utils/logger/logContext';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import type { ResponseId, SourcesValidationResponse, ValidationTaskParameters } from '../interfaces';
+import type { ResponseId, SourcesValidationResponse } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
@@ -79,7 +79,7 @@ export class IngestionManager {
     const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = inputFiles;
     const inputFilesPaths: string[] = [...gpkgFilesPath, metadataShapefilePath, productShapefilePath];
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('IngestionManager.validateSources');
+    activeSpan?.updateName('ingestionManager.validateSources');
     try {
       this.logger.info({ msg: 'Starting source validation process', logContext: logCtx, metadata: { gpkgFilesPath } });
 
@@ -122,7 +122,7 @@ export class IngestionManager {
   public async newLayer(newLayer: IngestionNewLayer): Promise<ResponseId> {
     const logCtx: LogContext = { ...this.logContext, function: this.newLayer.name };
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('IngestionManager.newLayer');
+    activeSpan?.updateName('ingestionManager.newLayer');
 
     await this.newValidations(newLayer);
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
@@ -149,7 +149,7 @@ export class IngestionManager {
   public async updateLayer(catalogId: string, updateLayer: IngestionUpdateLayer): Promise<ResponseId> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayer.name };
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('IngestionManager.updateLayer');
+    activeSpan?.updateName('ingestionManager.updateLayer');
 
     const layerDetails: LayerDetails = await this.validateAndGetUpdatedLayerParams(catalogId, updateLayer);
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
