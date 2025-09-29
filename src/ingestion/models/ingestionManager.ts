@@ -253,7 +253,16 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async validateNoParallelJobs(productId: string, productType: RasterProductTypes): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateNoParallelJobs.name };
-    const jobs = await this.getJobs(productId, productType, this.forbiddenJobTypes);
+
+    const findJobParameters: IFindJobsByCriteriaBody = {
+      resourceId: productId,
+      productType,
+      isCleaned: false,
+      shouldReturnTasks: false,
+      statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS, OperationStatus.FAILED, OperationStatus.SUSPENDED],
+      types: this.forbiddenJobTypes,
+    };
+    const jobs = await this.jobManagerWrapper.findJobs(findJobParameters);
     if (jobs.length !== 0) {
       const message = `ProductId: ${productId} productType: ${productType}, there is at least one conflicting job already running for that layer`;
       this.logger.error({
@@ -266,24 +275,6 @@ export class IngestionManager {
       trace.getActiveSpan()?.setAttribute('exception.type', error.status);
       throw error;
     }
-  }
-
-  @withSpanAsyncV4
-  private async getJobs(
-    productId: string,
-    productType: RasterProductTypes,
-    forbiddenParallel?: string[]
-  ): Promise<IJobResponse<Record<string, unknown>, ValidationTaskParameters>[]> {
-    const findJobParameters: IFindJobsByCriteriaBody = {
-      resourceId: productId,
-      productType,
-      isCleaned: false,
-      shouldReturnTasks: false,
-      statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS, OperationStatus.FAILED, OperationStatus.SUSPENDED],
-      types: forbiddenParallel,
-    };
-    const jobs = await this.jobManagerWrapper.findJobs<Record<string, unknown>, ValidationTaskParameters>(findJobParameters);
-    return jobs;
   }
 
   @withSpanAsyncV4
