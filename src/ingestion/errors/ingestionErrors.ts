@@ -24,9 +24,3 @@ export class ValidationError extends Error {
   }
 }
 
-export class PixelSizeError extends ValidationError {
-  public constructor(partsDataName: string, index: number, description: string) {
-    const message = `error in part: ${partsDataName} at index ${index}. ${description}`;
-    super(message);
-  }
-}
