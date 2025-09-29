@@ -124,7 +124,7 @@ export class IngestionManager {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('IngestionManager.newLayer');
 
-    await this.ingestionNewValidations(newLayer);
+    await this.newValidations(newLayer);
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
@@ -228,9 +228,9 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async ingestionNewValidations(rasterIngestionLayer: IngestionNewLayer): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.ingestionNewValidations.name };
-    const { metadata, inputFiles } = rasterIngestionLayer;
+  private async newValidations(newLayer: IngestionNewLayer): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.newValidations.name };
+    const { metadata, inputFiles } = newLayer;
     this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, inputFiles }, logCtx: logCtx });
     this.logger.info({
       productId: metadata.productId,
