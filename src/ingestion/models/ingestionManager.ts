@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
-import { ICreateJobResponse, IFindJobsByCriteriaBody, IJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
+import { ICreateJobResponse, IFindJobsByCriteriaBody, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { getMapServingLayerName, InputFiles, type RasterProductTypes } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
@@ -15,7 +15,7 @@ import { MapProxyClient } from '../../serviceClients/mapProxyClient';
 import { Checksum } from '../../utils/hash/checksum';
 import { LogContext } from '../../utils/logger/logContext';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import type { ResponseId, SourcesValidationResponse, ValidationTaskParameters } from '../interfaces';
+import type { ResponseId, SourcesValidationResponse } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
