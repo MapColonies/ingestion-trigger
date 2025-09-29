@@ -22,7 +22,7 @@ export class IngestionController {
     private readonly ingestionManager: IngestionManager
   ) {}
 
-  public createLayer: NewLayerHandler = async (req, res, next) => {
+  public newLayer: NewLayerHandler = async (req, res, next) => {
     try {
       const validNewLayerRequestBody = await this.schemasValidator.validateNewLayerRequest(req.body);
       const response = await this.ingestionManager.newLayer(validNewLayerRequestBody);
