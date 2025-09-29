@@ -1,5 +1,5 @@
 import { Logger } from '@map-colonies/js-logger';
-import { ICreateJobBody, ICreateJobResponse, IJobResponse, ITaskResponse, JobManagerClient, OperationStatus } from '@map-colonies/mc-priority-queue';
+import { ICreateJobBody, ICreateJobResponse, JobManagerClient, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { IHttpRetryConfig } from '@map-colonies/mc-utils';
 import type { IngestionNewJobParams, IngestionSwapUpdateJobParams, IngestionUpdateJobParams } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
@@ -44,8 +44,25 @@ export class JobManagerWrapper extends JobManagerClient {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('jobManagerWrapper.createValidationJob');
     const taskParams: ValidationTaskParameters = { checksums: [checksum] };
+
     try {
-      const jobResponse = await this.createNewJob(data, this.ingestionNewJobType, this.validationTaskType, taskParams);
+      const ingestionNewJobParams: IngestionNewJobParams = {
+        ...data,
+        additionalParams: { jobTrackerServiceURL: this.jobTrackerServiceUrl },
+      };
+      const initialProductVersion = '1.0';
+      const createJobRequest: ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> = {
+        resourceId: data.metadata.productId,
+        version: initialProductVersion,
+        type: this.ingestionNewJobType,
+        status: OperationStatus.PENDING,
+        parameters: ingestionNewJobParams,
+        productName: data.metadata.productName,
+        productType: data.metadata.productType,
+        domain: this.jobDomain,
+        tasks: [{ type: this.validationTaskType, parameters: taskParams }],
+      };
+      const jobResponse = await this.createJob(createJobRequest);
       return jobResponse;
     } catch (err) {
       const message = 'failed to create a new validation job';
@@ -67,83 +84,34 @@ export class JobManagerWrapper extends JobManagerClient {
     const taskParams: ValidationTaskParameters = { checksums: [checksum] };
 
     try {
-      const jobResponse = await this.createUpdateJob(layerDetails, catalogId, data, jobType, this.validationTaskType, taskParams);
+      const { productId, productName, productType, productVersion, tileOutputFormat, displayPath, footprint } = layerDetails;
+      const ingestionUpdateJobParams: IngestionUpdateJobParams | IngestionSwapUpdateJobParams = {
+        ...data,
+        additionalParams: {
+          footprint,
+          tileOutputFormat,
+          jobTrackerServiceURL: this.jobTrackerServiceUrl,
+          ...(jobType === this.updateJobType && { displayPath }),
+        },
+      };
+      const createJobRequest: ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> = {
+        resourceId: productId,
+        version: (parseFloat(productVersion) + 1).toFixed(1),
+        internalId: catalogId,
+        type: jobType,
+        productName: productName,
+        productType: productType,
+        status: OperationStatus.PENDING,
+        parameters: ingestionUpdateJobParams,
+        domain: this.jobDomain,
+        tasks: [{ type: this.validationTaskType, parameters: taskParams }],
+      };
+      const jobResponse = await this.createJob(createJobRequest);
       return jobResponse;
     } catch (err) {
       const message = 'failed to create a new validation update job';
-      this.logger.error({ msg: message, jobType: jobType, taskType: this.validationTaskType, err, layer: data });
+      this.logger.error({ msg: message, jobType, taskType: this.validationTaskType, err, layer: data });
       throw err;
     }
   }
-
-  @withSpanAsyncV4
-  private async createNewJob(
-    data: IngestionNewLayer,
-    jobType: string,
-    taskType: string,
-    taskParams: ValidationTaskParameters
-  ): Promise<ICreateJobResponse> {
-    const createLayerTasksUrl = `/jobs`;
-    const ingestionNewJobParams: IngestionNewJobParams = {
-      ...data,
-      additionalParams: { jobTrackerServiceURL: this.jobTrackerServiceUrl },
-    };
-    const initialProductVersion = '1.0';
-    const createJobRequest: CreateJobBody = {
-      resourceId: data.metadata.productId,
-      version: initialProductVersion,
-      type: jobType,
-      status: OperationStatus.PENDING,
-      parameters: ingestionNewJobParams,
-      productName: data.metadata.productName,
-      productType: data.metadata.productType,
-      domain: this.jobDomain,
-      tasks: [{ type: taskType, parameters: taskParams }],
-    };
-    const res = await this.post<ICreateJobResponse>(createLayerTasksUrl, createJobRequest);
-    return res;
-  }
-
-  @withSpanAsyncV4
-  private async createUpdateJob(
-    layerDetails: LayerDetails,
-    catalogId: string,
-    data: IngestionUpdateLayer,
-    jobType: string,
-    taskType: string,
-    taskParams: ValidationTaskParameters
-  ): Promise<ICreateJobResponse> {
-    const createLayerTasksUrl = `/jobs`;
-    const { productId, productName, productType, productVersion, tileOutputFormat, displayPath, footprint } = layerDetails;
-    const ingestionUpdateJobParams: IngestionUpdateJobParams | IngestionSwapUpdateJobParams = {
-      ...data,
-      additionalParams: {
-        footprint,
-        tileOutputFormat,
-        jobTrackerServiceURL: this.jobTrackerServiceUrl,
-        ...(jobType === this.updateJobType && { displayPath }),
-      },
-    };
-    const createJobRequest: CreateJobBody = {
-      resourceId: productId,
-      version: (parseFloat(productVersion) + 1).toFixed(1),
-      internalId: catalogId,
-      type: jobType,
-      productName: productName,
-      productType: productType,
-      status: OperationStatus.PENDING,
-      parameters: ingestionUpdateJobParams,
-      domain: this.jobDomain,
-      tasks: [{ type: taskType, parameters: taskParams }],
-    };
-    const res = await this.post<ICreateJobResponse>(createLayerTasksUrl, createJobRequest);
-    return res;
-  }
 }
-
-export type JobResponse = IJobResponse<Record<string, unknown>, ValidationTaskParameters>;
-export type TaskResponse = ITaskResponse<ValidationTaskParameters>;
-export type CreateJobBody = ICreateJobBody<
-  IngestionNewJobParams | IngestionUpdateJobParams | IngestionSwapUpdateJobParams,
-  ValidationTaskParameters
->;
