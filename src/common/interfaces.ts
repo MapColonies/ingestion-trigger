@@ -1,5 +1,5 @@
-import { IRasterCatalogUpsertRequestBody, TileOutputFormat } from '@map-colonies/mc-model-types';
-import type { RasterProductTypes } from '@map-colonies/raster-shared';
+import { IRasterCatalogUpsertRequestBody } from '@map-colonies/mc-model-types';
+import type { RasterProductTypes, TileOutputFormat } from '@map-colonies/raster-shared';
 import { Polygon } from 'geojson';
 
 export interface IConfig {
