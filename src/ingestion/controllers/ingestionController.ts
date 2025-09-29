@@ -25,7 +25,7 @@ export class IngestionController {
   public createLayer: NewLayerHandler = async (req, res, next) => {
     try {
       const validNewLayerRequestBody = await this.schemasValidator.validateNewLayerRequest(req.body);
-      const response = await this.ingestionManager.ingestNewLayer(validNewLayerRequestBody);
+      const response = await this.ingestionManager.newLayer(validNewLayerRequestBody);
 
       res.status(StatusCodes.OK).send(response);
     } catch (error) {

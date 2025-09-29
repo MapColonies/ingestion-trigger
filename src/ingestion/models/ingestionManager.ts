@@ -119,10 +119,10 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  public async ingestNewLayer(newLayer: IngestionNewLayer): Promise<ResponseId> {
-    const logCtx: LogContext = { ...this.logContext, function: this.ingestNewLayer.name };
+  public async newLayer(newLayer: IngestionNewLayer): Promise<ResponseId> {
+    const logCtx: LogContext = { ...this.logContext, function: this.newLayer.name };
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('IngestionManager.ingestNewLayer');
+    activeSpan?.updateName('IngestionManager.newLayer');
 
     await this.ingestionNewValidations(newLayer);
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
@@ -136,7 +136,7 @@ export class IngestionManager {
 
     activeSpan
       ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.ingestNewLayer.success', { triggerSuccess: true, jobId, taskId: taskIds[0] });
+      .addEvent('ingestionManager.newLayer.success', { triggerSuccess: true, jobId, taskId: taskIds[0] });
     this.logger.info({
       msg: `new ingestion job and validation task were created. jobId: ${jobId}, taskId: ${taskIds[0]}`,
       logContext: logCtx,
