@@ -205,8 +205,10 @@ export class IngestionManager {
       msg: 'started validation on update layer request',
       logCtx: logCtx,
     });
+    // validate input files (gpkgs, metadata shp, product shp files)
     await this.validateInputFiles(inputFiles);
 
+    // validate against catalog, mapproxy, job-manager
     const layerName = getMapServingLayerName(productId, productType);
     await this.validateLayerExistsInMapProxy(layerName);
     await this.validateNoParallelJobs(productId, productType);
@@ -217,6 +219,8 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async newLayerValidations(newLayer: IngestionNewLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.newLayerValidations.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('ingestionManager.newLayerValidations');
 
     const { metadata, inputFiles } = newLayer;
     this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, inputFiles }, logCtx: logCtx });
