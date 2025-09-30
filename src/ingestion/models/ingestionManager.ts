@@ -1,8 +1,15 @@
 import { join } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
-import { ICreateJobResponse, IFindJobsByCriteriaBody, OperationStatus } from '@map-colonies/mc-priority-queue';
-import { getMapServingLayerName, type InputFiles, type RasterProductTypes } from '@map-colonies/raster-shared';
+import { IFindJobsByCriteriaBody, OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
+import {
+  getMapServingLayerName,
+  type IngestionNewJobParams,
+  type IngestionSwapUpdateJobParams,
+  type IngestionUpdateJobParams,
+  type InputFiles,
+  type RasterProductTypes,
+} from '@map-colonies/raster-shared';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
@@ -16,7 +23,7 @@ import { Checksum } from '../../utils/hash/checksum';
 import { Checksum as IChecksum } from '../../utils/hash/interface';
 import { LogContext } from '../../utils/logger/logContext';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import type { ResponseId, SourcesValidationResponse } from '../interfaces';
+import type { ResponseId, SourcesValidationResponse, ValidationTaskParameters } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import { layerDetailsSchema } from '../schemas/layerDetailsSchema';
@@ -29,11 +36,15 @@ import { ProductManager } from './productManager';
 @injectable()
 export class IngestionManager {
   private readonly logContext: LogContext;
+  private readonly jobDomain: string;
+  private readonly ingestionNewJobType: string;
   private readonly forbiddenJobTypes: string[];
   private readonly supportedIngestionSwapTypes: ISupportedIngestionSwapTypes[];
   private readonly updateJobType: string;
   private readonly swapUpdateJobType: string;
+  private readonly validationTaskType: string;
   private readonly sourceMount: string;
+  private readonly jobTrackerServiceUrl: string;
 
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
@@ -52,11 +63,15 @@ export class IngestionManager {
       fileName: __filename,
       class: IngestionManager.name,
     };
+    this.jobDomain = config.get<string>('jobManager.jobDomain');
+    this.ingestionNewJobType = config.get<string>('jobManager.ingestionNewJobType');
     this.forbiddenJobTypes = this.config.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
     this.supportedIngestionSwapTypes = this.config.get<ISupportedIngestionSwapTypes[]>('jobManager.supportedIngestionSwapTypes');
     this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
     this.swapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
+    this.validationTaskType = config.get<string>('jobManager.validationTaskType');
     this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
+    this.jobTrackerServiceUrl = config.get<string>('services.jobTrackerServiceURL');
   }
 
   @withSpanAsyncV4
@@ -130,16 +145,16 @@ export class IngestionManager {
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
-    const checksum = await this.getFileChecksum(newLayer.inputFiles.metadataShapefilePath);
-    const { id: jobId, taskIds } = await this.jobManagerWrapper.createValidationJob(newLayer, checksum);
+    const createJobRequest = await this.newLayerJobPayload(newLayer);
+    const { id: jobId, taskIds } = await this.jobManagerWrapper.createNewJob(createJobRequest);
 
-    activeSpan
-      ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.newLayer.success', { triggerSuccess: true, jobId, taskId: taskIds[0] });
     this.logger.info({
       msg: `new ingestion job and validation task were created. jobId: ${jobId}, taskId: ${taskIds[0]}`,
       logContext: logCtx,
     });
+    activeSpan
+      ?.setStatus({ code: SpanStatusCode.OK })
+      .addEvent('ingestionManager.newLayer.success', { triggerSuccess: true, jobId, taskId: taskIds[0] });
 
     return { jobId, taskIds };
   }
@@ -156,7 +171,9 @@ export class IngestionManager {
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
-    const { id: jobId, taskIds } = await this.createUpdateJob(catalogId, layerDetails, updateLayer);
+    const createJobRequest = await this.updateLayerJobPayload(catalogId, layerDetails, updateLayer);
+    const { id: jobId, taskIds } = await this.jobManagerWrapper.createNewJob(createJobRequest);
+
     this.logger.info({
       msg: `new update job and validation task were created. jobId: ${jobId}, taskId: ${taskIds[0]} `,
       logContext: logCtx,
@@ -166,17 +183,6 @@ export class IngestionManager {
       .addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId: taskIds[0] });
 
     return { jobId, taskIds };
-  }
-
-  @withSpanAsyncV4
-  private async createUpdateJob(catalogId: string, layerDetails: LayerDetails, updateLayer: IngestionUpdateLayer): Promise<ICreateJobResponse> {
-    const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
-      return supportedSwapObj.productType === layerDetails.productType && supportedSwapObj.productSubType === layerDetails.productSubType;
-    });
-
-    const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
-    const checksum = await this.getFileChecksum(updateLayer.inputFiles.metadataShapefilePath);
-    return this.jobManagerWrapper.createValidationUpdateJob(layerDetails, catalogId, updateLayer, updateJobAction, checksum);
   }
 
   @withSpanAsyncV4
@@ -354,6 +360,69 @@ export class IngestionManager {
 
     const layerDetails = layerDetailsSchema.parse(layersDetails[0].metadata);
     return layerDetails;
+  }
+
+  @withSpanAsyncV4
+  private async newLayerJobPayload(newLayer: IngestionNewLayer): Promise<ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters>> {
+    const checksum = await this.getFileChecksum(newLayer.inputFiles.metadataShapefilePath);
+    const taskParams: ValidationTaskParameters = { checksums: [checksum] };
+
+    const ingestionNewJobParams: IngestionNewJobParams = {
+      ...newLayer,
+      additionalParams: { jobTrackerServiceURL: this.jobTrackerServiceUrl },
+    };
+    const initialProductVersion = '1.0';
+    const createJobRequest: ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> = {
+      resourceId: newLayer.metadata.productId,
+      version: initialProductVersion,
+      type: this.ingestionNewJobType,
+      status: OperationStatus.PENDING,
+      parameters: ingestionNewJobParams,
+      productName: newLayer.metadata.productName,
+      productType: newLayer.metadata.productType,
+      domain: this.jobDomain,
+      tasks: [{ type: this.validationTaskType, parameters: taskParams }],
+    };
+    return createJobRequest;
+  }
+
+  @withSpanAsyncV4
+  private async updateLayerJobPayload(
+    catalogId: string,
+    layerDetails: LayerDetails,
+    updateLayer: IngestionUpdateLayer
+  ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters>> {
+    const { productId, productName, productType, productSubType, productVersion, tileOutputFormat, displayPath, footprint } = layerDetails;
+    const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
+      return supportedSwapObj.productType === productType && supportedSwapObj.productSubType === productSubType;
+    });
+    const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
+
+    const checksum = await this.getFileChecksum(updateLayer.inputFiles.metadataShapefilePath);
+    const taskParams: ValidationTaskParameters = { checksums: [checksum] };
+
+    const ingestionUpdateJobParams: IngestionUpdateJobParams | IngestionSwapUpdateJobParams = {
+      ...updateLayer,
+      additionalParams: {
+        footprint,
+        tileOutputFormat,
+        jobTrackerServiceURL: this.jobTrackerServiceUrl,
+        ...(updateJobAction === this.updateJobType && { displayPath }),
+      },
+    };
+    const createJobRequest: ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> = {
+      resourceId: productId,
+      version: (parseFloat(productVersion) + 1).toFixed(1),
+      internalId: catalogId,
+      type: updateJobAction,
+      productName,
+      productType,
+      status: OperationStatus.PENDING,
+      parameters: ingestionUpdateJobParams,
+      domain: this.jobDomain,
+      tasks: [{ type: this.validationTaskType, parameters: taskParams }],
+    };
+    return createJobRequest;
   }
 
   @withSpanAsyncV4
