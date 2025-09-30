@@ -26,14 +26,14 @@ export class JobManagerWrapper extends JobManagerClient {
   }
 
   @withSpanAsyncV4
-  public async createJob(
+  public async createNewJob(
     payload: ICreateJobBody<IngestionNewJobParams | IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters>
   ): Promise<ICreateJobResponse> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('jobManagerWrapper.createJobWrapper');
 
     try {
-      const jobResponse = await this.createNewJob(payload);
+      const jobResponse = await this.createJob(payload);
       return jobResponse;
     } catch (err) {
       const message = 'failed to create a new job';
