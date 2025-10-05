@@ -73,5 +73,4 @@ export class SourceValidator {
     activeSpan?.addEvent('sourceValidator.validateFilesExist.valid');
     this.logger.debug({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullPaths } });
   }
-
 }
