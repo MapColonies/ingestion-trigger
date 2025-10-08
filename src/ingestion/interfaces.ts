@@ -7,8 +7,9 @@ export interface SourcesValidationResponse {
   message: string;
 }
 
-export interface ResponseId extends Omit<ICreateJobResponse, 'id'> {
-  jobId: ICreateJobResponse['id'];
+export interface IngestionResponseIds {
+  jobId: string;
+  taskId: string;
 }
 
 export interface IRecordRequestParams {

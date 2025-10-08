@@ -23,7 +23,7 @@ import { Checksum } from '../../utils/hash/checksum';
 import { Checksum as IChecksum } from '../../utils/hash/interface';
 import { LogContext } from '../../utils/logger/logContext';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import type { ResponseId, SourcesValidationResponse, ValidationTaskParameters } from '../interfaces';
+import type { IngestionResponseIds, SourcesValidationResponse, ValidationTaskParameters } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import { layerDetailsSchema } from '../schemas/layerDetailsSchema';
@@ -136,7 +136,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  public async newLayer(newLayer: IngestionNewLayer): Promise<ResponseId> {
+  public async newLayer(newLayer: IngestionNewLayer): Promise<IngestionResponseIds> {
     const logCtx: LogContext = { ...this.logContext, function: this.newLayer.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.newLayer');
@@ -147,20 +147,21 @@ export class IngestionManager {
 
     const createJobRequest = await this.newLayerJobPayload(newLayer);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createNewJob(createJobRequest);
+    const taskId = taskIds[0];
 
     this.logger.info({
-      msg: `new ingestion job and validation task were created. jobId: ${jobId}, taskId: ${taskIds[0]}`,
+      msg: `new ingestion job and validation task were created. jobId: ${jobId}, taskId: ${taskId}`,
       logContext: logCtx,
     });
     activeSpan
       ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.newLayer.success', { triggerSuccess: true, jobId, taskId: taskIds[0] });
+      .addEvent('ingestionManager.newLayer.success', { triggerSuccess: true, jobId, taskId });
 
-    return { jobId, taskIds };
+    return { jobId, taskId };
   }
 
   @withSpanAsyncV4
-  public async updateLayer(catalogId: string, updateLayer: IngestionUpdateLayer): Promise<ResponseId> {
+  public async updateLayer(catalogId: string, updateLayer: IngestionUpdateLayer): Promise<IngestionResponseIds> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayer.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.updateLayer');
@@ -173,16 +174,17 @@ export class IngestionManager {
 
     const createJobRequest = await this.updateLayerJobPayload(catalogId, layerDetails, updateLayer);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createNewJob(createJobRequest);
+    const taskId = taskIds[0];
 
     this.logger.info({
-      msg: `new update job and validation task were created. jobId: ${jobId}, taskId: ${taskIds[0]} `,
+      msg: `new update job and validation task were created. jobId: ${jobId}, taskId: ${taskId} `,
       logContext: logCtx,
     });
     activeSpan
       ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId: taskIds[0] });
+      .addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId });
 
-    return { jobId, taskIds };
+    return { jobId, taskId };
   }
 
   @withSpanAsyncV4
