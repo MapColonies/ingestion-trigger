@@ -1,18 +1,15 @@
-import { promises as fsPromises, constants as fsConstants } from 'node:fs';
+import { constants as fsConstants, promises as fsPromises } from 'node:fs';
 import { join } from 'node:path';
-import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
-import { IConfig } from 'config';
-import { trace, Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
-import { FileNotFoundError, ValidationError } from '../errors/ingestionErrors';
-import { LogContext } from '../../utils/logger/logContext';
+import { trace, Tracer } from '@opentelemetry/api';
+import { IConfig } from 'config';
+import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { GpkgManager } from '../models/gpkgManager';
+import { LogContext } from '../../utils/logger/logContext';
+import { FileNotFoundError } from '../errors/ingestionErrors';
 import { GdalInfoManager } from '../models/gdalInfoManager';
-import { GeoJSON, Geometry, MultiPolygon, Feature, Polygon } from 'geojson';
-import { extentBuffer } from '../../utils/geometry';
-import booleanContains from '@turf/boolean-contains';
+import { GpkgManager } from '../models/gpkgManager';
 
 @injectable()
 export class SourceValidator {
