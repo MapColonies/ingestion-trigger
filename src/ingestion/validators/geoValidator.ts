@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { Geometry, Polygon } from 'geojson';
 import booleanContains from '@turf/boolean-contains';
 import { inject, injectable } from 'tsyringe';
@@ -20,7 +19,7 @@ export class GeoValidator {
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
-    @inject(SERVICES.TRACER) public readonly tracer: Tracer,
+    @inject(SERVICES.TRACER) public readonly tracer: Tracer
   ) {
     this.logContext = {
       fileName: __filename,
@@ -30,20 +29,20 @@ export class GeoValidator {
   }
 
   @withSpanV4
-  public async validate(infoDataFiles: InfoDataWithFile[], productGeometry: AllowedProductGeometry): Promise<void> {
+  public validate(infoDataFiles: InfoDataWithFile[], productGeometry: AllowedProductGeometry): void {
     const logCtx = { ...this.logContext, function: this.validate.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('GeoValidator.validate');
     // create combined extent from gpkg info data result
     const features = extractPolygons(infoDataFiles);
-    //combine all gpkgs sources files geometries (footprints)
+    // combine all gpkgs sources files geometries (footprints)
     const combinedExtent = combineExtentPolygons(features);
     this.logger.debug({ msg: 'created combined extent', logContext: logCtx, metadata: { combinedExtent } });
     const gpkgBufferedExtent = extentBuffer(this.extentBufferInMeters, combinedExtent);
     if (gpkgBufferedExtent === undefined) {
       throw new Error('buffered gpkg extent is undefined');
     }
-    // // read "product.shp" file to check is contained within gpkg extent
+    // read "product.shp" file to check is contained within gpkg extent
     const hasFootprintCorrelation = this.hasFootprintCorrelation(gpkgBufferedExtent.geometry, productGeometry);
     if (!hasFootprintCorrelation) {
       const errorMessage = 'product footprint is not contained by gpkg combined extent';
@@ -62,7 +61,7 @@ export class GeoValidator {
     let isValid: boolean = true;
     activeSpan?.updateName('GeoValidator.hasFootprintCorrelation');
     if (productGeometry.type === ProudctGeometry.MULTI_POLYGON) {
-      productGeometry.coordinates.forEach(coordinate => {
+      productGeometry.coordinates.forEach((coordinate) => {
         const polygon: Polygon = { type: 'Polygon', coordinates: coordinate };
         if (!booleanContains(gpkgGeometry, polygon)) {
           activeSpan?.addEvent('GeoValidator.hasFootprintCorrelation.false', {

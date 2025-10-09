@@ -336,7 +336,7 @@ export class IngestionManager {
     // validate new ingestion product.shp against gpkg data extent
     const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
     const productGeometry = await this.productManager.extractAndRead(productShapefilePath);
-    await this.geoValidator.validate(infoData, productGeometry);
+    this.geoValidator.validate(infoData, productGeometry);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
   }
 
