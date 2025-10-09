@@ -24,7 +24,7 @@ describe('gdalUtilities', () => {
 
   describe('getInfoData', () => {
     it('should extract CRS, fileFormat, pixelSize and footprint from gpkg file', async () => {
-      const filePath = 'tests/mocks/test_files/(valid)indexed.gpkg';
+      const filePath = 'tests/mocks/testFiles/(valid)indexed.gpkg';
       const result = await gdalUtilities.getInfoData(filePath);
       const expected = expectedGdalUtilitiesValues.validResponse;
       expect(result).toStrictEqual(expected);
@@ -32,14 +32,14 @@ describe('gdalUtilities', () => {
 
     //Added this test to make sure that pixelSize is not a rounded number but the exact number resolution
     it('should extract CRS, fileFormat, pixelSize and footprint from gpkg file with zoom level 21', async () => {
-      const filePath = 'tests/mocks/test_files/zoom21.gpkg';
+      const filePath = 'tests/mocks/testFiles/zoom21.gpkg';
       const result = await gdalUtilities.getInfoData(filePath);
       const expected = expectedGdalUtilitiesValues.validResponseZoom21;
       expect(result).toStrictEqual(expected);
     });
 
     it('should throw error when fails to create dataset', async () => {
-      const filePath = 'tests/mocks/test_files/invalidFile.gpkg';
+      const filePath = 'tests/mocks/testFiles/invalidFile.gpkg';
       const action = async () => gdalUtilities.getInfoData(filePath);
       await expect(action).rejects.toThrow(Error);
     });

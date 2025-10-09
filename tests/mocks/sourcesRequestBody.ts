@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function getFakeIngestionSources() {
-  const sourceDirectory = 'test_files';
+  const sourceDirectory = 'testFiles';
   return {
     validSources: {
       validInputFiles: {
