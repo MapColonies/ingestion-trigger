@@ -1,20 +1,60 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { InputFiles, PolygonPart, TileOutputFormat } from '@map-colonies/mc-model-types';
+import { TileOutputFormat } from '@map-colonies/mc-model-types';
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
-import { RasterProductTypes, type UpdateRasterLayerMetadata } from '@map-colonies/raster-shared';
+import { RasterProductTypes } from '@map-colonies/raster-shared';
 import { Polygon } from 'geojson';
+import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
+import { createUpdateLayerRequest } from '../utils/faker';
 
-export const updateLayerRequest = {
-  valid: {
+export const validUpdateLayerRequest = {
+  valid: createUpdateLayerRequest({
+    inputFiles: {
+      gpkgFilesPath: ['(valid)indexed.gpkg'],
+      productShapefilePath: '(valid)indexed',
+      metadataShapefilePath: '(valid)indexed',
+    },
+  }),
+} satisfies Record<string, IngestionUpdateLayer>;
+
+export const invalidUpdateLayerRequest = {
+  metadata: createUpdateLayerRequest({
+    metadata: { classification: '' },
+    inputFiles: {
+      gpkgFilesPath: ['(valid)indexed.gpkg'],
+      metadataShapefilePath: '(valid)indexed',
+      productShapefilePath: '(valid)indexed',
+    },
+  }),
+  notContainedPolygon: createUpdateLayerRequest({
+    inputFiles: {
+      gpkgFilesPath: ['(valid)indexed.gpkg'],
+      metadataShapefilePath: '(valid)indexed',
+      productShapefilePath: 'blueMarble',
+    },
+  }),
+  gdalInfo: createUpdateLayerRequest({
+    inputFiles: { gpkgFilesPath: ['invalidCrs(3857).gpkg'], metadataShapefilePath: '(valid)indexed', productShapefilePath: '(valid)indexed' },
+  }),
+} satisfies Record<string, IngestionUpdateLayer>;
+
+export const updateSwapJobRequest = {
+  resourceId: 'blueMarble_test_2',
+  version: '2.0',
+  internalId: '14460cdd-44ae-4a04-944f-29e907b6cd2a',
+  type: 'Ingestion_Swap_Update',
+  productName: 'blueMarble_test_2',
+  productType: RasterProductTypes.RASTER_VECTOR_BEST,
+  status: 'Pending',
+  parameters: {
     metadata: {
       classification: '6',
-    } as UpdateRasterLayerMetadata,
+    },
     partsData: [
       {
         sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
         sourceName: 'string',
-        imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
-        imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
+        imagingTimeBeginUTC: '2024-06-17T12:00:00.000Z',
+        imagingTimeEndUTC: '2024-06-18T12:00:00.000Z',
         resolutionDegree: 0.703125,
         resolutionMeter: 8000,
         sourceResolutionMeter: 8000,
@@ -36,128 +76,42 @@ export const updateLayerRequest = {
           ],
         },
       },
-    ] as PolygonPart[],
+    ],
     inputFiles: {
-      originDirectory: 'test_files',
+      originDirectory: 'testFiles',
       fileNames: ['valid(blueMarble).gpkg'],
-    } as InputFiles,
-  },
-  invalid: {
-    metadata: {
-      metadata: {
-        classification: '1000',
-      } as UpdateRasterLayerMetadata,
-      partsData: [
-        {
-          sourceId: 'invalid !',
-          sourceName: 'string',
-          imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
-          imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
-          resolutionDegree: 0.703125,
-          resolutionMeter: 8000,
-          sourceResolutionMeter: 8000,
-          horizontalAccuracyCE90: 10,
-          sensors: ['string'],
-          countries: ['string'],
-          cities: ['string'],
-          description: 'string',
-          footprint: {
-            type: 'Polygon',
-            coordinates: [
-              [
-                [34.85149443279957, 32.30543192283443],
-                [34.85149443279957, 32.29430955805424],
-                [34.86824157112912, 32.29430955805424],
-                [34.86824157112912, 32.30543192283443],
-                [34.85149443279957, 32.30543192283443],
-              ],
-            ],
-          },
-        },
-      ] as PolygonPart[],
-      inputFiles: {
-        originDirectory: 'string',
-        fileNames: ['example.gpkg'],
-      } as InputFiles,
     },
-    notContainedPolygon: {
-      metadata: {
-        classification: '6',
-      } as UpdateRasterLayerMetadata,
-      partsData: [
-        {
-          sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
-          sourceName: 'string',
-          imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
-          imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
-          resolutionDegree: 0.703125,
-          resolutionMeter: 8000,
-          sourceResolutionMeter: 8000,
-          horizontalAccuracyCE90: 10,
-          sensors: ['string'],
-          countries: ['string'],
-          cities: ['string'],
-          description: 'string',
-          footprint: {
-            type: 'Polygon',
-            coordinates: [
-              [
-                [-180, -90],
-                [-180, 90],
-                [180, 90],
-                [180, -90],
-                [-180, -90],
-              ],
-            ],
-          },
-        },
-      ] as PolygonPart[],
-      inputFiles: {
-        originDirectory: 'test_files',
-        fileNames: ['(valid)indexed.gpkg'],
-      } as InputFiles,
-    },
-    gdalInfo: {
-      metadata: {
-        classification: '6',
-      } as UpdateRasterLayerMetadata,
-      partsData: [
-        {
-          sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
-          sourceName: 'string',
-          imagingTimeBeginUTC: new Date('2024-06-17T12:00:00Z'),
-          imagingTimeEndUTC: new Date('2024-06-18T12:00:00Z'),
-          resolutionDegree: 0.703125,
-          resolutionMeter: 8000,
-          sourceResolutionMeter: 8000,
-          horizontalAccuracyCE90: 10,
-          sensors: ['string'],
-          countries: ['string'],
-          cities: ['string'],
-          description: 'string',
-          footprint: {
-            type: 'Polygon',
-            coordinates: [
-              [
-                [34.85149443279957, 32.30543192283443],
-                [34.85149443279957, 32.29430955805424],
-                [34.86824157112912, 32.29430955805424],
-                [34.86824157112912, 32.30543192283443],
-                [34.85149443279957, 32.30543192283443],
-              ],
-            ],
-          },
-        },
-      ] as PolygonPart[],
-      inputFiles: {
-        originDirectory: 'test_files',
-        fileNames: ['invalidCrs(3857).gpkg'],
-      } as InputFiles,
+    additionalParams: {
+      tileOutputFormat: TileOutputFormat.PNG,
+      jobTrackerServiceURL: 'http://jobTrackerServiceUrl',
+      footprint: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [-180, -90],
+            [-180, 90],
+            [180, 90],
+            [180, -90],
+            [-180, -90],
+          ],
+        ],
+      },
     },
   },
+  domain: 'RASTER',
+  tasks: [
+    {
+      type: 'init',
+      parameters: {
+        blockDuplication: true,
+      },
+    },
+  ],
 };
 
 export const updateRunningJobResponse = [{ status: OperationStatus.IN_PROGRESS, type: 'Ingestion_New' }];
+export type RasterTypes<T extends RasterProductTypes> = `${T}`;
+export type DataValues = RasterTypes<RasterProductTypes>;
 
 export const updateJobRequest = {
   resourceId: 'blueMarble_test_2',
@@ -200,7 +154,7 @@ export const updateJobRequest = {
       },
     ],
     inputFiles: {
-      originDirectory: 'test_files',
+      originDirectory: 'testFiles',
       fileNames: ['valid(blueMarble).gpkg'],
     },
     additionalParams: {
@@ -278,7 +232,7 @@ export const updatedLayer = {
     region: ['string'],
     productId: 'blueMarble_test_2',
     productVersion: '1.0',
-    productType: RasterProductTypes.ORTHOPHOTO,
+    productType: RasterProductTypes.ORTHOPHOTO as RasterProductTypes,
     productSubType: 'string',
     srsName: 'string',
     maxResolutionDeg: 0.072,
@@ -297,7 +251,6 @@ export const updatedLayer = {
         ],
       ],
     } as Polygon,
-    includedInBests: [],
     productBoundingBox: '-180,-90,180,90',
     displayPath: 'd698bf1d-bb66-4292-a8b4-524cbeadf36f',
     transparency: 'TRANSPARENT',
@@ -371,83 +324,10 @@ export const updatedSwapLayer = {
         ],
       ],
     },
-    includedInBests: [],
     productBoundingBox: '-180,-90,180,90',
     displayPath: 'd698bf1d-bb66-4292-a8b4-524cbeadf36f',
     transparency: 'TRANSPARENT',
     tileMimeFormat: 'image/png',
     tileOutputFormat: 'PNG',
   },
-};
-
-export const updateSwapJobRequest = {
-  resourceId: 'blueMarble_test_2',
-  version: '2.0',
-  internalId: '14460cdd-44ae-4a04-944f-29e907b6cd2a',
-  type: 'Ingestion_Swap_Update',
-  productName: 'blueMarble_test_2',
-  productType: RasterProductTypes.RASTER_VECTOR_BEST,
-  status: 'Pending',
-  parameters: {
-    metadata: {
-      classification: '6',
-    },
-    partsData: [
-      {
-        sourceId: 'c5e3f820-b2bd-4f0b-a70f-c98bf33b2692',
-        sourceName: 'string',
-        imagingTimeBeginUTC: '2024-06-17T12:00:00.000Z',
-        imagingTimeEndUTC: '2024-06-18T12:00:00.000Z',
-        resolutionDegree: 0.703125,
-        resolutionMeter: 8000,
-        sourceResolutionMeter: 8000,
-        horizontalAccuracyCE90: 10,
-        sensors: ['string'],
-        countries: ['string'],
-        cities: ['string'],
-        description: 'string',
-        footprint: {
-          type: 'Polygon',
-          coordinates: [
-            [
-              [34.85149443279957, 32.30543192283443],
-              [34.85149443279957, 32.29430955805424],
-              [34.86824157112912, 32.29430955805424],
-              [34.86824157112912, 32.30543192283443],
-              [34.85149443279957, 32.30543192283443],
-            ],
-          ],
-        },
-      },
-    ],
-    inputFiles: {
-      originDirectory: 'test_files',
-      fileNames: ['valid(blueMarble).gpkg'],
-    },
-    additionalParams: {
-      tileOutputFormat: TileOutputFormat.PNG,
-      jobTrackerServiceURL: 'http://jobTrackerServiceUrl',
-      footprint: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [-180, -90],
-            [-180, 90],
-            [180, 90],
-            [180, -90],
-            [-180, -90],
-          ],
-        ],
-      },
-    },
-  },
-  domain: 'RASTER',
-  tasks: [
-    {
-      type: 'init',
-      parameters: {
-        blockDuplication: true,
-      },
-    },
-  ],
 };
