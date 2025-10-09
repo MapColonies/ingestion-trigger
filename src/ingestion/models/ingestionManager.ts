@@ -65,12 +65,12 @@ export class IngestionManager {
     };
     this.jobDomain = config.get<string>('jobManager.jobDomain');
     this.ingestionNewJobType = config.get<string>('jobManager.ingestionNewJobType');
-    this.forbiddenJobTypes = this.config.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
-    this.supportedIngestionSwapTypes = this.config.get<ISupportedIngestionSwapTypes[]>('jobManager.supportedIngestionSwapTypes');
+    this.forbiddenJobTypes = config.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
+    this.supportedIngestionSwapTypes = config.get<ISupportedIngestionSwapTypes[]>('jobManager.supportedIngestionSwapTypes');
     this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
     this.swapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
     this.validationTaskType = config.get<string>('jobManager.validationTaskType');
-    this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
+    this.sourceMount = config.get<string>('storageExplorer.layerSourceDir');
     this.jobTrackerServiceUrl = config.get<string>('services.jobTrackerServiceURL');
   }
 
@@ -147,16 +147,15 @@ export class IngestionManager {
 
     const createJobRequest = await this.newLayerJobPayload(newLayer);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createNewJob(createJobRequest);
+    const taskId = taskIds[0];
 
     this.logger.info({
-      msg: `new ingestion job and validation task were created. jobId: ${jobId}, taskId: ${taskIds[0]}`,
+      msg: `new ingestion job and validation task were created. jobId: ${jobId}, taskId: ${taskId}`,
       logContext: logCtx,
     });
-    activeSpan
-      ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.newLayer.success', { triggerSuccess: true, jobId, taskId: taskIds[0] });
+    activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.newLayer.success', { triggerSuccess: true, jobId, taskId });
 
-    return { jobId, taskIds };
+    return { jobId, taskId };
   }
 
   @withSpanAsyncV4
@@ -173,16 +172,15 @@ export class IngestionManager {
 
     const createJobRequest = await this.updateLayerJobPayload(catalogId, layerDetails, updateLayer);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createNewJob(createJobRequest);
+    const taskId = taskIds[0];
 
     this.logger.info({
-      msg: `new update job and validation task were created. jobId: ${jobId}, taskId: ${taskIds[0]} `,
+      msg: `new update job and validation task were created. jobId: ${jobId}, taskId: ${taskId} `,
       logContext: logCtx,
     });
-    activeSpan
-      ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId: taskIds[0] });
+    activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId });
 
-    return { jobId, taskIds };
+    return { jobId, taskId };
   }
 
   @withSpanAsyncV4

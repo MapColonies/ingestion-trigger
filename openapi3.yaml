@@ -27,7 +27,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessfulResponse'
+                $ref: '#/components/schemas/SuccessfulIngestionResponse'
         '400':
           description: Bad request
           content:
@@ -81,7 +81,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessfulResponse'
+                $ref: '#/components/schemas/SuccessfulIngestionResponse'
         '400':
           description: Bad request
           content:
@@ -329,19 +329,15 @@ components:
       pattern: ^(\/[\w-]+)+\/Product\.zip$
       description: product shape file path
       example: '/path/to/Product.zip'
-    SuccessfulResponse:
+    SuccessfulIngestionResponse:
       type: object
       required:
         - jobId
-        - taskIds
+        - taskId
       properties:
         jobId:
           type: string
           format: uuid
-        taskIds:
-          type: array
-          items:
-            type: string
-            format: uuid
-            minItems: 1
-            maxItems: 1
+        taskId:
+          type: string
+          format: uuid
