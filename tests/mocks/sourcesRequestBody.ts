@@ -1,4 +1,21 @@
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+
+import { faker } from "@faker-js/faker";
+import { InputFiles } from "@map-colonies/raster-shared";
+
+
+const directoryPath = faker.system.directoryPath(); 
+const gpkgFileName = faker.system.commonFileName('gpkg');
+const zipFileName = faker.system.commonFileName('zip');
+const fakeGpkgFilePath = `${directoryPath}/${gpkgFileName}`
+const fakeZipFilePath = `${directoryPath}/${zipFileName}`;;
+
+export const mockInputFiles: InputFiles = {
+    gpkgFilesPath: [fakeGpkgFilePath],
+    metadataShapefilePath: fakeZipFilePath,
+    productShapefilePath: fakeZipFilePath
+};
+
 function getFakeIngestionSources() {
   const sourceDirectory = 'testFiles';
   return {
@@ -6,6 +23,7 @@ function getFakeIngestionSources() {
       validInputFiles: {
         originDirectory: sourceDirectory,
         fileNames: ['valid(blueMarble).gpkg'],
+
       },
       anotherValidInputFiles: {
         originDirectory: sourceDirectory,

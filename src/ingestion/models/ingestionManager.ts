@@ -23,7 +23,7 @@ import { Checksum } from '../../utils/hash/checksum';
 import { Checksum as IChecksum } from '../../utils/hash/interface';
 import { LogContext } from '../../utils/logger/logContext';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import type { IngestionResponseIds, SourcesValidationResponse, ValidationTaskParameters } from '../interfaces';
+import type { ResponseId, SourcesValidationResponse, ValidationTaskParameters } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import { layerDetailsSchema } from '../schemas/layerDetailsSchema';
@@ -136,7 +136,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  public async newLayer(newLayer: IngestionNewLayer): Promise<IngestionResponseIds> {
+  public async newLayer(newLayer: IngestionNewLayer): Promise<ResponseId> {
     const logCtx: LogContext = { ...this.logContext, function: this.newLayer.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.newLayer');
@@ -159,7 +159,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  public async updateLayer(catalogId: string, updateLayer: IngestionUpdateLayer): Promise<IngestionResponseIds> {
+  public async updateLayer(catalogId: string, updateLayer: IngestionUpdateLayer): Promise<ResponseId> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayer.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.updateLayer');

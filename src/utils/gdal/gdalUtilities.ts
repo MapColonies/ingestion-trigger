@@ -32,7 +32,7 @@ export class GdalUtilities {
     activeSpan?.updateName('gdalUtilities.getInfoData');
     try {
       this.logger.debug({ msg: `get gdal info for path: ${filePath}`, logCOntext: logCtx, metadata: { filePath } });
-
+      
       const dataset: gdal.Dataset = await this.getDataset(filePath);
       const infoJsonString = await gdal.infoAsync(dataset, ['-json']);
       const info = await this.parseAndValidateGdalInfo(infoJsonString);
