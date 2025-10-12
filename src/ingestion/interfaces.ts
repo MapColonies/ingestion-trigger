@@ -7,9 +7,9 @@ export interface SourcesValidationResponse {
   message: string;
 }
 
-export interface IngestionResponseIds {
-  jobId: string;
-  taskId: string;
+export interface ResponseId {
+  jobId: ICreateJobResponse['id'];
+  taskId: ICreateJobResponse['taskIds'][number]
 }
 
 export interface IRecordRequestParams {

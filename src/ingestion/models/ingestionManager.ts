@@ -65,12 +65,12 @@ export class IngestionManager {
     };
     this.jobDomain = config.get<string>('jobManager.jobDomain');
     this.ingestionNewJobType = config.get<string>('jobManager.ingestionNewJobType');
-    this.forbiddenJobTypes = this.config.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
-    this.supportedIngestionSwapTypes = this.config.get<ISupportedIngestionSwapTypes[]>('jobManager.supportedIngestionSwapTypes');
+    this.forbiddenJobTypes = config.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
+    this.supportedIngestionSwapTypes = config.get<ISupportedIngestionSwapTypes[]>('jobManager.supportedIngestionSwapTypes');
     this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
     this.swapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
     this.validationTaskType = config.get<string>('jobManager.validationTaskType');
-    this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
+    this.sourceMount = config.get<string>('storageExplorer.layerSourceDir');
     this.jobTrackerServiceUrl = config.get<string>('services.jobTrackerServiceURL');
   }
 
@@ -153,9 +153,7 @@ export class IngestionManager {
       msg: `new ingestion job and validation task were created. jobId: ${jobId}, taskId: ${taskId}`,
       logContext: logCtx,
     });
-    activeSpan
-      ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.newLayer.success', { triggerSuccess: true, jobId, taskId });
+    activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.newLayer.success', { triggerSuccess: true, jobId, taskId });
 
     return { jobId, taskId };
   }
@@ -180,9 +178,7 @@ export class IngestionManager {
       msg: `new update job and validation task were created. jobId: ${jobId}, taskId: ${taskId} `,
       logContext: logCtx,
     });
-    activeSpan
-      ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId });
+    activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId });
 
     return { jobId, taskId };
   }
@@ -340,7 +336,7 @@ export class IngestionManager {
     // validate new ingestion product.shp against gpkg data extent
     const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
     const productGeometry = await this.productManager.extractAndRead(productShapefilePath);
-    await this.geoValidator.validate(infoData, productGeometry);
+    this.geoValidator.validate(infoData, productGeometry);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
   }
 

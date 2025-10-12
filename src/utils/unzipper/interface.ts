@@ -1,5 +1,3 @@
-import type { HashAlgorithm } from './constants';
-
 export interface ShapeReader {
   features: string;
   fileName: string;
@@ -18,7 +16,7 @@ export interface Unzipper {
    */
   unzip: (zipFilePath: string, destinationPath: string) => Promise<void>;
 
-  read: ()
+  read: () => void;
 
   /**
    * Optional method to reset the features list state

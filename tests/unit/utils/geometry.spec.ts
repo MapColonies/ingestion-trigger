@@ -1,7 +1,7 @@
 import { Feature, Polygon } from 'geojson';
 import { extentBuffer, extractPolygons, combineExtentPolygons } from '../../../src/utils/geometry';
 import { init as initMockConfig } from '../../mocks/configMock';
-import { bufferedGeometry } from '../../mocks/test_files/bufferedGeometry';
+import { bufferedGeometry } from '../../mocks/testFiles/bufferedGeometry';
 import { InfoData } from '../../../src/ingestion/schemas/infoDataSchema';
 import { infoDataArray, expectedExtractedPolygons, expectedCombined } from '../../mocks/schemasValidatorMockData';
 
