@@ -2,21 +2,24 @@ import jsLogger from '@map-colonies/js-logger';
 import { IConfig } from 'config'; // Import the correct type for IConfig
 import { trace } from '@opentelemetry/api';
 import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
+import config from 'config';
 import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
-import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
+import { fakeIngestionSources, mockInputFiles } from '../../../mocks/sourcesRequestBody';
 import { InvalidIndexError, UnsupportedGridError, UnsupportedTileSizeError } from '../../../../src/serviceClients/database/errors';
+import { SQLiteClient } from '../../../../src/serviceClients/database/SQLiteClient';
+import { Grid, TileSize } from '../../../../src/ingestion/interfaces';
 
 describe('GpkgManager', () => {
   let gpkgManager: GpkgManager;
-  let validateGpkgIndexSpy: jest.SpyInstance;
-  let validateGpkgGridSpy: jest.SpyInstance;
-  let validateTilesSizeSpy: jest.SpyInstance;
+  let isGpkgIndexExistsSpy: jest.SpyInstance;
+  let getGridSpy: jest.SpyInstance;
+  let getGpkgTileSizeSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    gpkgManager = new GpkgManager(configMock as unknown as IConfig, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
-    validateGpkgIndexSpy = jest.spyOn(gpkgManager as unknown as { validateGpkgIndex: jest.Mock }, 'validateGpkgIndex');
-    validateGpkgGridSpy = jest.spyOn(gpkgManager as unknown as { validateGpkgGrid: jest.Mock }, 'validateGpkgGrid');
-    validateTilesSizeSpy = jest.spyOn(gpkgManager as unknown as { validateTilesSize: jest.Mock }, 'validateTilesSize');
+    gpkgManager = new GpkgManager(config, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
+    isGpkgIndexExistsSpy = jest.spyOn(SQLiteClient.prototype, 'isGpkgIndexExist');
+    getGridSpy = jest.spyOn(SQLiteClient.prototype, 'getGrid');
+    getGpkgTileSizeSpy = jest.spyOn(SQLiteClient.prototype, 'getGpkgTileSize');
 
     registerDefaultConfig();
   });
@@ -27,53 +30,73 @@ describe('GpkgManager', () => {
 
   describe('validateGpkgFiles', () => {
     it('should validate GPKG files and not throw errors', () => {
-      const validInputFiles = fakeIngestionSources.validSources.validInputFiles;
-      const { originDirectory, fileNames } = validInputFiles;
+      const { gpkgFilesPath } = mockInputFiles;
 
-      validateGpkgIndexSpy.mockImplementation(() => undefined);
-      validateGpkgGridSpy.mockImplementation(() => undefined);
-      validateTilesSizeSpy.mockImplementation(() => undefined);
+      isGpkgIndexExistsSpy.mockReturnValue(true);
+      getGridSpy.mockReturnValue(Grid.TWO_ON_ONE);
+      getGpkgTileSizeSpy.mockReturnValue({ height: 256, width: 256 } satisfies TileSize);
 
-      gpkgManager.validateGpkgFiles(originDirectory, fileNames);
+      gpkgManager.validateGpkgFiles(gpkgFilesPath);
 
-      expect(validateGpkgIndexSpy).toHaveBeenCalledWith(originDirectory, fileNames);
-      expect(validateGpkgIndexSpy).not.toThrow();
-      expect(validateGpkgGridSpy).toHaveBeenCalledWith(originDirectory, fileNames);
-      expect(validateGpkgGridSpy).not.toThrow();
-      expect(validateTilesSizeSpy).toHaveBeenCalledWith(originDirectory, fileNames);
-      expect(validateTilesSizeSpy).not.toThrow();
+      expect(isGpkgIndexExistsSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
+      expect(isGpkgIndexExistsSpy).not.toThrow();
+      expect(getGridSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
+      expect(getGridSpy).not.toThrow();
+      expect(getGpkgTileSizeSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
+      expect(getGpkgTileSizeSpy).not.toThrow();
     });
 
-    it('should throw InvalidIndexError if GPKG index does not exist', () => {
-      const inputFiles = fakeIngestionSources.invalidSources.withoutGpkgIndex;
-      const { originDirectory, fileNames } = inputFiles;
+    it('should throw InvalidIndexError if GPKG index does not exists', () => {
+      const { gpkgFilesPath } = mockInputFiles;
 
-      expect(() => gpkgManager.validateGpkgFiles(originDirectory, fileNames)).toThrow(InvalidIndexError);
-      expect(validateGpkgIndexSpy).toHaveBeenCalledWith(originDirectory, fileNames);
+      isGpkgIndexExistsSpy.mockReturnValue(false);
+
+      expect(() => gpkgManager.validateGpkgFiles(gpkgFilesPath)).toThrow(InvalidIndexError);
+
+      expect(isGpkgIndexExistsSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
+      expect(getGridSpy).not.toHaveBeenCalled();
+      expect(getGpkgTileSizeSpy).not.toHaveBeenCalled();
     });
 
     it('should throw UnsupportedGridError if grid type is not supported', () => {
-      const inputFiles = fakeIngestionSources.invalidSources.unsupportedGrid;
-      const { originDirectory, fileNames } = inputFiles;
+      const { gpkgFilesPath } = mockInputFiles;
 
-      expect(() => gpkgManager.validateGpkgFiles(originDirectory, fileNames)).toThrow(UnsupportedGridError);
-      expect(validateGpkgGridSpy).toHaveBeenCalledWith(originDirectory, fileNames);
+      isGpkgIndexExistsSpy.mockReturnValue(true);
+      getGridSpy.mockReturnValue(Grid.ONE_ON_ONE);
+
+      expect(() => gpkgManager.validateGpkgFiles(gpkgFilesPath)).toThrow(UnsupportedGridError);
+
+      expect(isGpkgIndexExistsSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
+      expect(getGridSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
+      expect(getGpkgTileSizeSpy).not.toHaveBeenCalled();
     });
 
     it('should throw UnsupportedTileSizeError if tile width is not supported', () => {
-      const inputFiles = fakeIngestionSources.invalidSources.unsupportedTileWidthSize;
-      const { originDirectory, fileNames } = inputFiles;
+      const { gpkgFilesPath } = mockInputFiles;
 
-      expect(() => gpkgManager.validateGpkgFiles(originDirectory, fileNames)).toThrow(UnsupportedTileSizeError);
-      expect(validateTilesSizeSpy).toHaveBeenCalledWith(originDirectory, fileNames);
+      isGpkgIndexExistsSpy.mockReturnValue(true);
+      getGridSpy.mockReturnValue(Grid.TWO_ON_ONE);
+      getGpkgTileSizeSpy.mockReturnValue({ height: 256, width: 512 } satisfies TileSize);
+
+      expect(() => gpkgManager.validateGpkgFiles(gpkgFilesPath)).toThrow(UnsupportedTileSizeError);
+
+      expect(isGpkgIndexExistsSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
+      expect(getGridSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
+      expect(getGpkgTileSizeSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
     });
 
     it('should throw UnsupportedTileSizeError if tile height is not supported', () => {
-      const inputFiles = fakeIngestionSources.invalidSources.unsupportedTileHeightSize;
-      const { originDirectory, fileNames } = inputFiles;
+      const { gpkgFilesPath } = mockInputFiles;
 
-      expect(() => gpkgManager.validateGpkgFiles(originDirectory, fileNames)).toThrow(UnsupportedTileSizeError);
-      expect(validateTilesSizeSpy).toHaveBeenCalledWith(originDirectory, fileNames);
+      isGpkgIndexExistsSpy.mockReturnValue(true);
+      getGridSpy.mockReturnValue(Grid.TWO_ON_ONE);
+      getGpkgTileSizeSpy.mockReturnValue({ height: 512, width: 256 } satisfies TileSize);
+
+      expect(() => gpkgManager.validateGpkgFiles(gpkgFilesPath)).toThrow(UnsupportedTileSizeError);
+
+      expect(isGpkgIndexExistsSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
+      expect(getGridSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
+      expect(getGpkgTileSizeSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
     });
   });
 });
