@@ -16,9 +16,11 @@ import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLay
 import type { IngestionUpdateMetadata } from '../../src/ingestion/schemas/updateMetadataSchema';
 import type { DeepPartial } from '../utils/types';
 
-// adjust path to test files location
-const TEST_FILES_RELATIVE_PATH = '../mocks/testFiles';
-const TEST_FILES_ABSOLUTE_PATH = normalize(`${__dirname}/${TEST_FILES_RELATIVE_PATH}`);
+// adjust path to test files location relative to source mount
+const TEST_FILES_RELATIVE_PATH = '/testFiles';
+const getTestFilesPath = (): string => {
+  return TEST_FILES_RELATIVE_PATH;
+};
 
 // TODO: fakerHE!!!!! - check hebrew generation
 const generators = {
@@ -204,9 +206,9 @@ const generateUpdateLayerRequest = (): IngestionUpdateLayer => {
 const getTestFilePath = (inputFiles: InputFiles): InputFiles => {
   const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = inputFiles;
   return {
-    gpkgFilesPath: [join(TEST_FILES_ABSOLUTE_PATH, 'gpkg', gpkgFilesPath[0])],
-    metadataShapefilePath: join(TEST_FILES_ABSOLUTE_PATH, 'metadata', metadataShapefilePath, 'ShapeMetadata.zip'),
-    productShapefilePath: join(TEST_FILES_ABSOLUTE_PATH, 'product', productShapefilePath, 'Product.zip'),
+    gpkgFilesPath: [join(getTestFilesPath(), 'gpkg', gpkgFilesPath[0])],
+    metadataShapefilePath: join(getTestFilesPath(), 'metadata', metadataShapefilePath, 'ShapeMetadata.zip'),
+    productShapefilePath: join(getTestFilesPath(), 'product', productShapefilePath, 'Product.zip'),
   };
 };
 /**
