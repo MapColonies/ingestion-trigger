@@ -37,7 +37,7 @@ export class CatalogClient extends HttpClient {
     const req = {
       id: catalogId,
     };
-    const res = this.post<FindRecordResponse>('/records/find', req);
+    const res = await this.post<FindRecordResponse>('/records/find', req);
     activeSpan?.addEvent('catalogClient.findByCatalogId.response', { findByCatalogIdResponse: JSON.stringify(res) });
     return res;
   }
@@ -52,7 +52,7 @@ export class CatalogClient extends HttpClient {
         productType,
       },
     };
-    const res = this.post<FindRecordResponse>('/records/find', req);
+    const res = await this.post<FindRecordResponse>('/records/find', req);
     activeSpan?.addEvent('catalogClient.findByProductIdAndType.response', { findByProductIdAndTypeResponse: JSON.stringify(res) });
     return res;
   }
