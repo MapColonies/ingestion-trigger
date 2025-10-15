@@ -22,7 +22,7 @@ export interface HashProcessor {
    * @param data - The data to include in the hash calculation
    * @returns The hash calculator instance for chaining
    */
-  update: (data: Buffer | string) => HashProcessor;
+  update: (data: string) => HashProcessor;
 
   /**
    * Finalizes the hash calculation and returns the result

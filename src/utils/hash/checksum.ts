@@ -51,7 +51,7 @@ export class Checksum {
 
     const checksum = await new Promise<string>((resolve, reject) => {
       stream.on('data', (chunk) => {
-        this.checksumProcessor.update(Buffer.isBuffer(chunk) ? chunk : String(chunk));
+        this.checksumProcessor.update(String(chunk));
       });
       stream.on('end', () => {
         const digest = this.checksumProcessor.digest();
