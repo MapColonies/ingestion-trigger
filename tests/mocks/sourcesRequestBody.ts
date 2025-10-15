@@ -7,8 +7,9 @@ import { InputFiles } from "@map-colonies/raster-shared";
 const directoryPath = faker.system.directoryPath(); 
 const gpkgFileName = faker.system.commonFileName('gpkg');
 const zipFileName = faker.system.commonFileName('zip');
-const fakeGpkgFilePath = `${directoryPath}/${gpkgFileName}`
-const fakeZipFilePath = `${directoryPath}/${zipFileName}`;;
+const sourceDirectory = 'testFiles';
+const fakeGpkgFilePath = `${sourceDirectory}/${gpkgFileName}`
+const fakeZipFilePath = `${sourceDirectory}/${zipFileName}`;;
 
 export const mockInputFiles: InputFiles = {
     gpkgFilesPath: [fakeGpkgFilePath],
@@ -17,12 +18,10 @@ export const mockInputFiles: InputFiles = {
 };
 
 function getFakeIngestionSources() {
-  const sourceDirectory = 'testFiles';
   return {
     validSources: {
       validInputFiles: {
-        originDirectory: sourceDirectory,
-        fileNames: ['valid(blueMarble).gpkg'],
+        fileNames: ['testDir/valid(blueMarble).gpkg'],
 
       },
       anotherValidInputFiles: {

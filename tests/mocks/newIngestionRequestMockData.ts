@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
+import { ICreateJobBody, ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import type { IngestionNewLayer } from '../../src/ingestion/schemas/ingestionLayerSchema';
 import { createNewLayerRequest } from '../utils/faker';
+import { ValidationTaskParameters } from '../../src/ingestion/interfaces';
+import { IngestionNewJobParams, IngestionUpdateJobParams, RasterProductTypes } from '@map-colonies/raster-shared';
+import { Domain } from '@map-colonies/types';
+import { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
+import { faker } from '@faker-js/faker';
+import { Polygon } from 'geojson';
 
 export const validNewLayerRequest = {
   valid: createNewLayerRequest({
@@ -12,6 +18,7 @@ export const validNewLayerRequest = {
     },
   }),
 } satisfies Record<PropertyKey, IngestionNewLayer>;
+export const ingestionNewRequest: IngestionNewLayer = createNewLayerRequest({ inputFiles: validNewLayerRequest.valid.inputFiles })
 
 export const invalidNewLayerRequest = {
   metadata: createNewLayerRequest({
@@ -40,6 +47,79 @@ export const jobResponse: ICreateJobResponse = {
 };
 
 export const runningJobResponse = [{ status: OperationStatus.IN_PROGRESS, type: 'export' }];
+
+export const ingestionNewJobRequest: ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> = {
+  resourceId: 'BLUE_MARBLE',
+  version: '1.0',
+  type: 'Ingestion_New',
+  productName: 'string',
+  productType: 'Orthophoto',
+  parameters: {
+    metadata: {
+      productId: 'BLUE_2',
+      productName: 'string',
+      productType: RasterProductTypes.ORTHOPHOTO,
+      productSubType: 'string',
+      description: 'string',
+      srs: '4326',
+      srsName: 'WGS84GEO',
+      transparency: 'TRANSPARENT',
+      region: ['string'],
+      classification: '6',
+      producerName: 'string',
+      scale: 100000000,
+    },
+    additionalParams: {
+      jobTrackerServiceURL: 'http://jobTrackerServiceUrl',
+    },
+    inputFiles: validNewLayerRequest.valid.inputFiles,
+    ingestionResolution: 0.703125,
+    callbackUrls: []
+  },
+  domain: Domain.RASTER,
+  tasks: [
+    {
+      type: 'validation',
+      parameters: {
+        checksums: []
+      },
+    },
+  ],
+}
+
+export const ingestionUpdateJobRequest: ICreateJobBody<IngestionUpdateJobParams, ValidationTaskParameters> = {
+  resourceId: 'BLUE_MARBLE',
+  version: '1.0',
+  type: 'Ingestion_New',
+  productName: 'string',
+  productType: 'Orthophoto',
+
+  parameters: {
+    metadata: {
+      classification: '6',
+    },
+    additionalParams: {
+      tileOutputFormat: 'JPEG',
+      displayPath: faker.string.uuid(),
+      footprint: {} as Polygon,
+      jobTrackerServiceURL: 'http://job-tracker-service-url'
+    },
+    inputFiles: validNewLayerRequest.valid.inputFiles,
+    ingestionResolution: 0.703125,
+    callbackUrls: []
+  },
+  domain: Domain.RASTER,
+  tasks: [
+    {
+      type: 'validation',
+      parameters: {
+        checksums: []
+      },
+    },
+  ],
+
+}
+
 
 export const newJobRequest = {
   resourceId: 'BLUE_2',
