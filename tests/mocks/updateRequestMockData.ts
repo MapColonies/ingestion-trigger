@@ -9,9 +9,9 @@ import { createUpdateLayerRequest } from '../utils/faker';
 export const validUpdateLayerRequest = {
   valid: createUpdateLayerRequest({
     inputFiles: {
-      gpkgFilesPath: ['(valid)indexed.gpkg'],
-      productShapefilePath: '(valid)indexed',
-      metadataShapefilePath: '(valid)indexed',
+      gpkgFilesPath: ['validIndexed.gpkg'],
+      productShapefilePath: 'validIndexed',
+      metadataShapefilePath: 'validIndexed',
     },
   }),
 } satisfies Record<string, IngestionUpdateLayer>;
@@ -20,20 +20,20 @@ export const invalidUpdateLayerRequest = {
   metadata: createUpdateLayerRequest({
     metadata: { classification: '' },
     inputFiles: {
-      gpkgFilesPath: ['(valid)indexed.gpkg'],
-      metadataShapefilePath: '(valid)indexed',
-      productShapefilePath: '(valid)indexed',
+      gpkgFilesPath: ['validIndexed.gpkg'],
+      metadataShapefilePath: 'validIndexed',
+      productShapefilePath: 'validIndexed',
     },
   }),
   notContainedPolygon: createUpdateLayerRequest({
     inputFiles: {
-      gpkgFilesPath: ['(valid)indexed.gpkg'],
-      metadataShapefilePath: '(valid)indexed',
+      gpkgFilesPath: ['validIndexed.gpkg'],
+      metadataShapefilePath: 'validIndexed',
       productShapefilePath: 'blueMarble',
     },
   }),
   gdalInfo: createUpdateLayerRequest({
-    inputFiles: { gpkgFilesPath: ['invalidCrs(3857).gpkg'], metadataShapefilePath: '(valid)indexed', productShapefilePath: '(valid)indexed' },
+    inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
   }),
 } satisfies Record<string, IngestionUpdateLayer>;
 
@@ -79,7 +79,7 @@ export const updateSwapJobRequest = {
     ],
     inputFiles: {
       originDirectory: 'testFiles',
-      fileNames: ['valid(blueMarble).gpkg'],
+      fileNames: ['validBlueMarble.gpkg'],
     },
     additionalParams: {
       tileOutputFormat: TileOutputFormat.PNG,
@@ -155,7 +155,7 @@ export const updateJobRequest = {
     ],
     inputFiles: {
       originDirectory: 'testFiles',
-      fileNames: ['valid(blueMarble).gpkg'],
+      fileNames: ['validBlueMarble.gpkg'],
     },
     additionalParams: {
       tileOutputFormat: TileOutputFormat.PNG,

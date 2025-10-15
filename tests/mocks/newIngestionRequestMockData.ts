@@ -6,9 +6,9 @@ import { createNewLayerRequest } from '../utils/faker';
 export const validNewLayerRequest = {
   valid: createNewLayerRequest({
     inputFiles: {
-      gpkgFilesPath: ['(valid)indexed.gpkg'],
-      productShapefilePath: '(valid)indexed',
-      metadataShapefilePath: '(valid)indexed',
+      gpkgFilesPath: ['validIndexed.gpkg'],
+      productShapefilePath: 'validIndexed',
+      metadataShapefilePath: 'validIndexed',
     },
   }),
 } satisfies Record<PropertyKey, IngestionNewLayer>;
@@ -17,20 +17,20 @@ export const invalidNewLayerRequest = {
   metadata: createNewLayerRequest({
     metadata: { productId: 'invalid !' },
     inputFiles: {
-      gpkgFilesPath: ['(valid)indexed.gpkg'],
-      productShapefilePath: '(valid)indexed',
-      metadataShapefilePath: '(valid)indexed',
+      gpkgFilesPath: ['validIndexed.gpkg'],
+      productShapefilePath: 'validIndexed',
+      metadataShapefilePath: 'validIndexed',
     },
   }),
   notContainedPolygon: createNewLayerRequest({
     inputFiles: {
-      gpkgFilesPath: ['(valid)indexed.gpkg'],
-      productShapefilePath: '(valid)indexed',
+      gpkgFilesPath: ['validIndexed.gpkg'],
+      productShapefilePath: 'validIndexed',
       metadataShapefilePath: 'blueMarble',
     },
   }),
   gdalInfo: createNewLayerRequest({
-    inputFiles: { gpkgFilesPath: ['invalidCrs(3857).gpkg'], metadataShapefilePath: '(valid)indexed', productShapefilePath: '(valid)indexed' },
+    inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
   }),
 } satisfies Record<string, IngestionNewLayer>;
 
@@ -91,7 +91,7 @@ export const newJobRequest = {
     ],
     inputFiles: {
       originDirectory: 'testFiles',
-      fileNames: ['valid(blueMarble).gpkg'],
+      fileNames: ['validBlueMarble.gpkg'],
     },
     additionalParams: {
       jobTrackerServiceURL: 'http://jobTrackerServiceUrl',

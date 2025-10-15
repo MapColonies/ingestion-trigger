@@ -18,7 +18,7 @@ export const gdalInfoCases = {
       type: 'Polygon',
     },
     fileFormat: 'GPKG',
-    fileName: 'valid(blueMarble).gpkg',
+    fileName: 'validBlueMarble.gpkg',
     pixelSize: 0.0439453125,
   },
   unsupportedCrs: {

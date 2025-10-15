@@ -5,11 +5,11 @@ function getFakeIngestionSources() {
     validSources: {
       validInputFiles: {
         originDirectory: sourceDirectory,
-        fileNames: ['valid(blueMarble).gpkg'],
+        fileNames: ['validBlueMarble.gpkg'],
       },
       anotherValidInputFiles: {
         originDirectory: sourceDirectory,
-        fileNames: ['valid(blueMarble).gpkg'],
+        fileNames: ['validBlueMarble.gpkg'],
       },
     },
     invalidSources: {
@@ -19,15 +19,15 @@ function getFakeIngestionSources() {
       },
       directoryNotExist: {
         originDirectory: 'notDirectory',
-        fileNames: ['valid(blueMarble).gpkg'],
+        fileNames: ['validBlueMarble.gpkg'],
       },
       unsupportedCrs: {
         originDirectory: sourceDirectory,
-        fileNames: ['invalidCrs(3857).gpkg'],
+        fileNames: ['invalidCrs-3857.gpkg'],
       },
       unsupportedPixelSize: {
         originDirectory: sourceDirectory,
-        fileNames: ['invalidPixelSize(0.8).gpkg'],
+        fileNames: ['invalidPixelSize-0.8.gpkg'],
       },
       withoutGpkgIndex: {
         originDirectory: sourceDirectory,
@@ -39,11 +39,11 @@ function getFakeIngestionSources() {
       },
       unsupportedTileWidthSize: {
         originDirectory: sourceDirectory,
-        fileNames: ['unsupportedTileSize(width=512).gpkg'],
+        fileNames: ['unsupportedTileSize-width-512.gpkg'],
       },
       unsupportedTileHeightSize: {
         originDirectory: sourceDirectory,
-        fileNames: ['unsupportedTileSize(height=512).gpkg'],
+        fileNames: ['unsupportedTileSize-height-512.gpkg'],
       },
     },
     invalidValidation: {
