@@ -2,7 +2,6 @@
 import { TileOutputFormat } from '@map-colonies/mc-model-types';
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
 import { RasterProductTypes } from '@map-colonies/raster-shared';
-import { Polygon } from 'geojson';
 import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
 import { createCatalogLayerResponse, createUpdateLayerRequest } from './mockFactory';
 
