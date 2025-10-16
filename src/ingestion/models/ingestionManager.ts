@@ -146,7 +146,7 @@ export class IngestionManager {
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
     const createJobRequest = await this.newLayerJobPayload(newLayer);
-    const { id: jobId, taskIds } = await this.jobManagerWrapper.createNewJob(createJobRequest);
+    const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
     const taskId = taskIds[0];
 
     this.logger.info({
@@ -171,7 +171,7 @@ export class IngestionManager {
     activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
     const createJobRequest = await this.updateLayerJobPayload(catalogId, layerDetails, updateLayer);
-    const { id: jobId, taskIds } = await this.jobManagerWrapper.createNewJob(createJobRequest);
+    const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
     const taskId = taskIds[0];
 
     this.logger.info({

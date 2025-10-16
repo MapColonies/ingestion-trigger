@@ -26,7 +26,7 @@ export class JobManagerWrapper extends JobManagerClient {
   }
 
   @withSpanAsyncV4
-  public async createNewJob(
+  public async createIngestionJob(
     payload: ICreateJobBody<IngestionNewJobParams | IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters>
   ): Promise<ICreateJobResponse> {
     const activeSpan = trace.getActiveSpan();
