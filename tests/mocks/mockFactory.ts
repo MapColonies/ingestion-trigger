@@ -1,20 +1,20 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { join } from 'node:path';
 import { faker, fakerHE } from '@faker-js/faker';
-import { RecordType, TileOutputFormat, type Link } from '@map-colonies/mc-model-types';
+import { RecordType, TileOutputFormat } from '@map-colonies/mc-model-types';
 import { CORE_VALIDATIONS, INGESTION_VALIDATIONS, RasterProductTypes, Transparency } from '@map-colonies/raster-shared';
 import { RecordStatus, TilesMimeFormat } from '@map-colonies/types';
 import { randomPolygon } from '@turf/turf';
 import type { BBox, Polygon } from 'geojson';
 import merge from 'lodash.merge';
 import { randexp } from 'randexp';
-import type { IFindRasterResponseRecord, IRasterLayerMetadata } from '../../src/common/interfaces';
 import type { IngestionNewLayer } from '../../src/ingestion/schemas/ingestionLayerSchema';
 import type { InputFiles } from '../../src/ingestion/schemas/inputFilesSchema';
+import type { RasterLayersCatalog } from '../../src/ingestion/schemas/layerCatalogSchema';
 import type { IngestionNewMetadata } from '../../src/ingestion/schemas/newMetadataSchema';
 import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
 import type { IngestionUpdateMetadata } from '../../src/ingestion/schemas/updateMetadataSchema';
-import type { DeepPartial } from '../utils/types';
+import type { DeepPartial, FlatRecordValues, ReplaceValueWithFunctionResponse as ReplaceValueWithGenerator } from '../utils/types';
 
 // adjust path to test files location relative to source mount
 const TEST_FILES_RELATIVE_PATH = '/testFiles';
@@ -22,8 +22,24 @@ const getTestFilesPath = (): string => {
   return TEST_FILES_RELATIVE_PATH;
 };
 
+type UnAggregateKeys<T extends object> = {
+  [K in keyof T as K extends `max${infer Q}` | `min${infer Q}` ? Uncapitalize<Q> : K]: T[K];
+};
+
+type RasterLayerCatalog = RasterLayersCatalog[number];
+type Link = NonNullable<RasterLayerCatalog['links']>[number];
+type RasterLayerMetadata = RasterLayerCatalog['metadata'];
+type RequiredRasterLayerMetadata = Required<RasterLayerMetadata>;
+type SimpleRasterLayerMetadata = Omit<
+  RequiredRasterLayerMetadata,
+  'imagingTimeBeginUTC' | 'imagingTimeEndUTC' | 'productBoundingBox' | 'creationDateUTC' | 'ingestionDate' | 'updateDateUTC'
+>;
+type SingleRasterLayerMetadata = FlatRecordValues<UnAggregateKeys<SimpleRasterLayerMetadata>>;
+type RasterLayerMetadataPropertiesGenerators = ReplaceValueWithGenerator<SingleRasterLayerMetadata>;
+
 // TODO: fakerHE!!!!! - check hebrew generation
-const generators = {
+const generators: RasterLayerMetadataPropertiesGenerators = {
+  id: (): string => faker.string.uuid(),
   classification: (): string => faker.number.int({ max: 100 }).toString(),
   productName: (): string => faker.string.alphanumeric({ length: { min: 1, max: 100 } }),
   productId: (): string => randexp(INGESTION_VALIDATIONS.productId.pattern),
@@ -47,7 +63,8 @@ const generators = {
   // TODO: sensor: (): string => randexp(INGESTION_VALIDATIONS.sensor.pattern),
   sensor: (): string => randexp('^([^\\s]).+([^\\s])$'),
   tileMimeFormat: (): TilesMimeFormat => faker.helpers.arrayElement(['image/png', 'image/jpeg']),
-  recordStatus: (): RecordStatus => faker.helpers.enumValue(RecordStatus),
+  productStatus: (): RecordStatus => faker.helpers.enumValue(RecordStatus),
+  type: (): RecordType.RECORD_RASTER => RecordType.RECORD_RASTER,
   footprint: (options: Parameters<typeof randomPolygon>[1]): Polygon => {
     const mergedOptions = merge(
       {
@@ -61,10 +78,9 @@ const generators = {
     mergedOptions.max_radial_length = Math.min(bbox[2] - bbox[0], bbox[3] - bbox[1]) / 2;
     return randomPolygon(1, mergedOptions).features[0].geometry;
   },
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-} satisfies Record<string, (...args: any[]) => unknown>;
+};
 
-const generateCatalogLayerMetadata = ({ productId, productType }: { productId: string; productType: RasterProductTypes }): IRasterLayerMetadata => {
+const generateCatalogLayerMetadata = ({ productId, productType }: { productId: string; productType: RasterProductTypes }): RasterLayerMetadata => {
   const horizontalAccuracyCE90 = [generators.horizontalAccuracyCE90(), generators.horizontalAccuracyCE90()];
   const [minHorizontalAccuracyCE90, maxHorizontalAccuracyCE90] = [Math.min(...horizontalAccuracyCE90), Math.max(...horizontalAccuracyCE90)];
   const resolutionMeter = [generators.resolutionMeter(), generators.resolutionMeter()];
@@ -95,7 +111,7 @@ const generateCatalogLayerMetadata = ({ productId, productType }: { productId: s
   const creationDateUTC = faker.date.between({ from: imagingTimeBeginUTC, to: updateDate });
 
   return {
-    id: faker.string.uuid(),
+    id: generators.id(),
     type: RecordType.RECORD_RASTER,
     classification: generators.classification(),
     productName: generators.productName(),
@@ -112,7 +128,7 @@ const generateCatalogLayerMetadata = ({ productId, productType }: { productId: s
     productVersion: generators.productVersion(),
     productType,
     productSubType: faker.helpers.maybe(() => generators.productSubType()),
-    srsName: faker.helpers.maybe(() => generators.srsName()),
+    srsName: generators.srsName(),
     minResolutionDeg,
     maxResolutionDeg,
     minResolutionMeter,
@@ -124,39 +140,44 @@ const generateCatalogLayerMetadata = ({ productId, productType }: { productId: s
     transparency: generators.transparency(),
     tileMimeFormat: generators.tileMimeFormat(),
     tileOutputFormat: generators.tileOutputFormat(),
-    ...(faker.datatype.boolean() && creationDateUTC),
-    ...(faker.datatype.boolean() && ingestionDate),
-    ...(faker.datatype.boolean() && updateDateUTC),
-    ...(faker.datatype.boolean() && { productStatus: faker.helpers.maybe(() => generators.recordStatus()) }),
+    creationDateUTC,
+    ingestionDate,
+    updateDateUTC,
+    productStatus: generators.productStatus(),
   };
 };
-const generateCatalogLayerLinks = ({ productId, productType }: { productId: string; productType: RasterProductTypes }): Link[] => [
-  {
-    name: `${productId}-${productType}`,
-    protocol: 'WMS',
-    url: 'https://tiles-dev/api/raster/v1/service?REQUEST=GetCapabilities',
-  },
-  {
-    name: `${productId}-${productType}`,
-    protocol: 'WMS_BASE',
-    url: 'https://tiles-dev/api/raster/v1/wms',
-  },
-  {
-    name: `${productId}-${productType}`,
-    protocol: 'WMTS',
-    url: 'https://tiles-dev/api/raster/v1/wmts/1.0.0/WMTSCapabilities.xml',
-  },
-  {
-    name: `${productId}-${productType}`,
-    protocol: 'WMTS_KVP',
-    url: 'https://tiles-dev/api/raster/v1/service?REQUEST=GetCapabilities&SERVICE=WMTS',
-  },
-  {
-    name: `${productId}-${productType}`,
-    protocol: 'WMTS_BASE',
-    url: 'https://tiles-dev/api/raster/v1/wmts',
-  },
-];
+const generateCatalogLayerLinks = ({ productId, productType }: { productId: string; productType: RasterProductTypes }): Link[] => {
+  const templateLinks = [
+    {
+      name: `${productId}-${productType}`,
+      protocol: 'WMS',
+      url: 'https://tiles-dev/api/raster/v1/service?REQUEST=GetCapabilities',
+    },
+    {
+      name: `${productId}-${productType}`,
+      protocol: 'WMS_BASE',
+      url: 'https://tiles-dev/api/raster/v1/wms',
+    },
+    {
+      name: `${productId}-${productType}`,
+      protocol: 'WMTS',
+      url: 'https://tiles-dev/api/raster/v1/wmts/1.0.0/WMTSCapabilities.xml',
+    },
+    {
+      name: `${productId}-${productType}`,
+      protocol: 'WMTS_KVP',
+      url: 'https://tiles-dev/api/raster/v1/service?REQUEST=GetCapabilities&SERVICE=WMTS',
+    },
+    {
+      name: `${productId}-${productType}`,
+      protocol: 'WMTS_BASE',
+      url: 'https://tiles-dev/api/raster/v1/wmts',
+    },
+  ].map((link) => {
+    return { ...link, description: faker.helpers.maybe(() => faker.word.words({ count: { min: 1, max: 10 } })) };
+  });
+  return faker.helpers.arrayElements(templateLinks);
+};
 
 const generateNewLayerMetadata = (): IngestionNewMetadata => {
   return {
@@ -221,12 +242,11 @@ const generateInputFiles = (): InputFiles => {
     productShapefilePath: join(faker.system.directoryPath(), 'Product.zip'),
   };
 };
-export const generateCatalogLayerResponse = (): IFindRasterResponseRecord => {
+export const generateCatalogLayerResponse = (): RasterLayerCatalog => {
   const productId = generators.productId();
   const productType = generators.productType();
 
   return {
-    id: faker.string.uuid(),
     metadata: generateCatalogLayerMetadata({ productId, productType }),
     links: faker.helpers.arrayElements(generateCatalogLayerLinks({ productId, productType })),
   };
@@ -245,8 +265,8 @@ export const createUpdateLayerRequest = (
   const mergedUpdateLayerRequest = merge(generateUpdateLayerRequest(), override);
   return mergedUpdateLayerRequest;
 };
-export const createCatalogLayerResponse = (catalogLayerResponse?: DeepPartial<IFindRasterResponseRecord>): IFindRasterResponseRecord => {
-  const override = structuredClone(catalogLayerResponse);
-  const mergedCatalogLayerResponse = merge(generateCatalogLayerResponse(), override);
-  return mergedCatalogLayerResponse;
+export const createCatalogLayerResponse = (rasterLayerCatalog?: DeepPartial<RasterLayerCatalog>): RasterLayerCatalog => {
+  const override = structuredClone(rasterLayerCatalog);
+  const mergedRasterLayerCatalog = merge(generateCatalogLayerResponse(), override);
+  return mergedRasterLayerCatalog;
 };
