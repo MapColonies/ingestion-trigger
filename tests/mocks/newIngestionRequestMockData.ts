@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import type { IngestionNewLayer } from '../../src/ingestion/schemas/ingestionLayerSchema';
-import { createNewLayerRequest } from '../utils/faker';
+import { createNewLayerRequest } from './mockFactory';
 
 export const validNewLayerRequest = {
   valid: createNewLayerRequest({

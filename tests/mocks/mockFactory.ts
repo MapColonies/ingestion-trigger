@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { join, normalize } from 'node:path';
+import { join } from 'node:path';
 import { faker, fakerHE } from '@faker-js/faker';
 import { RecordType, TileOutputFormat, type Link } from '@map-colonies/mc-model-types';
 import { CORE_VALIDATIONS, INGESTION_VALIDATIONS, RasterProductTypes, Transparency } from '@map-colonies/raster-shared';
