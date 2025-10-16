@@ -4,6 +4,7 @@ import { gdalInfoSchema, type GdalInfo } from '../../ingestion/schemas/gdalDataS
 import { InfoData, createInfoDataSchema } from '../../ingestion/schemas/infoDataSchema';
 import { createNewIngestionLayerSchema, type IngestionNewLayer } from '../../ingestion/schemas/ingestionLayerSchema';
 import { createInputFilesSchema } from '../../ingestion/schemas/inputFilesSchema';
+import { createRasterLayersCatalogSchema, type RasterLayersCatalog } from '../../ingestion/schemas/layerCatalogSchema';
 import { createNewMetadataSchema, type IngestionNewMetadata } from '../../ingestion/schemas/newMetadataSchema';
 import { createUpdateLayerSchema, type IngestionUpdateLayer } from '../../ingestion/schemas/updateLayerSchema';
 import { createUpdateMetadataSchema, type IngestionUpdateMetadata } from '../../ingestion/schemas/updateMetadataSchema';
@@ -19,6 +20,7 @@ export function schemasValidationsFactory(container: DependencyContainer) {
   const newMetadataSchema = createNewMetadataSchema();
   const updateLayerSchema = createUpdateLayerSchema();
   const updateMetadataSchema = createUpdateMetadataSchema();
+  const rasterLayersCatalog = createRasterLayersCatalogSchema();
 
   return {
     validateInputFilesRequestBody: async (value: unknown): Promise<InputFiles> => validator.validate(inputFilesSchema, value),
@@ -28,6 +30,7 @@ export function schemasValidationsFactory(container: DependencyContainer) {
     validateNewMetadata: async (value: unknown): Promise<IngestionNewMetadata> => validator.validate(newMetadataSchema, value),
     validateUpdateMetadata: async (value: unknown): Promise<IngestionUpdateMetadata> => validator.validate(updateMetadataSchema, value),
     validateUpdateLayerRequest: async (value: unknown): Promise<IngestionUpdateLayer> => validator.validate(updateLayerSchema, value),
+    validateRasterLayersCatalog: async (value: unknown): Promise<RasterLayersCatalog> => validator.validate(rasterLayersCatalog, value),
   };
 }
 

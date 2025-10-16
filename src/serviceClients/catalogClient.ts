@@ -1,17 +1,20 @@
 import { Logger } from '@map-colonies/js-logger';
 import { HttpClient, IHttpRetryConfig } from '@map-colonies/mc-utils';
-import { inject, injectable } from 'tsyringe';
-import { trace, Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
-import { FindRecordResponse, IConfig } from '../common/interfaces';
+import { trace, Tracer } from '@opentelemetry/api';
+import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
+import type { IConfig } from '../common/interfaces';
+import type { RasterLayersCatalog } from '../ingestion/schemas/layerCatalogSchema';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, type SchemasValidator } from '../utils/validation/schemasValidator';
 
 @injectable()
 export class CatalogClient extends HttpClient {
   public constructor(
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.LOGGER) protected readonly logger: Logger,
-    @inject(SERVICES.TRACER) public readonly tracer: Tracer
+    @inject(SERVICES.TRACER) public readonly tracer: Tracer,
+    @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator
   ) {
     super(
       logger,
@@ -31,19 +34,21 @@ export class CatalogClient extends HttpClient {
   }
 
   @withSpanAsyncV4
-  public async findById(catalogId: string): Promise<FindRecordResponse> {
+  public async findById(catalogId: string): Promise<RasterLayersCatalog> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('catalogClient.findByCatalogId');
     const req = {
       id: catalogId,
     };
-    const res = await this.post<FindRecordResponse>('/records/find', req);
+    const res = await this.post('/records/find', req);
     activeSpan?.addEvent('catalogClient.findByCatalogId.response', { findByCatalogIdResponse: JSON.stringify(res) });
-    return res;
+
+    const rasterLayersCatalog = this.schemasValidator.validateRasterLayersCatalog(res);
+    return rasterLayersCatalog;
   }
 
   @withSpanAsyncV4
-  private async findByProductIdAndType(productId: string, productType: string): Promise<FindRecordResponse> {
+  private async findByProductIdAndType(productId: string, productType: string): Promise<RasterLayersCatalog> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('catalogClient.findByProductIdAndType');
     const req = {
@@ -52,8 +57,10 @@ export class CatalogClient extends HttpClient {
         productType,
       },
     };
-    const res = await this.post<FindRecordResponse>('/records/find', req);
+    const res = await this.post('/records/find', req);
     activeSpan?.addEvent('catalogClient.findByProductIdAndType.response', { findByProductIdAndTypeResponse: JSON.stringify(res) });
-    return res;
+
+    const rasterLayersCatalog = this.schemasValidator.validateRasterLayersCatalog(res);
+    return rasterLayersCatalog;
   }
 }
