@@ -10,7 +10,6 @@ describe('jobManagerWrapper', () => {
   let jobManagerWrapper: JobManagerWrapper;
   let jobManagerURL = '';
   let createJobSpy: jest.SpyInstance;
-  const updateJobType = 'Ingestion_Update';
 
   beforeEach(() => {
     registerDefaultConfig();
@@ -25,30 +24,28 @@ describe('jobManagerWrapper', () => {
     jest.restoreAllMocks();
   });
 
-  describe('CreateInitJob', () => {
+  describe('createIngestionJob', () => {
     it('should return jobResponse when new job with validation task creation is successful', async () => {
       createJobSpy.mockResolvedValue(jobResponse);
-      const action = async () => jobManagerWrapper.createNewJob(ingestionNewJobRequest);
+      const action = async () => jobManagerWrapper.createIngestionJob(ingestionNewJobRequest);
       await expect(action()).resolves.toEqual(jobResponse);
     });
 
     it('should throw error when new job with validation task wasnt successful', async () => {
       createJobSpy.mockRejectedValue(InternalServerError);
-      const action = async () => jobManagerWrapper.createNewJob(ingestionNewJobRequest);
+      const action = async () => jobManagerWrapper.createIngestionJob(ingestionNewJobRequest);
       await expect(action()).rejects.toThrow();
     });
-  });
 
-  describe('check CreateInitUpdateJob function', () => {
     it('should return jobResponse when update job with validation task creation is successful', async () => {
       createJobSpy.mockResolvedValue(jobResponse);
-      const action = async () => jobManagerWrapper.createNewJob(ingestionUpdateJobRequest);
+      const action = async () => jobManagerWrapper.createIngestionJob(ingestionUpdateJobRequest);
       await expect(action()).resolves.toEqual(jobResponse);
     });
 
     it('should throw error when update job with validation task creation wasnt successful', async () => {
       createJobSpy.mockRejectedValue(InternalServerError);
-      const action = async () => jobManagerWrapper.createNewJob(ingestionUpdateJobRequest);
+      const action = async () => jobManagerWrapper.createIngestionJob(ingestionUpdateJobRequest);
       await expect(action()).rejects.toThrow();
     });
   });

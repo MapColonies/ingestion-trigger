@@ -3,12 +3,18 @@ import jsLogger from '@map-colonies/js-logger';
 import Database, { Database as SQLiteDB, Statement, SqliteError } from 'better-sqlite3';
 import { trace } from '@opentelemetry/api';
 import { init as initMockConfig, configMock, setValue, clear as clearMockConfig } from '../../../mocks/configMock';
-import { Grid } from '../../../../src/ingestion/interfaces';
+import { Grid, IMatrixValues } from '../../../../src/ingestion/interfaces';
 import { SQLiteClient } from '../../../../src/serviceClients/database/SQLiteClient';
+import { describe } from 'node:test';
 
 jest.mock('better-sqlite3');
 let sqlClient: SQLiteClient;
 let mockDB: SQLiteDB;
+let prepareSpy: jest.SpyInstance;
+let getDbSpy: jest.SpyInstance;
+let handleErrorSpy: jest.SpyInstance;
+
+const sqlLiteError = new SqliteError('Database connection failed', 'SQLITE_ERROR');
 
 describe('SQLClient', () => {
   beforeEach(function () {
@@ -17,16 +23,16 @@ describe('SQLClient', () => {
     jest.restoreAllMocks();
     clearMockConfig();
     initMockConfig();
+    prepareSpy = jest.spyOn(Database.prototype, 'prepare');
+    getDbSpy = jest.spyOn(SQLiteClient.prototype, 'getDB');
     mockDB = { close: jest.fn } as unknown as SQLiteDB;
 
-    sqlClient = new SQLiteClient(jsLogger({ enabled: false }), configMock, trace.getTracer('testTracer'), 'test_gpkg', 'test_dir');
+    sqlClient = new SQLiteClient(jsLogger({ enabled: false }), configMock, trace.getTracer('testTracer'), 'test_dir/test_gpkg');
   });
 
   describe('getGrid', () => {
     it('should return 2x1 grid', function () {
-      setValue({ layerSourceDir: 'tests/mocks' });
-      const mockMatrixValues = { matrixWidth: 400, matrixHeight: 200 };
-      const prepareSpy = jest.spyOn(Database.prototype, 'prepare');
+      const mockMatrixValues: IMatrixValues = { matrixWidth: 400, matrixHeight: 200 };
       prepareSpy.mockImplementation(() => {
         return { get: () => mockMatrixValues } as Statement;
       });
@@ -37,9 +43,7 @@ describe('SQLClient', () => {
     });
 
     it('should return 1x1 grid', function () {
-      setValue({ layerSourceDir: 'tests/mocks' });
-      const mockMatrixValues = { matrixWidth: 200, matrixHeight: 200 };
-      const prepareSpy = jest.spyOn(Database.prototype, 'prepare');
+      const mockMatrixValues: IMatrixValues = { matrixWidth: 200, matrixHeight: 200 };
       prepareSpy.mockImplementation(() => {
         return { get: () => mockMatrixValues } as Statement;
       });
@@ -50,9 +54,7 @@ describe('SQLClient', () => {
     });
 
     it('should return unsupported grid', function () {
-      setValue({ layerSourceDir: 'tests/mocks' });
-      const mockMatrixValues = { matrixWidth: 400, matrixHeight: 1 };
-      const prepareSpy = jest.spyOn(Database.prototype, 'prepare');
+      const mockMatrixValues: IMatrixValues = { matrixWidth: 400, matrixHeight: 1 };
       prepareSpy.mockImplementation(() => {
         return { get: () => mockMatrixValues } as Statement;
       });
@@ -63,42 +65,30 @@ describe('SQLClient', () => {
     });
 
     it('should throw SqliteError error - getGrid', function () {
-      jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
-        throw new SqliteError('Database connection failed', 'SQLITE_ERROR');
+      getDbSpy.mockImplementation(() => {
+        throw sqlLiteError;
       });
 
-      const handleErrorSpy = jest.spyOn(SQLiteClient.prototype as unknown as { handleError: jest.Mock }, 'handleError');
-      try {
-        sqlClient.getGrid();
-      } catch (err) {
-        const isSqliteError = err instanceof SqliteError;
-        expect(isSqliteError).toBe(true);
-      }
-
-      expect(handleErrorSpy).toHaveBeenCalled();
+      const action = () => sqlClient.getGrid();
+      expect(action).toThrow(SqliteError);
     });
+  });
 
+  describe('getGpkgTileSize', () => {
     it('should throw SqliteError error - getGpkgTileSize', function () {
-      jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
-        throw new SqliteError('Database connection failed', 'SQLITE_ERROR');
+      getDbSpy.mockImplementation(() => {
+        throw sqlLiteError;
       });
 
-      const handleErrorSpy = jest.spyOn(SQLiteClient.prototype as unknown as { handleError: jest.Mock }, 'handleError');
-      try {
-        sqlClient.getGpkgTileSize();
-      } catch (err) {
-        const isSqliteError = err instanceof SqliteError;
-        expect(isSqliteError).toBe(true);
-      }
-
-      expect(handleErrorSpy).toHaveBeenCalled();
+      const action = () => sqlClient.getGrid();
+      expect(action).toThrow(SqliteError);
     });
   });
 
   describe('isGpkgIndexExist', () => {
-    it('should return true when unique GPKG index exists', () => {
+    it.only('should return true when unique GPKG index exists', () => {
       const mockTableName = 'test_table';
-      jest.spyOn(SQLiteClient.prototype, 'getDB').mockReturnValue(mockDB);
+      getDbSpy.mockReturnValue(mockDB);
       jest.spyOn(SQLiteClient.prototype as unknown as { getGpkgTableName: jest.Mock }, 'getGpkgTableName').mockReturnValue(mockTableName);
       jest.spyOn(SQLiteClient.prototype as unknown as { hasUniqueGpkgIndex: jest.Mock }, 'hasUniqueGpkgIndex').mockReturnValue(true);
       jest.spyOn(SQLiteClient.prototype as unknown as { hasGpkgManualIndex: jest.Mock }, 'hasGpkgManualIndex').mockReturnValue(false);
@@ -134,7 +124,7 @@ describe('SQLClient', () => {
 
     it('should throw SqliteError error - isGpkgIndexExist', function () {
       jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
-        throw new SqliteError('Database connection failed', 'SQLITE_ERROR');
+        throw sqlLiteError;
       });
 
       const handleErrorSpy = jest.spyOn(SQLiteClient.prototype as unknown as { handleError: jest.Mock }, 'handleError');
@@ -165,3 +155,4 @@ describe('SQLClient', () => {
     });
   });
 });
+

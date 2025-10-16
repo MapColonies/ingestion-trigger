@@ -22,6 +22,7 @@ describe('CatalogClient', () => {
     catalogClient = new CatalogClient(configMock as unknown as IConfig, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
     postSpy = jest.spyOn(HttpClient.prototype as unknown as { post: jest.Mock }, 'post');
   });
+
   afterEach(() => {
     clearConfig();
     jest.resetAllMocks();
@@ -40,6 +41,7 @@ describe('CatalogClient', () => {
       expect(result).toBe(false);
     });
   });
+
   describe('findById', () => {
     it('should return true when there is a record in the catalog with same id and type', async () => {
       postSpy.mockResolvedValue(['1']);
