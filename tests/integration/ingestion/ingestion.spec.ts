@@ -394,11 +394,16 @@ describe('Ingestion', function () {
         nock(mapProxyApiServiceUrl)
           .get(`/layer/${encodeURIComponent(layerName)}`)
           .reply(httpStatusCodes.NOT_FOUND);
+        const expectedResponseBody: ResponseId = {
+          jobId: jobResponse.id,
+          taskId: jobResponse.taskIds[0],
+        };
 
         const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toBe(expectedResponseBody);
       });
     });
 
@@ -530,11 +535,16 @@ describe('Ingestion', function () {
         nock(mapProxyApiServiceUrl)
           .get(`/layer/${encodeURIComponent(updateLayerName)}`)
           .reply(httpStatusCodes.OK);
+        const expectedResponseBody: ResponseId = {
+          jobId: jobResponse.id,
+          taskId: jobResponse.taskIds[0],
+        };
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toBe(expectedResponseBody);
       });
 
       it('should return 200 status code with swap update request', async () => {
@@ -557,11 +567,16 @@ describe('Ingestion', function () {
         nock(mapProxyApiServiceUrl)
           .get(`/layer/${encodeURIComponent(updateLayerName)}`)
           .reply(httpStatusCodes.OK);
+        const expectedResponseBody: ResponseId = {
+          jobId: jobResponse.id,
+          taskId: jobResponse.taskIds[0],
+        };
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toBe(expectedResponseBody);
       });
     });
 
