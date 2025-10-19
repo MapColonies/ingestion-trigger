@@ -1,6 +1,6 @@
 import { inject, injectable } from "tsyringe";
 import { LogContext } from "../../utils/logger/logContext";
-import { IConfig } from "config";
+import type { IConfig } from '../../common/interfaces';
 import { Logger } from "@map-colonies/js-logger";
 import { Tracer } from "@opentelemetry/api";
 import { SERVICES } from "../../common/constants";
