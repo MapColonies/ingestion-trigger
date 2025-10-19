@@ -1,4 +1,4 @@
-import { InputFiles } from '@map-colonies/mc-model-types';
+import type { InputFiles } from '@map-colonies/mc-model-types';
 import supertest from 'supertest';
 import type { IngestionNewLayer } from '../../../../src/ingestion/schemas/ingestionLayerSchema';
 import type { IngestionUpdateLayer } from '../../../../src/ingestion/schemas/updateLayerSchema';

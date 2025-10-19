@@ -1,28 +1,32 @@
-import type { InputFiles } from '@map-colonies/mc-model-types';
+import { faker } from '@faker-js/faker';
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
-import { getMapServingLayerName } from '@map-colonies/raster-shared';
+import { CORE_VALIDATIONS, getMapServingLayerName } from '@map-colonies/raster-shared';
 import { SqliteError } from 'better-sqlite3';
 import gdal from 'gdal-async';
 import httpStatusCodes from 'http-status-codes';
+import { unset } from 'lodash';
 import nock from 'nock';
 import { getApp } from '../../../src/app';
-import { Grid } from '../../../src/ingestion/interfaces';
+import { Grid, type ResponseId } from '../../../src/ingestion/interfaces';
 import { GpkgManager } from '../../../src/ingestion/models/gpkgManager';
 import { infoDataSchemaArray } from '../../../src/ingestion/schemas/infoDataSchema';
+import type { IngestionUpdateLayer } from '../../../src/ingestion/schemas/updateLayerSchema';
 import { SourceValidator } from '../../../src/ingestion/validators/sourceValidator';
 import { SQLiteClient } from '../../../src/serviceClients/database/SQLiteClient';
 import { ZodValidator } from '../../../src/utils/validation/zodValidator';
+import { createUpdateLayerRequest, rasterLayerInputFilesGenerators, rasterLayerMetadataGenerators } from '../../mocks/mockFactory';
 import { invalidNewLayerRequest, jobResponse, newJobRequest, validNewLayerRequest } from '../../mocks/newIngestionRequestMockData';
 import { fakeIngestionSources } from '../../mocks/sourcesRequestBody';
 import {
-  updateJobRequest,
   invalidUpdateLayerRequest,
+  updateJobRequest,
   updateRunningJobResponse,
   updateSwapJobRequest,
   updatedLayer,
   updatedSwapLayer,
   validUpdateLayerRequest,
 } from '../../mocks/updateRequestMockData';
+import type { DeepPartial } from '../../utils/types';
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
 import { IngestionRequestSender } from './helpers/ingestionRequestSender';
 
@@ -62,8 +66,7 @@ describe('Ingestion', function () {
       });
 
       it('should return 200 status code and sources is valid response', async function () {
-        // TODO: change interface!!!
-        const validSources: InputFiles = fakeIngestionSources.validSources.validInputFiles;
+        const validSources = fakeIngestionSources.validSources.validInputFiles;
 
         const response = await requestSender.validateSources(validSources);
 
@@ -77,7 +80,7 @@ describe('Ingestion', function () {
       });
 
       it('should return 200 status code and sources invalid response - file does not exist', async function () {
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.filesNotExist;
+        const invalidSources = fakeIngestionSources.invalidSources.filesNotExist;
         const response = await requestSender.validateSources(invalidSources);
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
@@ -91,7 +94,7 @@ describe('Ingestion', function () {
       });
 
       it('should return 200 status code and sources invalid response - directory does not exist', async function () {
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.directoryNotExist;
+        const invalidSources = fakeIngestionSources.invalidSources.directoryNotExist;
         const response = await requestSender.validateSources(invalidSources);
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
@@ -105,7 +108,7 @@ describe('Ingestion', function () {
       });
 
       it('should return 200 status code and sources invalid response - unsupported CRS', async function () {
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.unsupportedCrs;
+        const invalidSources = fakeIngestionSources.invalidSources.unsupportedCrs;
         const response = await requestSender.validateSources(invalidSources);
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
@@ -119,7 +122,7 @@ describe('Ingestion', function () {
       });
 
       it('should return 200 status code and sources invalid response - unsupported pixel size', async function () {
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.unsupportedPixelSize;
+        const invalidSources = fakeIngestionSources.invalidSources.unsupportedPixelSize;
         const response = await requestSender.validateSources(invalidSources);
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
@@ -135,7 +138,7 @@ describe('Ingestion', function () {
       it('should return 200 status code and sources invalid response - failed to get gdal info gdal.infoAsync', async function () {
         jest.spyOn(gdal, 'infoAsync').mockRejectedValue(new Error('failed to read file'));
 
-        const invalidSources: InputFiles = fakeIngestionSources.validSources.validInputFiles;
+        const invalidSources = fakeIngestionSources.validSources.validInputFiles;
         const response = await requestSender.validateSources(invalidSources);
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
@@ -151,7 +154,7 @@ describe('Ingestion', function () {
       it('should return 200 status code and sources invalid response - failed to open gdal dataset gdal.openAsync', async function () {
         jest.spyOn(gdal, 'openAsync').mockRejectedValue(new Error('failed to read file'));
 
-        const invalidSources: InputFiles = fakeIngestionSources.validSources.validInputFiles;
+        const invalidSources = fakeIngestionSources.validSources.validInputFiles;
         const response = await requestSender.validateSources(invalidSources);
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
@@ -167,7 +170,7 @@ describe('Ingestion', function () {
       it('should return 200 status code and sources invalid response - gpkg index not exist', async function () {
         const validateGpkgIndexSpy = jest.spyOn(GpkgManager.prototype as unknown as { validateGpkgIndex: jest.Mock }, 'validateGpkgIndex');
 
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.withoutGpkgIndex;
+        const invalidSources = fakeIngestionSources.invalidSources.withoutGpkgIndex;
         const response = await requestSender.validateSources(invalidSources);
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
@@ -185,7 +188,7 @@ describe('Ingestion', function () {
       it('should return 200 status code and sources invalid response - unsupported grid', async function () {
         const validateGpkgGridSpy = jest.spyOn(GpkgManager.prototype as unknown as { validateGpkgGrid: jest.Mock }, 'validateGpkgGrid');
 
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.unsupportedGrid;
+        const invalidSources = fakeIngestionSources.invalidSources.unsupportedGrid;
         const response = await requestSender.validateSources(invalidSources);
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
@@ -203,7 +206,7 @@ describe('Ingestion', function () {
       it('should return 200 status code and sources invalid response - unsupported tile size', async function () {
         const validateTilesSizeSpy = jest.spyOn(GpkgManager.prototype as unknown as { validateTilesSize: jest.Mock }, 'validateTilesSize');
 
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.unsupportedTileWidthSize;
+        const invalidSources = fakeIngestionSources.invalidSources.unsupportedTileWidthSize;
         const response = await requestSender.validateSources(invalidSources);
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
