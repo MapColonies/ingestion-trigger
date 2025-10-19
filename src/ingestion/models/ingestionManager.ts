@@ -26,15 +26,12 @@ import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../err
 import type { ResponseId, SourcesValidationResponse, ValidationTaskParameters } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
-import type { RasterLayersCatalog } from '../schemas/layerCatalogSchema';
+import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
 import { GeoValidator } from '../validators/geoValidator';
 import { SourceValidator } from '../validators/sourceValidator';
 import { GdalInfoManager } from './gdalInfoManager';
 import { ProductManager } from './productManager';
-
-// TODO: rework output type
-type RasterLayerMetadata = RasterLayersCatalog[number]['metadata'];
 
 @injectable()
 export class IngestionManager {
@@ -187,7 +184,11 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async updateLayerValidations(catalogId: string, rasterLayerMetadata: RasterLayerMetadata, updateLayer: IngestionUpdateLayer): Promise<void> {
+  private async updateLayerValidations(
+    catalogId: string,
+    rasterLayerMetadata: RasterLayerMetadata,
+    updateLayer: IngestionUpdateLayer
+  ): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayerValidations.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.updateLayerValidations');

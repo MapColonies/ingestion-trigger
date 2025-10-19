@@ -148,6 +148,7 @@ export const rasterLayerCatalogSchema = z
   .describe('rasterLayerCatalogSchema');
 
 export type RasterLayersCatalog = z.infer<ReturnType<typeof createRasterLayersCatalogSchema>>;
+export type RasterLayerMetadata = RasterLayersCatalog[number]['metadata'];
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const createRasterLayersCatalogSchema = () => {
