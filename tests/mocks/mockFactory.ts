@@ -18,9 +18,6 @@ import type { DeepPartial, FlatRecordValues, ReplaceValueWithFunctionResponse as
 
 // adjust path to test files location relative to source mount
 const TEST_FILES_RELATIVE_PATH = '/testFiles';
-const getTestFilesPath = (): string => {
-  return TEST_FILES_RELATIVE_PATH;
-};
 
 type UnAggregateKeys<T extends object> = {
   [K in keyof T as K extends `max${infer Q}` | `min${infer Q}` ? Uncapitalize<Q> : K]: T[K];
@@ -37,8 +34,183 @@ type SimpleRasterLayerMetadata = Omit<
 type SingleRasterLayerMetadata = FlatRecordValues<UnAggregateKeys<SimpleRasterLayerMetadata>>;
 type RasterLayerMetadataPropertiesGenerators = ReplaceValueWithGenerator<SingleRasterLayerMetadata>;
 
+type IngestionLayerInputFilesPropertiesGenerators = ReplaceValueWithGenerator<IngestionUpdateLayer['inputFiles']>;
+
+const generateCatalogLayerLinks = ({ productId, productType }: { productId: string; productType: RasterProductTypes }): Link[] => {
+  const templateLinks = [
+    {
+      name: `${productId}-${productType}`,
+      protocol: 'WMS',
+      url: 'https://tiles-dev/api/raster/v1/service?REQUEST=GetCapabilities',
+    },
+    {
+      name: `${productId}-${productType}`,
+      protocol: 'WMS_BASE',
+      url: 'https://tiles-dev/api/raster/v1/wms',
+    },
+    {
+      name: `${productId}-${productType}`,
+      protocol: 'WMTS',
+      url: 'https://tiles-dev/api/raster/v1/wmts/1.0.0/WMTSCapabilities.xml',
+    },
+    {
+      name: `${productId}-${productType}`,
+      protocol: 'WMTS_KVP',
+      url: 'https://tiles-dev/api/raster/v1/service?REQUEST=GetCapabilities&SERVICE=WMTS',
+    },
+    {
+      name: `${productId}-${productType}`,
+      protocol: 'WMTS_BASE',
+      url: 'https://tiles-dev/api/raster/v1/wmts',
+    },
+  ].map((link) => {
+    return { ...link, description: faker.helpers.maybe(() => faker.word.words({ count: { min: 1, max: 10 } })) };
+  });
+  return faker.helpers.arrayElements(templateLinks);
+};
+
+const generateCatalogLayerMetadata = ({ productId, productType }: { productId: string; productType: RasterProductTypes }): RasterLayerMetadata => {
+  const horizontalAccuracyCE90 = [rasterLayerMetadataGenerators.horizontalAccuracyCE90(), rasterLayerMetadataGenerators.horizontalAccuracyCE90()];
+  const [minHorizontalAccuracyCE90, maxHorizontalAccuracyCE90] = [Math.min(...horizontalAccuracyCE90), Math.max(...horizontalAccuracyCE90)];
+  const resolutionMeter = [rasterLayerMetadataGenerators.resolutionMeter(), rasterLayerMetadataGenerators.resolutionMeter()];
+  const [minResolutionMeter, maxResolutionMeter] = [Math.min(...resolutionMeter), Math.max(...resolutionMeter)];
+  const resolutionDeg = [rasterLayerMetadataGenerators.resolutionDeg(), rasterLayerMetadataGenerators.resolutionDeg()];
+  const [minResolutionDeg, maxResolutionDeg] = [Math.min(...resolutionDeg), Math.max(...resolutionDeg)];
+  const longitude = [faker.number.float({ min: -170, max: 170 }), faker.number.float({ min: -170, max: 170 })];
+  const latitude = [faker.number.float({ min: -80, max: 80 }), faker.number.float({ min: -80, max: 80 })];
+  const bbox = [Math.min(...longitude), Math.min(...latitude), Math.max(...longitude), Math.max(...latitude)] satisfies BBox;
+  const footprint = rasterLayerMetadataGenerators.footprint({ bbox });
+  const productBoundingBox = footprint.coordinates
+    .flat(3)
+    .reduce<BBox>(
+      (bbox, value, index) =>
+        index % 2 === 0
+          ? [Math.min(bbox[0], value), bbox[1], Math.max(bbox[2], value), bbox[3]]
+          : [bbox[0], Math.min(bbox[1], value), bbox[2], Math.max(bbox[3], value)],
+      [180, 90, -180, -90]
+    )
+    .join(',');
+
+  const imagingTimes = [faker.date.past({ years: 10 }), faker.date.past({ years: 10 })].map((date) => date.getTime());
+  const imagingTimeBeginUTC = new Date(Math.min(...imagingTimes));
+  const imagingTimeEndUTC = new Date(Math.max(...imagingTimes));
+  const updateDate = faker.date.future({ refDate: imagingTimeEndUTC, years: 10 });
+  const ingestionDate = updateDate;
+  const updateDateUTC = updateDate;
+  const creationDateUTC = faker.date.between({ from: imagingTimeBeginUTC, to: updateDate });
+
+  return {
+    id: rasterLayerMetadataGenerators.id(),
+    type: RecordType.RECORD_RASTER,
+    classification: rasterLayerMetadataGenerators.classification(),
+    productName: rasterLayerMetadataGenerators.productName(),
+    description: faker.helpers.maybe(() => rasterLayerMetadataGenerators.description()),
+    srs: rasterLayerMetadataGenerators.srs(),
+    producerName: faker.helpers.maybe(() => rasterLayerMetadataGenerators.producerName()),
+    imagingTimeBeginUTC,
+    imagingTimeEndUTC,
+    minHorizontalAccuracyCE90,
+    maxHorizontalAccuracyCE90,
+    sensors: faker.helpers.multiple(() => rasterLayerMetadataGenerators.sensor(), { count: faker.number.int({ min: 1, max: 10 }) }),
+    region: faker.helpers.multiple(() => rasterLayerMetadataGenerators.region(), { count: faker.number.int({ min: 1, max: 100 }) }),
+    productId,
+    productVersion: rasterLayerMetadataGenerators.productVersion(),
+    productType,
+    productSubType: faker.helpers.maybe(() => rasterLayerMetadataGenerators.productSubType()),
+    srsName: rasterLayerMetadataGenerators.srsName(),
+    minResolutionDeg,
+    maxResolutionDeg,
+    minResolutionMeter,
+    maxResolutionMeter,
+    scale: faker.helpers.maybe(() => rasterLayerMetadataGenerators.scale()),
+    footprint: rasterLayerMetadataGenerators.footprint({ bbox }),
+    productBoundingBox: faker.helpers.maybe(() => productBoundingBox),
+    displayPath: rasterLayerMetadataGenerators.displayPath(),
+    transparency: rasterLayerMetadataGenerators.transparency(),
+    tileMimeFormat: rasterLayerMetadataGenerators.tileMimeFormat(),
+    tileOutputFormat: rasterLayerMetadataGenerators.tileOutputFormat(),
+    creationDateUTC,
+    ingestionDate,
+    updateDateUTC,
+    productStatus: rasterLayerMetadataGenerators.productStatus(),
+  };
+};
+
+const generateNewLayerMetadata = (): IngestionNewMetadata => {
+  return {
+    classification: rasterLayerMetadataGenerators.classification(),
+    productId: rasterLayerMetadataGenerators.productId(),
+    productName: rasterLayerMetadataGenerators.productName(),
+    productType: rasterLayerMetadataGenerators.productType(),
+    region: faker.helpers.multiple(() => rasterLayerMetadataGenerators.region(), { count: faker.number.int({ min: 1, max: 100 }) }),
+    srs: rasterLayerMetadataGenerators.srs(),
+    srsName: rasterLayerMetadataGenerators.srsName(),
+    transparency: rasterLayerMetadataGenerators.transparency(),
+    description: rasterLayerMetadataGenerators.description(),
+    producerName: rasterLayerMetadataGenerators.producerName(),
+    productSubType: rasterLayerMetadataGenerators.productSubType(),
+    scale: rasterLayerMetadataGenerators.scale(),
+  };
+};
+
+const generateNewLayerRequest = (): IngestionNewLayer => {
+  return {
+    callbackUrls: faker.helpers.multiple(() => faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) })),
+    ingestionResolution: faker.number.float({
+      min: CORE_VALIDATIONS.resolutionDeg.min,
+      max: CORE_VALIDATIONS.resolutionDeg.max,
+    }),
+    inputFiles: generateInputFiles(),
+    metadata: generateNewLayerMetadata(),
+  };
+};
+
+const generateUpdateLayerMetadata = (): IngestionUpdateMetadata => {
+  return {
+    classification: faker.number.int({ max: 100 }).toString(),
+  };
+};
+
+const generateUpdateLayerRequest = (): IngestionUpdateLayer => {
+  return {
+    callbackUrls: faker.helpers.multiple(() => faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) })),
+    ingestionResolution: faker.number.float({
+      min: CORE_VALIDATIONS.resolutionDeg.min,
+      max: CORE_VALIDATIONS.resolutionDeg.max,
+    }),
+    inputFiles: generateInputFiles(),
+    metadata: generateUpdateLayerMetadata(),
+  };
+};
+
+const getTestFilePath = (inputFiles: InputFiles): InputFiles => {
+  const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = inputFiles;
+  return {
+    gpkgFilesPath: [join(getTestFilesPath(), 'gpkg', gpkgFilesPath[0])],
+    metadataShapefilePath: join(getTestFilesPath(), 'metadata', metadataShapefilePath, 'ShapeMetadata.zip'),
+    productShapefilePath: join(getTestFilesPath(), 'product', productShapefilePath, 'Product.zip'),
+  };
+};
+
+/**
+ * CAUTION generated paths can be existing files on file system
+ */
+const generateInputFiles = (): InputFiles => {
+  return {
+    gpkgFilesPath: [join(faker.system.directoryPath(), fakerHE.system.commonFileName('gpkg'))],
+    metadataShapefilePath: join(faker.system.directoryPath(), 'ShapeMetadata.zip'),
+    productShapefilePath: join(faker.system.directoryPath(), 'Product.zip'),
+  };
+};
+
+export const rasterLayerInputFilesGenerators: IngestionLayerInputFilesPropertiesGenerators = {
+  gpkgFilesPath: () => [join(getTestFilesPath(), 'gpkg', fakerHE.system.commonFileName('gpkg'))],
+  metadataShapefilePath: () => join(getTestFilesPath(), 'metadata', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'ShapeMetadata.zip'),
+  productShapefilePath: () => join(getTestFilesPath(), 'product', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'Product.zip'),
+};
+
 // TODO: fakerHE!!!!! - check hebrew generation
-const generators: RasterLayerMetadataPropertiesGenerators = {
+export const rasterLayerMetadataGenerators: RasterLayerMetadataPropertiesGenerators = {
   id: (): string => faker.string.uuid(),
   classification: (): string => faker.number.int({ max: 100 }).toString(),
   productName: (): string => faker.string.alphanumeric({ length: { min: 1, max: 100 } }),
@@ -80,193 +252,38 @@ const generators: RasterLayerMetadataPropertiesGenerators = {
   },
 };
 
-const generateCatalogLayerMetadata = ({ productId, productType }: { productId: string; productType: RasterProductTypes }): RasterLayerMetadata => {
-  const horizontalAccuracyCE90 = [generators.horizontalAccuracyCE90(), generators.horizontalAccuracyCE90()];
-  const [minHorizontalAccuracyCE90, maxHorizontalAccuracyCE90] = [Math.min(...horizontalAccuracyCE90), Math.max(...horizontalAccuracyCE90)];
-  const resolutionMeter = [generators.resolutionMeter(), generators.resolutionMeter()];
-  const [minResolutionMeter, maxResolutionMeter] = [Math.min(...resolutionMeter), Math.max(...resolutionMeter)];
-  const resolutionDeg = [generators.resolutionDeg(), generators.resolutionDeg()];
-  const [minResolutionDeg, maxResolutionDeg] = [Math.min(...resolutionDeg), Math.max(...resolutionDeg)];
-  const longitude = [faker.number.float({ min: -170, max: 170 }), faker.number.float({ min: -170, max: 170 })];
-  const latitude = [faker.number.float({ min: -80, max: 80 }), faker.number.float({ min: -80, max: 80 })];
-  const bbox = [Math.min(...longitude), Math.min(...latitude), Math.max(...longitude), Math.max(...latitude)] satisfies BBox;
-  const footprint = generators.footprint({ bbox });
-  const productBoundingBox = footprint.coordinates
-    .flat(3)
-    .reduce<BBox>(
-      (bbox, value, index) =>
-        index % 2 === 0
-          ? [Math.min(bbox[0], value), bbox[1], Math.max(bbox[2], value), bbox[3]]
-          : [bbox[0], Math.min(bbox[1], value), bbox[2], Math.max(bbox[3], value)],
-      [180, 90, -180, -90]
-    )
-    .join(',');
-
-  const imagingTimes = [faker.date.past({ years: 10 }), faker.date.past({ years: 10 })].map((date) => date.getTime());
-  const imagingTimeBeginUTC = new Date(Math.min(...imagingTimes));
-  const imagingTimeEndUTC = new Date(Math.max(...imagingTimes));
-  const updateDate = faker.date.future({ refDate: imagingTimeEndUTC, years: 10 });
-  const ingestionDate = updateDate;
-  const updateDateUTC = updateDate;
-  const creationDateUTC = faker.date.between({ from: imagingTimeBeginUTC, to: updateDate });
-
-  return {
-    id: generators.id(),
-    type: RecordType.RECORD_RASTER,
-    classification: generators.classification(),
-    productName: generators.productName(),
-    description: faker.helpers.maybe(() => generators.description()),
-    srs: generators.srs(),
-    producerName: faker.helpers.maybe(() => generators.producerName()),
-    imagingTimeBeginUTC,
-    imagingTimeEndUTC,
-    minHorizontalAccuracyCE90,
-    maxHorizontalAccuracyCE90,
-    sensors: faker.helpers.multiple(() => generators.sensor(), { count: faker.number.int({ min: 1, max: 10 }) }),
-    region: faker.helpers.multiple(() => generators.region(), { count: faker.number.int({ min: 1, max: 100 }) }),
-    productId,
-    productVersion: generators.productVersion(),
-    productType,
-    productSubType: faker.helpers.maybe(() => generators.productSubType()),
-    srsName: generators.srsName(),
-    minResolutionDeg,
-    maxResolutionDeg,
-    minResolutionMeter,
-    maxResolutionMeter,
-    scale: faker.helpers.maybe(() => generators.scale()),
-    footprint: generators.footprint({ bbox }),
-    productBoundingBox: faker.helpers.maybe(() => productBoundingBox),
-    displayPath: generators.displayPath(),
-    transparency: generators.transparency(),
-    tileMimeFormat: generators.tileMimeFormat(),
-    tileOutputFormat: generators.tileOutputFormat(),
-    creationDateUTC,
-    ingestionDate,
-    updateDateUTC,
-    productStatus: generators.productStatus(),
-  };
-};
-const generateCatalogLayerLinks = ({ productId, productType }: { productId: string; productType: RasterProductTypes }): Link[] => {
-  const templateLinks = [
-    {
-      name: `${productId}-${productType}`,
-      protocol: 'WMS',
-      url: 'https://tiles-dev/api/raster/v1/service?REQUEST=GetCapabilities',
-    },
-    {
-      name: `${productId}-${productType}`,
-      protocol: 'WMS_BASE',
-      url: 'https://tiles-dev/api/raster/v1/wms',
-    },
-    {
-      name: `${productId}-${productType}`,
-      protocol: 'WMTS',
-      url: 'https://tiles-dev/api/raster/v1/wmts/1.0.0/WMTSCapabilities.xml',
-    },
-    {
-      name: `${productId}-${productType}`,
-      protocol: 'WMTS_KVP',
-      url: 'https://tiles-dev/api/raster/v1/service?REQUEST=GetCapabilities&SERVICE=WMTS',
-    },
-    {
-      name: `${productId}-${productType}`,
-      protocol: 'WMTS_BASE',
-      url: 'https://tiles-dev/api/raster/v1/wmts',
-    },
-  ].map((link) => {
-    return { ...link, description: faker.helpers.maybe(() => faker.word.words({ count: { min: 1, max: 10 } })) };
-  });
-  return faker.helpers.arrayElements(templateLinks);
-};
-
-const generateNewLayerMetadata = (): IngestionNewMetadata => {
-  return {
-    classification: generators.classification(),
-    productId: generators.productId(),
-    productName: generators.productName(),
-    productType: generators.productType(),
-    region: faker.helpers.multiple(() => generators.region(), { count: faker.number.int({ min: 1, max: 100 }) }),
-    srs: generators.srs(),
-    srsName: generators.srsName(),
-    transparency: generators.transparency(),
-    description: generators.description(),
-    producerName: generators.producerName(),
-    productSubType: generators.productSubType(),
-    scale: generators.scale(),
-  };
-};
-const generateNewLayerRequest = (): IngestionNewLayer => {
-  return {
-    callbackUrls: faker.helpers.multiple(() => faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) })),
-    ingestionResolution: faker.number.float({
-      min: CORE_VALIDATIONS.resolutionDeg.min,
-      max: CORE_VALIDATIONS.resolutionDeg.max,
-    }),
-    inputFiles: generateInputFiles(),
-    metadata: generateNewLayerMetadata(),
-  };
-};
-
-const generateUpdateLayerMetadata = (): IngestionUpdateMetadata => {
-  return {
-    classification: faker.number.int({ max: 100 }).toString(),
-  };
-};
-const generateUpdateLayerRequest = (): IngestionUpdateLayer => {
-  return {
-    callbackUrls: faker.helpers.multiple(() => faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) })),
-    ingestionResolution: faker.number.float({
-      min: CORE_VALIDATIONS.resolutionDeg.min,
-      max: CORE_VALIDATIONS.resolutionDeg.max,
-    }),
-    inputFiles: generateInputFiles(),
-    metadata: generateUpdateLayerMetadata(),
-  };
-};
-
-const getTestFilePath = (inputFiles: InputFiles): InputFiles => {
-  const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = inputFiles;
-  return {
-    gpkgFilesPath: [join(getTestFilesPath(), 'gpkg', gpkgFilesPath[0])],
-    metadataShapefilePath: join(getTestFilesPath(), 'metadata', metadataShapefilePath, 'ShapeMetadata.zip'),
-    productShapefilePath: join(getTestFilesPath(), 'product', productShapefilePath, 'Product.zip'),
-  };
-};
-/**
- * CAUTION generated paths can be existing files on file system
- */
-const generateInputFiles = (): InputFiles => {
-  return {
-    gpkgFilesPath: [join(faker.system.directoryPath(), fakerHE.system.commonFileName('gpkg'))],
-    metadataShapefilePath: join(faker.system.directoryPath(), 'ShapeMetadata.zip'),
-    productShapefilePath: join(faker.system.directoryPath(), 'Product.zip'),
-  };
-};
 export const generateCatalogLayerResponse = (): RasterLayerCatalog => {
-  const productId = generators.productId();
-  const productType = generators.productType();
+  const productId = rasterLayerMetadataGenerators.productId();
+  const productType = rasterLayerMetadataGenerators.productType();
 
   return {
     metadata: generateCatalogLayerMetadata({ productId, productType }),
     links: faker.helpers.arrayElements(generateCatalogLayerLinks({ productId, productType })),
   };
 };
+
 export const createNewLayerRequest = (newLayerRequest: DeepPartial<IngestionNewLayer> & Pick<IngestionNewLayer, 'inputFiles'>): IngestionNewLayer => {
   const override = structuredClone(newLayerRequest);
   override.inputFiles = getTestFilePath(override.inputFiles);
   const mergedNewLayerRequest = merge(generateNewLayerRequest(), override);
   return mergedNewLayerRequest;
 };
+
 export const createUpdateLayerRequest = (
-  newLayerRequest: DeepPartial<IngestionUpdateLayer> & Pick<IngestionNewLayer, 'inputFiles'>
+  newLayerRequest: DeepPartial<IngestionUpdateLayer> & Pick<IngestionUpdateLayer, 'inputFiles'>
 ): IngestionUpdateLayer => {
   const override = structuredClone(newLayerRequest);
   override.inputFiles = getTestFilePath(override.inputFiles);
   const mergedUpdateLayerRequest = merge(generateUpdateLayerRequest(), override);
   return mergedUpdateLayerRequest;
 };
+
 export const createCatalogLayerResponse = (rasterLayerCatalog?: DeepPartial<RasterLayerCatalog>): RasterLayerCatalog => {
   const override = structuredClone(rasterLayerCatalog);
   const mergedRasterLayerCatalog = merge(generateCatalogLayerResponse(), override);
   return mergedRasterLayerCatalog;
+};
+
+export const getTestFilesPath = (): string => {
+  return TEST_FILES_RELATIVE_PATH;
 };
