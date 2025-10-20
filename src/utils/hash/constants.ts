@@ -1,6 +1,4 @@
 /**
  * Supported hash algorithms
  */
-export enum HashAlgorithm {
-  XXH64 = 'XXH64',
-}
+export const HASH_ALGORITHM = ['XXH64'] as const;

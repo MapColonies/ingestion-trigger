@@ -9,9 +9,8 @@ import { CHECKSUM_PROCESSOR, SERVICES, SERVICE_NAME } from './common/constants';
 import { InjectionObject, registerDependencies } from './common/dependencyRegistration';
 import { tracing } from './common/tracing';
 import { INGESTION_ROUTER_SYMBOL, ingestionRouterFactory } from './ingestion/routes/ingestionRouter';
+import type { HashAlgorithm, HashProcessor } from './utils/hash/interface';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, schemasValidationsFactory } from './utils/validation/schemasValidator';
-import type { HashProcessor } from './utils/hash/interface';
-import { HashAlgorithm } from './utils/hash/constants';
 
 export interface RegisterOptions {
   override?: InjectionObject<unknown>[];
@@ -38,7 +37,7 @@ export const registerExternalValues = (options?: RegisterOptions): DependencyCon
       token: CHECKSUM_PROCESSOR,
       provider: {
         useFactory: (): HashProcessor => {
-          return Object.assign(new Xxh64(), { algorithm: HashAlgorithm.XXH64 });
+          return Object.assign(new Xxh64(), { algorithm: 'XXH64' as const satisfies HashAlgorithm });
         },
       },
     },

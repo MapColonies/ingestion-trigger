@@ -1,4 +1,6 @@
-import type { HashAlgorithm } from './constants';
+import { HASH_ALGORITHM } from './constants';
+
+export type HashAlgorithm = (typeof HASH_ALGORITHM)[number];
 
 export interface Checksum {
   algorithm: HashAlgorithm;
