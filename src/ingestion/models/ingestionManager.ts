@@ -345,22 +345,22 @@ export class IngestionManager {
 
   @withSpanAsyncV4
   private async getLayerMetadata(catalogId: string): Promise<RasterLayerMetadata> {
-    const rasterLayersMetadata = await this.catalogClient.findById(catalogId);
+    const rasterLayersCatalog = await this.catalogClient.findById(catalogId);
 
     const getLayerSpan = trace.getActiveSpan();
-    if (rasterLayersMetadata.length === 0) {
+    if (rasterLayersCatalog.length === 0) {
       const message = `there isn't a layer with id of ${catalogId}`;
       const error = new NotFoundError(message);
       getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
-    } else if (rasterLayersMetadata.length !== 1) {
+    } else if (rasterLayersCatalog.length !== 1) {
       const message = `found more than one layer with id of ${catalogId}, please check the catalog layers`;
       const error = new ConflictError(message);
       getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
     }
 
-    return rasterLayersMetadata[0].metadata;
+    return rasterLayersCatalog[0].metadata;
   }
 
   @withSpanAsyncV4
