@@ -71,11 +71,11 @@ const generateCatalogLayerLinks = ({ productId, productType }: { productId: stri
 
 const generateCatalogLayerMetadata = ({ productId, productType }: { productId: string; productType: RasterProductTypes }): RasterLayerMetadata => {
   const horizontalAccuracyCE90 = [rasterLayerMetadataGenerators.horizontalAccuracyCE90(), rasterLayerMetadataGenerators.horizontalAccuracyCE90()];
-  const [minHorizontalAccuracyCE90, maxHorizontalAccuracyCE90] = [Math.min(...horizontalAccuracyCE90), Math.max(...horizontalAccuracyCE90)];
+  const [maxHorizontalAccuracyCE90, minHorizontalAccuracyCE90] = [Math.min(...horizontalAccuracyCE90), Math.max(...horizontalAccuracyCE90)];
   const resolutionMeter = [rasterLayerMetadataGenerators.resolutionMeter(), rasterLayerMetadataGenerators.resolutionMeter()];
-  const [minResolutionMeter, maxResolutionMeter] = [Math.min(...resolutionMeter), Math.max(...resolutionMeter)];
+  const [maxResolutionMeter, minResolutionMeter] = [Math.min(...resolutionMeter), Math.max(...resolutionMeter)];
   const resolutionDeg = [rasterLayerMetadataGenerators.resolutionDeg(), rasterLayerMetadataGenerators.resolutionDeg()];
-  const [minResolutionDeg, maxResolutionDeg] = [Math.min(...resolutionDeg), Math.max(...resolutionDeg)];
+  const [maxResolutionDeg, minResolutionDeg] = [Math.min(...resolutionDeg), Math.max(...resolutionDeg)];
   const longitude = [faker.number.float({ min: -170, max: 170 }), faker.number.float({ min: -170, max: 170 })];
   const latitude = [faker.number.float({ min: -80, max: 80 }), faker.number.float({ min: -80, max: 80 })];
   const bbox = [Math.min(...longitude), Math.min(...latitude), Math.max(...longitude), Math.max(...latitude)] satisfies BBox;
