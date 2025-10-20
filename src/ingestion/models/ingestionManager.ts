@@ -166,7 +166,7 @@ export class IngestionManager {
 
     const rasterLayerMetadata = await this.getLayerMetadata(catalogId);
 
-    await this.updateLayerValidations(catalogId, rasterLayerMetadata, updateLayer);
+    await this.updateLayerValidations(rasterLayerMetadata, updateLayer);
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
@@ -184,25 +184,21 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async updateLayerValidations(
-    catalogId: string,
-    rasterLayerMetadata: RasterLayerMetadata,
-    updateLayer: IngestionUpdateLayer
-  ): Promise<void> {
+  private async updateLayerValidations(rasterLayerMetadata: RasterLayerMetadata, updateLayer: IngestionUpdateLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayerValidations.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.updateLayerValidations');
 
-    const { productId, productType } = rasterLayerMetadata;
+    const { id, productId, productType } = rasterLayerMetadata;
     const { metadata, inputFiles } = updateLayer;
     this.logger.debug({
       msg: 'started update layer validation',
-      catalogId: catalogId,
+      catalogId: id,
       requestBody: { metadata, inputFiles },
       logCtx: logCtx,
     });
     this.logger.info({
-      catalogId: catalogId,
+      catalogId: id,
       msg: 'started validation on update layer request',
       logCtx: logCtx,
     });
