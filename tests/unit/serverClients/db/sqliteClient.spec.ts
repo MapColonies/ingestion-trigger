@@ -86,7 +86,7 @@ describe('SQLClient', () => {
   });
 
   describe('isGpkgIndexExist', () => {
-    it.only('should return true when unique GPKG index exists', () => {
+    it('should return true when unique GPKG index exists', () => {
       const mockTableName = 'test_table';
       getDbSpy.mockReturnValue(mockDB);
       jest.spyOn(SQLiteClient.prototype as unknown as { getGpkgTableName: jest.Mock }, 'getGpkgTableName').mockReturnValue(mockTableName);

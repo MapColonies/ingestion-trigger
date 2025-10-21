@@ -216,6 +216,7 @@ components:
         type: string
         pattern: ^https?:\/\/[^\s/$.?#].[^\s]*$
         description: callback url for ingestion status notifications
+      minItems: 1
       example: ['https://my-dns-for-callback']
     GpkgFilesPath:
       type: array
@@ -267,7 +268,6 @@ components:
         - metadata
         - inputFiles
         - ingestionResolution
-        - callbackUrls
       properties:
         metadata:
           $ref: '#/components/schemas/IngestionNewLayerMetadata'
@@ -296,7 +296,6 @@ components:
         - metadata
         - inputFiles
         - ingestionResolution
-        - callbackUrls
       properties:
         metadata:
           $ref: '#/components/schemas/IngestionUpdateLayerMetadata'
@@ -321,14 +320,14 @@ components:
           $ref: '#/components/schemas/ProductShapefilePath'
     MetadataShapefilePath:
       type: string
-      pattern: ^(\/[\w-]+)+\/ShapeMetadata\.zip$
+      # pattern: ^(\/[\w-]+)+\/ShapeMetadata\.shp$
       description: metadata shape file path
-      example: '/path/to/ShapeMetadata.zip'
+      example: '/path/to/ShapeMetadata.shp'
     ProductShapefilePath:
       type: string
-      pattern: ^(\/[\w-]+)+\/Product\.zip$
+      # pattern: ^(\/[\w-]+)+\/Product\.shp$
       description: product shape file path
-      example: '/path/to/Product.zip'
+      example: '/path/to/Product.shp'
     SuccessfulIngestionResponse:
       type: object
       required:

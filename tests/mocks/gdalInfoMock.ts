@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { Polygon } from 'geojson';
-import { InfoData, InfoDataWithFile } from '../../src/ingestion/schemas/infoDataSchema';
-import { faker } from '@faker-js/faker';
+import { InfoDataWithFile } from '../../src/ingestion/schemas/infoDataSchema';
 
 export const mockGdalInfoData: InfoDataWithFile = {
   crs: 4326,
@@ -17,7 +15,7 @@ export const mockGdalInfoData: InfoDataWithFile = {
     ],
     type: 'Polygon',
   },
-  fileFormat: 'GPKG',
+  fileFormat: "gpkg",
   gpkgFilePath: '/path/to/blue_marble.gpkg',
   pixelSize: 0.0439453125,
 };

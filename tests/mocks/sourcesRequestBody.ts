@@ -3,18 +3,16 @@
 import { faker } from "@faker-js/faker";
 import { InputFiles } from "@map-colonies/raster-shared";
 
-
-const directoryPath = faker.system.directoryPath(); 
 const gpkgFileName = faker.system.commonFileName('gpkg');
-const zipFileName = faker.system.commonFileName('zip');
 const sourceDirectory = 'testFiles';
-const fakeGpkgFilePath = `${sourceDirectory}/${gpkgFileName}`
-const fakeZipFilePath = `${sourceDirectory}/${zipFileName}`;;
+const fakeGpkgFilePath = `/${sourceDirectory}/${gpkgFileName}`;
+const fakeShapeMetadatafilePath = `/${sourceDirectory}/ShapeMetadata.shp`;
+const fakeProductShapaefilePath = `/${sourceDirectory}/Product.shp`;
 
 export const mockInputFiles: InputFiles = {
     gpkgFilesPath: [fakeGpkgFilePath],
-    metadataShapefilePath: fakeZipFilePath,
-    productShapefilePath: fakeZipFilePath
+    metadataShapefilePath: fakeShapeMetadatafilePath,
+    productShapefilePath: fakeProductShapaefilePath
 };
 
 function getFakeIngestionSources() {

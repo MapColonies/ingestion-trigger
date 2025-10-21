@@ -12,21 +12,21 @@ import { Polygon } from 'geojson';
 export const validNewLayerRequest = {
   valid: createNewLayerRequest({
     inputFiles: {
-      gpkgFilesPath: ['(valid)indexed.gpkg'],
-      productShapefilePath: '(valid)indexed',
-      metadataShapefilePath: '(valid)indexed',
+      gpkgFilesPath: ['/path/to/(valid)indexed.gpkg'],
+      metadataShapefilePath: '/path/to/ShapeMetadata.shp',
+      productShapefilePath: '/path/to/Product.shp',
     },
   }),
 } satisfies Record<PropertyKey, IngestionNewLayer>;
-export const ingestionNewRequest: IngestionNewLayer = createNewLayerRequest({ inputFiles: validNewLayerRequest.valid.inputFiles })
+export const ingestionNewRequest: IngestionNewLayer = createNewLayerRequest()
 
 export const invalidNewLayerRequest = {
   metadata: createNewLayerRequest({
     metadata: { productId: 'invalid !' },
     inputFiles: {
-      gpkgFilesPath: ['(valid)indexed.gpkg'],
-      productShapefilePath: '(valid)indexed',
-      metadataShapefilePath: '(valid)indexed',
+      gpkgFilesPath: ['/path/to/(valid)indexed.gpkg'],
+      productShapefilePath: '/path/to/(valid)indexed.shp',
+      metadataShapefilePath: '/path/to(valid)indexed.shp',
     },
   }),
   notContainedPolygon: createNewLayerRequest({

@@ -66,8 +66,8 @@ const getTestFilePath = (inputFiles: InputFiles): InputFiles => {
   const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = inputFiles;
   return {
     gpkgFilesPath: [join(TEST_FILES_ABSOLUTE_PATH, 'gpkg', gpkgFilesPath[0])],
-    metadataShapefilePath: join(TEST_FILES_ABSOLUTE_PATH, 'metadata', metadataShapefilePath, 'ShapeMetadata.zip'),
-    productShapefilePath: join(TEST_FILES_ABSOLUTE_PATH, 'product', productShapefilePath, 'Product.zip'),
+    metadataShapefilePath: join(TEST_FILES_ABSOLUTE_PATH, 'metadata', metadataShapefilePath, 'ShapeMetadata.shp'),
+    productShapefilePath: join(TEST_FILES_ABSOLUTE_PATH, 'product', productShapefilePath, 'Product.shp'),
   };
 };
 const generateInputFiles = (): InputFiles => {
@@ -75,8 +75,8 @@ const generateInputFiles = (): InputFiles => {
     // TODO: since we don't want the FS module to go to random potentially harmful places
     // we should limit this response
     gpkgFilesPath: [join(faker.system.directoryPath(), fakerHE.system.commonFileName('gpkg'))],
-    metadataShapefilePath: join(faker.system.directoryPath(), 'ShapeMetadata.zip'),
-    productShapefilePath: join(faker.system.directoryPath(), 'Product.zip'),
+    metadataShapefilePath: join(faker.system.directoryPath(), 'ShapeMetadata.shp'),
+    productShapefilePath: join(faker.system.directoryPath(), 'Product.shp'),
   };
 };
 // TODO: implement, take request as input
