@@ -321,14 +321,14 @@ components:
           $ref: '#/components/schemas/ProductShapefilePath'
     MetadataShapefilePath:
       type: string
-      pattern: ^(\/[\w-]+)+\/ShapeMetadata\.zip$
+      pattern: ^(\/[\w-]+)+\/ShapeMetadata\.shp$
       description: metadata shape file path
-      example: '/path/to/ShapeMetadata.zip'
+      example: '/path/to/ShapeMetadata.shp'
     ProductShapefilePath:
       type: string
-      pattern: ^(\/[\w-]+)+\/Product\.zip$
+      pattern: ^(\/[\w-]+)+\/Product\.shp$
       description: product shape file path
-      example: '/path/to/Product.zip'
+      example: '/path/to/Product.shp'
     SuccessfulIngestionResponse:
       type: object
       required:
