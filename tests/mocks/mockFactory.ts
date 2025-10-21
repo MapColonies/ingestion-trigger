@@ -198,8 +198,8 @@ const getTestFilePath = (inputFiles: InputFiles): InputFiles => {
   const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = inputFiles;
   return {
     gpkgFilesPath: [join(getTestFilesPath(), 'gpkg', gpkgFilesPath[0])],
-    metadataShapefilePath: join(getTestFilesPath(), 'metadata', metadataShapefilePath, 'ShapeMetadata.zip'),
-    productShapefilePath: join(getTestFilesPath(), 'product', productShapefilePath, 'Product.zip'),
+    metadataShapefilePath: join(getTestFilesPath(), 'metadata', metadataShapefilePath, 'ShapeMetadata.shp'),
+    productShapefilePath: join(getTestFilesPath(), 'product', productShapefilePath, 'Product.shp'),
   };
 };
 
@@ -209,15 +209,15 @@ const getTestFilePath = (inputFiles: InputFiles): InputFiles => {
 const generateInputFiles = (): InputFiles => {
   return {
     gpkgFilesPath: [join(faker.system.directoryPath(), fakerHE.system.commonFileName('gpkg'))],
-    metadataShapefilePath: join(faker.system.directoryPath(), 'ShapeMetadata.zip'),
-    productShapefilePath: join(faker.system.directoryPath(), 'Product.zip'),
+    metadataShapefilePath: join(faker.system.directoryPath(), 'ShapeMetadata.shp'),
+    productShapefilePath: join(faker.system.directoryPath(), 'Product.shp'),
   };
 };
 
 export const rasterLayerInputFilesGenerators: IngestionLayerInputFilesPropertiesGenerators = {
   gpkgFilesPath: () => [join(getTestFilesPath(), 'gpkg', fakerHE.system.commonFileName('gpkg'))],
-  metadataShapefilePath: () => join(getTestFilesPath(), 'metadata', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'ShapeMetadata.zip'),
-  productShapefilePath: () => join(getTestFilesPath(), 'product', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'Product.zip'),
+  metadataShapefilePath: () => join(getTestFilesPath(), 'metadata', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'ShapeMetadata.shp'),
+  productShapefilePath: () => join(getTestFilesPath(), 'product', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'Product.shp'),
 };
 
 // TODO: fakerHE!!!!! - check hebrew generation
