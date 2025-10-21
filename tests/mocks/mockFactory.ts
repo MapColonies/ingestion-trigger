@@ -8,6 +8,7 @@ import {
   INGESTION_VALIDATIONS,
   RasterProductTypes,
   Transparency,
+  type CallbackUrlsTargetArray,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
 } from '@map-colonies/raster-shared';
@@ -79,6 +80,14 @@ const generateCatalogLayerLinks = ({ productId, productType }: { productId: stri
   });
   return faker.helpers.arrayElements(templateLinks);
 };
+
+const generateCallbackUrl = (): CallbackUrlsTargetArray[number] => faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
+
+const generateIngestionResolution = (): IngestionUpdateLayer['ingestionResolution'] =>
+  faker.number.float({
+    min: CORE_VALIDATIONS.resolutionDeg.min,
+    max: CORE_VALIDATIONS.resolutionDeg.max,
+  });
 
 const generateCatalogLayerMetadata = ({ productId, productType }: { productId: string; productType: RasterProductTypes }): RasterLayerMetadata => {
   const horizontalAccuracyCE90 = [rasterLayerMetadataGenerators.horizontalAccuracyCE90(), rasterLayerMetadataGenerators.horizontalAccuracyCE90()];
@@ -166,11 +175,8 @@ const generateNewLayerMetadata = (): IngestionNewMetadata => {
 
 const generateNewLayerRequest = (): IngestionNewLayer => {
   return {
-    callbackUrls: faker.helpers.multiple(() => faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) })),
-    ingestionResolution: faker.number.float({
-      min: CORE_VALIDATIONS.resolutionDeg.min,
-      max: CORE_VALIDATIONS.resolutionDeg.max,
-    }),
+    callbackUrls: faker.helpers.maybe(() => faker.helpers.multiple(() => generateCallbackUrl(), { count: { min: 1, max: 10 } })),
+    ingestionResolution: generateIngestionResolution(),
     inputFiles: generateInputFiles(),
     metadata: generateNewLayerMetadata(),
   };
@@ -184,11 +190,8 @@ const generateUpdateLayerMetadata = (): IngestionUpdateMetadata => {
 
 const generateUpdateLayerRequest = (): IngestionUpdateLayer => {
   return {
-    callbackUrls: faker.helpers.multiple(() => faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) })),
-    ingestionResolution: faker.number.float({
-      min: CORE_VALIDATIONS.resolutionDeg.min,
-      max: CORE_VALIDATIONS.resolutionDeg.max,
-    }),
+    callbackUrls: faker.helpers.maybe(() => faker.helpers.multiple(() => generateCallbackUrl(), { count: { min: 1, max: 10 } })),
+    ingestionResolution: generateIngestionResolution(),
     inputFiles: generateInputFiles(),
     metadata: generateUpdateLayerMetadata(),
   };
