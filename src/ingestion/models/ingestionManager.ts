@@ -428,7 +428,7 @@ export class IngestionManager {
 
     const fullFilePath = join(this.sourceMount, filePath);
     this.logger.info({ msg: `calucalting checksum for: ${fullFilePath}`, logContext: logCtx });
-    const checksum = await this.checksum.calculate(fullFilePath);
-    return checksum;
+    const { fileName, ...checksum } = await this.checksum.calculate(fullFilePath);
+    return { ...checksum, fileName: filePath };
   }
 }
