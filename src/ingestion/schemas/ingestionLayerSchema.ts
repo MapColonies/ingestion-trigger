@@ -11,6 +11,6 @@ export const createNewIngestionLayerSchema = () => {
     metadata: createNewMetadataSchema(),
     inputFiles: createInputFilesSchema(),
     ingestionResolution: ingestionResolutionSchema,
-    callbackUrls: callbackUrlsArraySchema,
+    callbackUrls: callbackUrlsArraySchema.optional(),
   });
 };
