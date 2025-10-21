@@ -7,22 +7,22 @@ export const fakeDataToValidate = {
   inputFiles: {
     valid: {
       originDirectory: 'sourceDirectory',
-      fileNames: ['valid(blueMarble).gpkg'],
+      fileNames: ['validBlueMarble.gpkg'],
     },
     invalid: {
       filesNotSupplied: {
         originDirectory: 'sourceDirectory',
       },
       directoryNotSupplied: {
-        fileNames: ['valid(blueMarble).gpkg'],
+        fileNames: ['validBlueMarble.gpkg'],
       },
       tooManyFiles: {
         originDirectory: 'sourceDirectory',
-        fileNames: ['invalidCrs(3857).gpkg', 'valid(blueMarble).gpkg'],
+        fileNames: ['invalidCrs-3857.gpkg', 'validBlueMarble.gpkg'],
       },
       wrongSuffix: {
         originDirectory: 'sourceDirectory',
-        fileNames: ['invalidPixelSize(0.8).tiff'],
+        fileNames: ['invalidPixelSize-0.8.tiff'],
       },
     },
   },

@@ -1,4 +1,6 @@
-import type { HashAlgorithm } from './constants';
+import { HASH_ALGORITHM } from './constants';
+
+export type HashAlgorithm = (typeof HASH_ALGORITHM)[number];
 
 export interface Checksum {
   algorithm: HashAlgorithm;
@@ -22,7 +24,7 @@ export interface HashProcessor {
    * @param data - The data to include in the hash calculation
    * @returns The hash calculator instance for chaining
    */
-  update: (data: Buffer | string) => HashProcessor;
+  update: (data: string) => HashProcessor;
 
   /**
    * Finalizes the hash calculation and returns the result

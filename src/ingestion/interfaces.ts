@@ -9,7 +9,7 @@ export interface SourcesValidationResponse {
 
 export interface ResponseId {
   jobId: ICreateJobResponse['id'];
-  taskId: ICreateJobResponse['taskIds'][number]
+  taskId: ICreateJobResponse['taskIds'][number];
 }
 
 export interface IRecordRequestParams {

@@ -1,9 +1,10 @@
-import { join } from 'node:path';
+import { basename, dirname, join, sep } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { IFindJobsByCriteriaBody, OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
 import {
   getMapServingLayerName,
+  ShapefileExtensions,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
@@ -14,7 +15,7 @@ import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { IConfig, ISupportedIngestionSwapTypes, LayerDetails } from '../../common/interfaces';
+import { IConfig, ISupportedIngestionSwapTypes } from '../../common/interfaces';
 import { CatalogClient } from '../../serviceClients/catalogClient';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
@@ -26,7 +27,7 @@ import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../err
 import type { ResponseId, SourcesValidationResponse, ValidationTaskParameters } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
-import { layerDetailsSchema } from '../schemas/layerDetailsSchema';
+import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
 import { GeoValidator } from '../validators/geoValidator';
 import { SourceValidator } from '../validators/sourceValidator';
@@ -94,7 +95,12 @@ export class IngestionManager {
   public async validateSources(inputFiles: InputFiles): Promise<SourcesValidationResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateSources.name };
     const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = inputFiles;
-    const inputFilesPaths: string[] = [...gpkgFilesPath, metadataShapefilePath, productShapefilePath];
+    const shapefilesPath = [metadataShapefilePath, productShapefilePath].flatMap((shapefilePath) => {
+      return [ShapefileExtensions.CPG, ShapefileExtensions.DBF, ShapefileExtensions.PRJ, ShapefileExtensions.SHP, ShapefileExtensions.SHX].map(
+        (extension) => `${dirname(shapefilePath)}${sep}${basename(shapefilePath, '.shp')}${extension}`
+      );
+    });
+    const inputFilesPaths = [...shapefilesPath, ...gpkgFilesPath];
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.validateSources');
     try {
@@ -164,13 +170,13 @@ export class IngestionManager {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.updateLayer');
 
-    const layerDetails = await this.getLayerDetails(catalogId);
+    const rasterLayerMetadata = await this.getLayerMetadata(catalogId);
 
-    await this.updateLayerValidations(catalogId, layerDetails, updateLayer);
+    await this.updateLayerValidations(rasterLayerMetadata, updateLayer);
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
-    const createJobRequest = await this.updateLayerJobPayload(catalogId, layerDetails, updateLayer);
+    const createJobRequest = await this.updateLayerJobPayload(catalogId, rasterLayerMetadata, updateLayer);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
     const taskId = taskIds[0];
 
@@ -184,21 +190,21 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async updateLayerValidations(catalogId: string, layerDetails: LayerDetails, updateLayer: IngestionUpdateLayer): Promise<LayerDetails> {
+  private async updateLayerValidations(rasterLayerMetadata: RasterLayerMetadata, updateLayer: IngestionUpdateLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayerValidations.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.updateLayerValidations');
 
-    const { productId, productVersion, productType, productSubType, tileOutputFormat, displayPath, productName, footprint } = layerDetails;
+    const { id, productId, productType } = rasterLayerMetadata;
     const { metadata, inputFiles } = updateLayer;
     this.logger.debug({
       msg: 'started update layer validation',
-      catalogId: catalogId,
+      catalogId: id,
       requestBody: { metadata, inputFiles },
       logCtx: logCtx,
     });
     this.logger.info({
-      catalogId: catalogId,
+      catalogId: id,
       msg: 'started validation on update layer request',
       logCtx: logCtx,
     });
@@ -210,7 +216,6 @@ export class IngestionManager {
     await this.validateLayerExistsInMapProxy(layerName);
     await this.validateNoParallelJobs(productId, productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
-    return { productId, productVersion, productType, productSubType, tileOutputFormat, displayPath, productName, footprint };
   }
 
   @withSpanAsyncV4
@@ -341,23 +346,23 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async getLayerDetails(catalogId: string): Promise<LayerDetails> {
-    const layersDetails = await this.catalogClient.findById(catalogId);
+  private async getLayerMetadata(catalogId: string): Promise<RasterLayerMetadata> {
+    const rasterLayersCatalog = await this.catalogClient.findById(catalogId);
+
     const getLayerSpan = trace.getActiveSpan();
-    if (layersDetails.length === 0) {
+    if (rasterLayersCatalog.length === 0) {
       const message = `there isn't a layer with id of ${catalogId}`;
       const error = new NotFoundError(message);
       getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
-    } else if (layersDetails.length !== 1) {
+    } else if (rasterLayersCatalog.length !== 1) {
       const message = `found more than one layer with id of ${catalogId}, please check the catalog layers`;
       const error = new ConflictError(message);
       getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
     }
 
-    const layerDetails = layerDetailsSchema.parse(layersDetails[0].metadata);
-    return layerDetails;
+    return rasterLayersCatalog[0].metadata;
   }
 
   @withSpanAsyncV4
@@ -387,10 +392,10 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async updateLayerJobPayload(
     catalogId: string,
-    layerDetails: LayerDetails,
+    rasterLayerMetadata: RasterLayerMetadata,
     updateLayer: IngestionUpdateLayer
   ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters>> {
-    const { productId, productName, productType, productSubType, productVersion, tileOutputFormat, displayPath, footprint } = layerDetails;
+    const { productId, productName, productType, productSubType, productVersion, tileOutputFormat, displayPath, footprint } = rasterLayerMetadata;
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === productType && supportedSwapObj.productSubType === productSubType;
     });
@@ -429,7 +434,7 @@ export class IngestionManager {
 
     const fullFilePath = join(this.sourceMount, filePath);
     this.logger.info({ msg: `calucalting checksum for: ${fullFilePath}`, logContext: logCtx });
-    const checksum = await this.checksum.calculate(fullFilePath);
-    return checksum;
+    const { fileName, ...checksum } = await this.checksum.calculate(fullFilePath);
+    return { ...checksum, fileName: filePath };
   }
 }

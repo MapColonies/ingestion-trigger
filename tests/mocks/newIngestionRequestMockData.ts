@@ -1,43 +1,36 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { ICreateJobBody, ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
+import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import type { IngestionNewLayer } from '../../src/ingestion/schemas/ingestionLayerSchema';
-import { createNewLayerRequest } from '../utils/faker';
-import { ValidationTaskParameters } from '../../src/ingestion/interfaces';
-import { IngestionNewJobParams, IngestionUpdateJobParams, RasterProductTypes } from '@map-colonies/raster-shared';
-import { Domain } from '@map-colonies/types';
-import { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
-import { faker } from '@faker-js/faker';
-import { Polygon } from 'geojson';
+import { createNewLayerRequest } from './mockFactory';
 
 export const validNewLayerRequest = {
   valid: createNewLayerRequest({
     inputFiles: {
-      gpkgFilesPath: ['/path/to/(valid)indexed.gpkg'],
-      metadataShapefilePath: '/path/to/ShapeMetadata.shp',
-      productShapefilePath: '/path/to/Product.shp',
+      gpkgFilesPath: ['validIndexed.gpkg'],
+      productShapefilePath: 'validIndexed',
+      metadataShapefilePath: 'validIndexed',
     },
   }),
 } satisfies Record<PropertyKey, IngestionNewLayer>;
-export const ingestionNewRequest: IngestionNewLayer = createNewLayerRequest()
 
 export const invalidNewLayerRequest = {
   metadata: createNewLayerRequest({
     metadata: { productId: 'invalid !' },
     inputFiles: {
-      gpkgFilesPath: ['/path/to/(valid)indexed.gpkg'],
-      productShapefilePath: '/path/to/(valid)indexed.shp',
-      metadataShapefilePath: '/path/to(valid)indexed.shp',
+      gpkgFilesPath: ['validIndexed.gpkg'],
+      productShapefilePath: 'validIndexed',
+      metadataShapefilePath: 'validIndexed',
     },
   }),
   notContainedPolygon: createNewLayerRequest({
     inputFiles: {
-      gpkgFilesPath: ['(valid)indexed.gpkg'],
-      productShapefilePath: '(valid)indexed',
+      gpkgFilesPath: ['validIndexed.gpkg'],
+      productShapefilePath: 'validIndexed',
       metadataShapefilePath: 'blueMarble',
     },
   }),
   gdalInfo: createNewLayerRequest({
-    inputFiles: { gpkgFilesPath: ['invalidCrs(3857).gpkg'], metadataShapefilePath: '(valid)indexed', productShapefilePath: '(valid)indexed' },
+    inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
   }),
 } satisfies Record<string, IngestionNewLayer>;
 
@@ -47,79 +40,6 @@ export const jobResponse: ICreateJobResponse = {
 };
 
 export const runningJobResponse = [{ status: OperationStatus.IN_PROGRESS, type: 'export' }];
-
-export const ingestionNewJobRequest: ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> = {
-  resourceId: 'BLUE_MARBLE',
-  version: '1.0',
-  type: 'Ingestion_New',
-  productName: 'string',
-  productType: 'Orthophoto',
-  parameters: {
-    metadata: {
-      productId: 'BLUE_2',
-      productName: 'string',
-      productType: RasterProductTypes.ORTHOPHOTO,
-      productSubType: 'string',
-      description: 'string',
-      srs: '4326',
-      srsName: 'WGS84GEO',
-      transparency: 'TRANSPARENT',
-      region: ['string'],
-      classification: '6',
-      producerName: 'string',
-      scale: 100000000,
-    },
-    additionalParams: {
-      jobTrackerServiceURL: 'http://jobTrackerServiceUrl',
-    },
-    inputFiles: validNewLayerRequest.valid.inputFiles,
-    ingestionResolution: 0.703125,
-    callbackUrls: []
-  },
-  domain: Domain.RASTER,
-  tasks: [
-    {
-      type: 'validation',
-      parameters: {
-        checksums: []
-      },
-    },
-  ],
-}
-
-export const ingestionUpdateJobRequest: ICreateJobBody<IngestionUpdateJobParams, ValidationTaskParameters> = {
-  resourceId: 'BLUE_MARBLE',
-  version: '1.0',
-  type: 'Ingestion_New',
-  productName: 'string',
-  productType: 'Orthophoto',
-
-  parameters: {
-    metadata: {
-      classification: '6',
-    },
-    additionalParams: {
-      tileOutputFormat: 'JPEG',
-      displayPath: faker.string.uuid(),
-      footprint: {} as Polygon,
-      jobTrackerServiceURL: 'http://job-tracker-service-url'
-    },
-    inputFiles: validNewLayerRequest.valid.inputFiles,
-    ingestionResolution: 0.703125,
-    callbackUrls: []
-  },
-  domain: Domain.RASTER,
-  tasks: [
-    {
-      type: 'validation',
-      parameters: {
-        checksums: []
-      },
-    },
-  ],
-
-}
-
 
 export const newJobRequest = {
   resourceId: 'BLUE_2',
@@ -171,7 +91,7 @@ export const newJobRequest = {
     ],
     inputFiles: {
       originDirectory: 'testFiles',
-      fileNames: ['valid(blueMarble).gpkg'],
+      fileNames: ['validBlueMarble.gpkg'],
     },
     additionalParams: {
       jobTrackerServiceURL: 'http://jobTrackerServiceUrl',

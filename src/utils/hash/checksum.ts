@@ -8,8 +8,7 @@ import { inject, injectable } from 'tsyringe';
 import { CHECKSUM_PROCESSOR, SERVICES } from '../../common/constants';
 import type { IConfig } from '../../common/interfaces';
 import type { LogContext } from '../logger/logContext';
-import type { HashProcessor, Checksum as IChecksum } from './interface';
-import type { HashAlgorithm } from './constants';
+import type { HashAlgorithm, HashProcessor, Checksum as IChecksum } from './interface';
 
 @injectable()
 export class Checksum {
@@ -51,7 +50,7 @@ export class Checksum {
 
     const checksum = await new Promise<string>((resolve, reject) => {
       stream.on('data', (chunk) => {
-        this.checksumProcessor.update(Buffer.isBuffer(chunk) ? chunk : String(chunk));
+        this.checksumProcessor.update(String(chunk));
       });
       stream.on('end', () => {
         const digest = this.checksumProcessor.digest();

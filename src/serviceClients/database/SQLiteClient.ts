@@ -19,7 +19,7 @@ export class SQLiteClient {
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
-    private readonly packageFilePath: string,
+    private readonly packageFilePath: string
   ) {
     const layerSourceDir = this.config.get<string>('storageExplorer.layerSourceDir');
     this.fullPath = join(layerSourceDir, this.packageFilePath);
