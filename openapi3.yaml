@@ -212,6 +212,7 @@ components:
   schemas:
     CallbackUrls:
       type: array
+      minItems: 1
       items:
         type: string
         pattern: ^https?:\/\/[^\s/$.?#].[^\s]*$
@@ -267,7 +268,6 @@ components:
         - metadata
         - inputFiles
         - ingestionResolution
-        - callbackUrls
       properties:
         metadata:
           $ref: '#/components/schemas/IngestionNewLayerMetadata'
@@ -296,7 +296,6 @@ components:
         - metadata
         - inputFiles
         - ingestionResolution
-        - callbackUrls
       properties:
         metadata:
           $ref: '#/components/schemas/IngestionUpdateLayerMetadata'
