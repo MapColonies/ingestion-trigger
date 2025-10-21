@@ -2,19 +2,30 @@
 import { join } from 'node:path';
 import { faker, fakerHE } from '@faker-js/faker';
 import { RecordType, TileOutputFormat } from '@map-colonies/mc-model-types';
-import { CORE_VALIDATIONS, INGESTION_VALIDATIONS, RasterProductTypes, Transparency } from '@map-colonies/raster-shared';
+import { OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
+import {
+  CORE_VALIDATIONS,
+  INGESTION_VALIDATIONS,
+  RasterProductTypes,
+  Transparency,
+  type IngestionSwapUpdateJobParams,
+  type IngestionUpdateJobParams,
+} from '@map-colonies/raster-shared';
 import { RecordStatus, TilesMimeFormat } from '@map-colonies/types';
 import { randomPolygon } from '@turf/turf';
 import type { BBox, Polygon } from 'geojson';
 import merge from 'lodash.merge';
 import { randexp } from 'randexp';
+import type { ValidationTaskParameters } from '../../src/ingestion/interfaces';
 import type { IngestionNewLayer } from '../../src/ingestion/schemas/ingestionLayerSchema';
 import type { InputFiles } from '../../src/ingestion/schemas/inputFilesSchema';
 import type { RasterLayersCatalog } from '../../src/ingestion/schemas/layerCatalogSchema';
 import type { IngestionNewMetadata } from '../../src/ingestion/schemas/newMetadataSchema';
 import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
 import type { IngestionUpdateMetadata } from '../../src/ingestion/schemas/updateMetadataSchema';
+import type { Checksum } from '../../src/utils/hash/interface';
 import type { DeepPartial, FlatRecordValues, ReplaceValueWithFunctionResponse as ReplaceValueWithGenerator } from '../utils/types';
+import { configMock } from './configMock';
 
 // adjust path to test files location relative to source mount
 const TEST_FILES_RELATIVE_PATH = '/testFiles';
@@ -286,4 +297,59 @@ export const createCatalogLayerResponse = (rasterLayerCatalog?: DeepPartial<Rast
 
 export const getTestFilesPath = (): string => {
   return TEST_FILES_RELATIVE_PATH;
+};
+
+export const createUpdateJobRequest = (
+  {
+    ingestionUpdateLayer,
+    rasterLayerMetadata,
+  }: { ingestionUpdateLayer: IngestionUpdateLayer & Pick<Checksum, 'checksum'>; rasterLayerMetadata: RasterLayerMetadata },
+  isSwapUpdate = false
+): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
+  const domain = configMock.get<string>('jobManager.jobDomain');
+  const updateJobType = configMock.get<string>('jobManager.ingestionUpdateJobType');
+  const swapUpdateJobType = configMock.get<string>('jobManager.ingestionSwapUpdateJobType');
+  const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
+  const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
+  const updateJobAction = isSwapUpdate ? swapUpdateJobType : updateJobType;
+
+  const {
+    ingestionResolution,
+    inputFiles,
+    metadata: { classification },
+    checksum,
+  } = ingestionUpdateLayer;
+  const { displayPath, footprint, id, productId, productType, productVersion, productName, tileOutputFormat } = rasterLayerMetadata;
+
+  return {
+    resourceId: productId,
+    version: (parseFloat(productVersion) + 1).toFixed(1),
+    internalId: id,
+    type: updateJobAction,
+    productName,
+    productType,
+    status: OperationStatus.PENDING,
+    parameters: {
+      ingestionResolution,
+      metadata: {
+        classification,
+      },
+      inputFiles,
+      additionalParams: {
+        footprint,
+        tileOutputFormat,
+        displayPath,
+        jobTrackerServiceURL: jobTrackerServiceUrl,
+      },
+    },
+    domain,
+    tasks: [
+      {
+        type: validationTaskType,
+        parameters: {
+          checksums: [{ algorithm: 'XXH64', checksum, fileName: inputFiles.metadataShapefilePath }],
+        },
+      },
+    ],
+  };
 };
