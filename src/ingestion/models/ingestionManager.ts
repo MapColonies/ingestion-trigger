@@ -1,9 +1,10 @@
-import { join } from 'node:path';
+import { basename, dirname, join, sep } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { IFindJobsByCriteriaBody, OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
 import {
   getMapServingLayerName,
+  ShapefileExtensions,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
@@ -94,7 +95,12 @@ export class IngestionManager {
   public async validateSources(inputFiles: InputFiles): Promise<SourcesValidationResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateSources.name };
     const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = inputFiles;
-    const inputFilesPaths: string[] = [...gpkgFilesPath, metadataShapefilePath, productShapefilePath];
+    const shapefilesPath = [metadataShapefilePath, productShapefilePath].flatMap((shapefilePath) => {
+      return [ShapefileExtensions.CPG, ShapefileExtensions.DBF, ShapefileExtensions.PRJ, ShapefileExtensions.SHP, ShapefileExtensions.SHX].map(
+        (extension) => `${dirname(shapefilePath)}${sep}${basename(shapefilePath, '.shp')}${extension}`
+      );
+    });
+    const inputFilesPaths = [...shapefilesPath, ...gpkgFilesPath];
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.validateSources');
     try {
