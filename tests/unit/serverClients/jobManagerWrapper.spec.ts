@@ -3,8 +3,9 @@ import nock from 'nock';
 import { trace } from '@opentelemetry/api';
 import { JobManagerWrapper } from '../../../src/serviceClients/jobManagerWrapper';
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
-import { jobResponse, ingestionNewJobRequest, ingestionUpdateJobRequest } from '../../mocks/newIngestionRequestMockData';
+import { jobResponse } from '../../mocks/newIngestionRequestMockData';
 import { InternalServerError } from '@map-colonies/error-types';
+import { generateNewJobRequest, generateUpdateJobRequest } from '../../mocks/mockFactory';
 
 describe('jobManagerWrapper', () => {
   let jobManagerWrapper: JobManagerWrapper;
@@ -27,25 +28,33 @@ describe('jobManagerWrapper', () => {
   describe('createIngestionJob', () => {
     it('should return jobResponse when new job with validation task creation is successful', async () => {
       createJobSpy.mockResolvedValue(jobResponse);
-      const action = async () => jobManagerWrapper.createIngestionJob(ingestionNewJobRequest);
+      const newJobRequest = generateNewJobRequest();
+
+      const action = async () => jobManagerWrapper.createIngestionJob(newJobRequest);
       await expect(action()).resolves.toEqual(jobResponse);
     });
 
-    it('should throw error when new job with validation task wasnt successful', async () => {
+    it('should throw an error if job manager client throws unexpected error while trying to create new job', async () => {
+      const newJobRequest = generateNewJobRequest();
       createJobSpy.mockRejectedValue(InternalServerError);
-      const action = async () => jobManagerWrapper.createIngestionJob(ingestionNewJobRequest);
+
+      const action = async () => jobManagerWrapper.createIngestionJob(newJobRequest);
       await expect(action()).rejects.toThrow();
     });
 
     it('should return jobResponse when update job with validation task creation is successful', async () => {
+      const updateJobRequest = generateUpdateJobRequest();
       createJobSpy.mockResolvedValue(jobResponse);
-      const action = async () => jobManagerWrapper.createIngestionJob(ingestionUpdateJobRequest);
+
+      const action = async () => jobManagerWrapper.createIngestionJob(updateJobRequest);
       await expect(action()).resolves.toEqual(jobResponse);
     });
 
-    it('should throw error when update job with validation task creation wasnt successful', async () => {
+    it('should throw an error if job manager client throws unexpected error while trying to create update job', async () => {
+      const updateJobRequest = generateUpdateJobRequest();
       createJobSpy.mockRejectedValue(InternalServerError);
-      const action = async () => jobManagerWrapper.createIngestionJob(ingestionUpdateJobRequest);
+
+      const action = async () => jobManagerWrapper.createIngestionJob(updateJobRequest);
       await expect(action()).rejects.toThrow();
     });
   });

@@ -1,10 +1,10 @@
-import { basename, dirname, join, sep } from 'node:path';
+import { basename, dirname, extname, join, sep } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { IFindJobsByCriteriaBody, OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
 import {
   getMapServingLayerName,
-  ShapefileExtensions,
+  SHAPEFILE_EXTENSIONS_LIST,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
@@ -96,7 +96,7 @@ export class IngestionManager {
     const logCtx: LogContext = { ...this.logContext, function: this.validateSources.name };
     const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = inputFiles;
     const shapefilesPath = [metadataShapefilePath, productShapefilePath].flatMap((shapefilePath) => {
-      return [ShapefileExtensions.CPG, ShapefileExtensions.DBF, ShapefileExtensions.PRJ, ShapefileExtensions.SHP, ShapefileExtensions.SHX].map(
+      return SHAPEFILE_EXTENSIONS_LIST.map(
         (extension) => `${dirname(shapefilePath)}${sep}${basename(shapefilePath, '.shp')}${extension}`
       );
     });
@@ -326,7 +326,7 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async validateInputFiles(inputFiles: InputFiles): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateInputFiles.name };
-    const { productShapefilePath } = inputFiles;
+    const { metadataShapefilePath, productShapefilePath } = inputFiles;
 
     // validate files exist, gdal info and GPKG data
     const isValidSources: SourcesValidationResponse = await this.validateSources(inputFiles);
@@ -340,7 +340,7 @@ export class IngestionManager {
 
     // validate new ingestion product.shp against gpkg data extent
     const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
-    const productGeometry = await this.productManager.extractAndRead(productShapefilePath);
+    const productGeometry = await this.productManager.read(productShapefilePath);
     this.geoValidator.validate(infoData, productGeometry);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
   }
@@ -437,4 +437,14 @@ export class IngestionManager {
     const { fileName, ...checksum } = await this.checksum.calculate(fullFilePath);
     return { ...checksum, fileName: filePath };
   }
+
+  private getShapefileVariants(shapefilePath: string): string[] {
+    const dir = dirname(shapefilePath);
+    const baseNameWithoutExt = basename(shapefilePath, extname(shapefilePath));
+
+    return SHAPEFILE_EXTENSIONS_LIST.map(ext =>
+      join(dir, `${baseNameWithoutExt}${ext}`)
+    );
+  }
+
 }

@@ -3,36 +3,36 @@ import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-q
 import type { IngestionNewLayer } from '../../src/ingestion/schemas/ingestionLayerSchema';
 import { createNewLayerRequest } from './mockFactory';
 
-export const validNewLayerRequest = {
-  valid: createNewLayerRequest({
-    inputFiles: {
-      gpkgFilesPath: ['validIndexed.gpkg'],
-      productShapefilePath: 'validIndexed',
-      metadataShapefilePath: 'validIndexed',
-    },
-  }),
-} satisfies Record<PropertyKey, IngestionNewLayer>;
+// export const validNewLayerRequest = {
+//   valid: createNewLayerRequest({
+//     inputFiles: {
+//       gpkgFilesPath: ['validIndexed.gpkg'],
+//       productShapefilePath: 'validIndexed',
+//       metadataShapefilePath: 'validIndexed',
+//     },
+//   }),
+// } satisfies Record<PropertyKey, IngestionNewLayer>;
 
-export const invalidNewLayerRequest = {
-  metadata: createNewLayerRequest({
-    metadata: { productId: 'invalid !' },
-    inputFiles: {
-      gpkgFilesPath: ['validIndexed.gpkg'],
-      productShapefilePath: 'validIndexed',
-      metadataShapefilePath: 'validIndexed',
-    },
-  }),
-  notContainedPolygon: createNewLayerRequest({
-    inputFiles: {
-      gpkgFilesPath: ['validIndexed.gpkg'],
-      productShapefilePath: 'validIndexed',
-      metadataShapefilePath: 'blueMarble',
-    },
-  }),
-  gdalInfo: createNewLayerRequest({
-    inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
-  }),
-} satisfies Record<string, IngestionNewLayer>;
+// export const invalidNewLayerRequest = {
+//   metadata: createNewLayerRequest({
+//     metadata: { productId: 'invalid !' },
+//     inputFiles: {
+//       gpkgFilesPath: ['validIndexed.gpkg'],
+//       productShapefilePath: 'validIndexed',
+//       metadataShapefilePath: 'validIndexed',
+//     },
+//   }),
+//   notContainedPolygon: createNewLayerRequest({
+//     inputFiles: {
+//       gpkgFilesPath: ['validIndexed.gpkg'],
+//       productShapefilePath: 'validIndexed',
+//       metadataShapefilePath: 'blueMarble',
+//     },
+//   }),
+//   gdalInfo: createNewLayerRequest({
+//     inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+//   }),
+// } satisfies Record<string, IngestionNewLayer>;
 
 export const jobResponse: ICreateJobResponse = {
   id: 'job_id',

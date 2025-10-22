@@ -19,8 +19,7 @@ import {
 } from '../../../utils/constants';
 import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
 import { mockGdalInfoData } from '../../../mocks/gdalInfoMock';
-import { createNewLayerRequest } from '../../../utils/faker';
-import { ingestionNewRequest, validNewLayerRequest } from '../../../mocks/newIngestionRequestMockData';
+
 
 let schemasValidator: SchemasValidator;
 let appContainer: DependencyContainer;
