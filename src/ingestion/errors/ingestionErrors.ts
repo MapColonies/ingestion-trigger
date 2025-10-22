@@ -18,6 +18,12 @@ export class GdalInfoError extends UnsupportedEntityError {
   }
 }
 
+export class ChecksumError extends UnsupportedEntityError {
+  public constructor(message: string) {
+    super(message);
+  }
+}
+
 export class ValidationError extends Error {
   public constructor(message: string) {
     super(message);
