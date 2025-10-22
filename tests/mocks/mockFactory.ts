@@ -2,7 +2,7 @@
 import { join } from 'node:path';
 import { faker, fakerHE } from '@faker-js/faker';
 import { RecordType, TileOutputFormat } from '@map-colonies/mc-model-types';
-import { OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
+import { OperationStatus, type ICreateJobBody, type IFindJobsByCriteriaBody } from '@map-colonies/mc-priority-queue';
 import {
   CORE_VALIDATIONS,
   INGESTION_VALIDATIONS,
@@ -300,6 +300,17 @@ export const createCatalogLayerResponse = (rasterLayerCatalog?: DeepPartial<Rast
 
 export const getTestFilesPath = (): string => {
   return TEST_FILES_RELATIVE_PATH;
+};
+
+export const createFindJobsParams = (findJobsParams: IFindJobsByCriteriaBody): IFindJobsByCriteriaBody => {
+  const defaultFindJobsParams = {
+    isCleaned: false,
+    shouldReturnTasks: false,
+    statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS, OperationStatus.FAILED, OperationStatus.SUSPENDED],
+    types: configMock.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion'),
+  } satisfies Required<Pick<IFindJobsByCriteriaBody, 'isCleaned' | 'shouldReturnTasks' | 'statuses' | 'types'>>;
+
+  return merge({}, defaultFindJobsParams, findJobsParams);
 };
 
 export const createUpdateJobRequest = (
