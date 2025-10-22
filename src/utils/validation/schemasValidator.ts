@@ -6,7 +6,7 @@ import { createNewIngestionLayerSchema, type IngestionNewLayer } from '../../ing
 import { createInputFilesSchema } from '../../ingestion/schemas/inputFilesSchema';
 import { createRasterLayersCatalogSchema, type RasterLayersCatalog } from '../../ingestion/schemas/layerCatalogSchema';
 import { createNewMetadataSchema, type IngestionNewMetadata } from '../../ingestion/schemas/newMetadataSchema';
-import { createUpdateLayerSchema, type IngestionUpdateLayer } from '../../ingestion/schemas/updateLayerSchema';
+import { createUpdateLayerSchema, type IngestionUpdateLayerRequest } from '../../ingestion/schemas/updateLayerSchema';
 import { createUpdateMetadataSchema, type IngestionUpdateMetadata } from '../../ingestion/schemas/updateMetadataSchema';
 import { ZodValidator } from './zodValidator';
 
@@ -29,7 +29,7 @@ export function schemasValidationsFactory(container: DependencyContainer) {
     validateNewLayerRequest: async (value: unknown): Promise<IngestionNewLayer> => validator.validate(newLayerSchema, value),
     validateNewMetadata: async (value: unknown): Promise<IngestionNewMetadata> => validator.validate(newMetadataSchema, value),
     validateUpdateMetadata: async (value: unknown): Promise<IngestionUpdateMetadata> => validator.validate(updateMetadataSchema, value),
-    validateUpdateLayerRequest: async (value: unknown): Promise<IngestionUpdateLayer> => validator.validate(updateLayerSchema, value),
+    validateUpdateLayerRequest: async (value: unknown): Promise<IngestionUpdateLayerRequest> => validator.validate(updateLayerSchema, value),
     validateRasterLayersCatalog: async (value: unknown): Promise<RasterLayersCatalog> => validator.validate(rasterLayersCatalog, value),
   };
 }
