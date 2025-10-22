@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { InfoDataWithFile } from '../../src/ingestion/schemas/infoDataSchema';
+import { InfoData, InfoDataWithFile } from '../../src/ingestion/schemas/infoDataSchema';
 
-export const mockGdalInfoData: InfoDataWithFile = {
+export const mockGdalInfoData: InfoData = {
   crs: 4326,
   extentPolygon: {
     coordinates: [
@@ -16,6 +16,7 @@ export const mockGdalInfoData: InfoDataWithFile = {
     type: 'Polygon',
   },
   fileFormat: "gpkg",
-  gpkgFilePath: '/path/to/blue_marble.gpkg',
   pixelSize: 0.0439453125,
-};
+}
+
+export const mockGdalInfoDataWithFile: InfoDataWithFile = { ...mockGdalInfoData, gpkgFilePath: '/path/to/blue_marble.gpkg' };

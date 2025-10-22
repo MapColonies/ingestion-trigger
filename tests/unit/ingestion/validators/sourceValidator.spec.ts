@@ -5,15 +5,13 @@ import { trace } from '@opentelemetry/api';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
 import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
-import { fakeIngestionSources, mockInputFiles } from '../../../mocks/sourcesRequestBody';
+import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
 import { FileNotFoundError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { getApp } from '../../../../src/app';
 import { SERVICES } from '../../../../src/common/constants';
 import { getTestContainerConfig } from '../../../integration/ingestion/helpers/containerConfig';
-import { InfoDataWithFile } from '../../../../src/ingestion/schemas/infoDataSchema';
-import { mockGdalInfoData } from '../../../mocks/gdalInfoMock';
+import { mockGdalInfoDataWithFile } from '../../../mocks/gdalInfoMock';
 import { join } from 'node:path';
-import { NotFoundError } from '@map-colonies/error-types';
 
 describe('SourceValidator', () => {
   let sourceValidator: SourceValidator;
@@ -46,8 +44,8 @@ describe('SourceValidator', () => {
       await sourceValidator.validateFilesExist(gpkgFilesPath);
 
       expect(fspAccessSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
-      gpkgFilesPath.forEach((filePath, index) => {
-        expect(fspAccessSpy).toHaveBeenNthCalledWith(index + 1, join(sourceMount, filePath), fsConstants.F_OK);
+      gpkgFilesPath.forEach((filePath) => {
+        expect(fspAccessSpy).toHaveBeenNthCalledWith(1, join(sourceMount, filePath), fsConstants.F_OK);
       });
     });
 
@@ -58,8 +56,8 @@ describe('SourceValidator', () => {
 
       expect(action()).rejects.toThrow(FileNotFoundError);
       expect(fspAccessSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
-      gpkgFilesPath.forEach((filePath, index) => {
-        expect(fspAccessSpy).toHaveBeenNthCalledWith(index + 1, join(sourceMount, filePath), fsConstants.F_OK);
+      gpkgFilesPath.forEach((filePath) => {
+        expect(fspAccessSpy).toHaveBeenNthCalledWith(1, join(sourceMount, filePath), fsConstants.F_OK);
       });
     });
   });
@@ -68,12 +66,12 @@ describe('SourceValidator', () => {
     it('should succesfully validate gdal info with no errors', async () => {
       const { gpkgFilesPath } = mockInputFiles;
 
-      jest.spyOn(mockGdalInfoManager, 'getInfoData').mockResolvedValue([mockGdalInfoData]);
+      jest.spyOn(mockGdalInfoManager, 'getInfoData').mockResolvedValue([mockGdalInfoDataWithFile]);
       const gdalInfoValidatorSpy = jest.spyOn(mockGdalInfoManager, 'validateInfoData');
 
       await expect(sourceValidator.validateGdalInfo(gpkgFilesPath)).resolves.not.toThrow();
 
-      expect(gdalInfoValidatorSpy).toHaveBeenCalledWith([mockGdalInfoData]);
+      expect(gdalInfoValidatorSpy).toHaveBeenCalledWith([mockGdalInfoDataWithFile]);
       expect(gdalInfoValidatorSpy).toHaveBeenCalledTimes(gpkgFilesPath.length)
     });
   })

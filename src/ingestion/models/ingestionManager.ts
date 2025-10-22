@@ -437,14 +437,4 @@ export class IngestionManager {
     const { fileName, ...checksum } = await this.checksum.calculate(fullFilePath);
     return { ...checksum, fileName: filePath };
   }
-
-  private getShapefileVariants(shapefilePath: string): string[] {
-    const dir = dirname(shapefilePath);
-    const baseNameWithoutExt = basename(shapefilePath, extname(shapefilePath));
-
-    return SHAPEFILE_EXTENSIONS_LIST.map(ext =>
-      join(dir, `${baseNameWithoutExt}${ext}`)
-    );
-  }
-
 }
