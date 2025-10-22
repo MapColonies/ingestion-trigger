@@ -597,11 +597,13 @@ describe('Ingestion', function () {
 
       it('should return 400 status code when layer identifier in req params is not uuid v4', async () => {
         const layerRequest = createUpdateLayerRequest(validInputFiles);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
 
         const response = await requestSender.updateLayer('not uuid', layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
       });
 
       const badRequestBodyTestCases = [
@@ -801,11 +803,13 @@ describe('Ingestion', function () {
           if (removeProperty) {
             unset(layerRequest, removeProperty);
           }
+          const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
 
           const response = await requestSender.updateLayer(rasterLayerMetadataGenerators.id(), layerRequest);
 
           expect(response).toSatisfyApiSpec();
           expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+          expect(scope.isDone()).toBe(false);
         }
       );
 
@@ -817,11 +821,13 @@ describe('Ingestion', function () {
             productShapefilePath: 'blueMarble',
           },
         });
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
 
         const response = await requestSender.updateLayer(rasterLayerMetadataGenerators.id(), layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
       });
     });
 
@@ -836,12 +842,14 @@ describe('Ingestion', function () {
         const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
 
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
         nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer, updatedLayer]);
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.CONFLICT);
+        expect(scope.isDone()).toBe(false);
       });
 
       it('should return 404 status code when there is no such layer in the catalog', async () => {
@@ -849,12 +857,14 @@ describe('Ingestion', function () {
         const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
 
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
         nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, []);
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+        expect(scope.isDone()).toBe(false);
       });
 
       it('should return 404 status code when the layer is not in MapProxy', async () => {
@@ -863,6 +873,7 @@ describe('Ingestion', function () {
         const updatedLayerMetadata = updatedLayer.metadata;
         const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
 
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
         nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
         nock(mapProxyApiServiceUrl)
           .get(`/layer/${encodeURIComponent(updateLayerName)}`)
@@ -872,6 +883,7 @@ describe('Ingestion', function () {
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+        expect(scope.isDone()).toBe(false);
       });
 
       it('should return 409 status code when there are conflicting jobs', async () => {
@@ -893,6 +905,8 @@ describe('Ingestion', function () {
           ]),
           type: 'Ingestion_New',
         };
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
         nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, updateRunningJobResponse);
         nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
         nock(mapProxyApiServiceUrl)
@@ -903,6 +917,7 @@ describe('Ingestion', function () {
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.CONFLICT);
+        expect(scope.isDone()).toBe(false);
       });
 
       const fileMissingTestCases: ({ case: string } & Pick<IngestionUpdateLayer, 'inputFiles'>)[] = [
@@ -956,48 +971,85 @@ describe('Ingestion', function () {
           inputFiles,
         });
         const catalogLayerResponse = createCatalogLayerResponse({
-          metadata: { classification: layerRequest.metadata.classification, productSubType: 'testProductSubType' },
+          metadata: { classification: layerRequest.metadata.classification },
         });
         const updatedLayerMetadata = catalogLayerResponse.metadata;
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
         nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [catalogLayerResponse]);
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
       });
 
       it('should return 422 status code when invalid gdal info', async () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
         });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
 
-        const response = await requestSender.updateLayer(rasterLayerMetadataGenerators.id(), layerRequest);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 422 status code when gpkg is invalid gpkg', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: { gpkgFilesPath: ['invalid.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+        });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
       });
 
       it('should return 422 status code when gpkg index is missing', async () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: { gpkgFilesPath: ['withoutGpkgIndex.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
         });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
 
-        const response = await requestSender.updateLayer(rasterLayerMetadataGenerators.id(), layerRequest);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
       });
 
       it('should return 422 status code when gpkg grid is not a supported tile matrix grid', async () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: { gpkgFilesPath: ['unsupportedGridMatrix.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
         });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
 
-        const response = await requestSender.updateLayer(rasterLayerMetadataGenerators.id(), layerRequest);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
       });
 
       it('should return 422 status code when gpkg tile height size is not supported', async () => {
@@ -1008,11 +1060,17 @@ describe('Ingestion', function () {
             productShapefilePath: 'validIndexed',
           },
         });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
 
-        const response = await requestSender.updateLayer(rasterLayerMetadataGenerators.id(), layerRequest);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
       });
 
       it('should return 422 status code when gpkg tile width size is not supported', async () => {
@@ -1023,28 +1081,70 @@ describe('Ingestion', function () {
             productShapefilePath: 'validIndexed',
           },
         });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
 
-        const response = await requestSender.updateLayer(rasterLayerMetadataGenerators.id(), layerRequest);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
       });
 
-      it('should return 500 status code when failed to read sqlite file', async () => {
+      it('should return 500 status code when unexpected error from MapProxy occurs', async () => {
         const layerRequest = createUpdateLayerRequest(validInputFiles);
         const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
-        jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
-          throw new SqliteError('failed read sqlite file', 'SQLITE_ERROR');
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
+
+        const findJobsParams = createFindJobsParams({
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
         });
+
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        expect(scope.isDone()).toBe(false);
       });
 
-      it('should return 500 status code when failed to create new init update job', async () => {
+      it('should return 500 status code when failed to calculate checksum for input file', async () => {
+        const layerRequest = createUpdateLayerRequest(validInputFiles);
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
+
+        const findJobsParams = createFindJobsParams({
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
+        });
+
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(httpStatusCodes.OK);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 500 status code when failed to create update job', async () => {
         const layerRequest = createUpdateLayerRequest(validInputFiles);
         const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
@@ -1073,39 +1173,6 @@ describe('Ingestion', function () {
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
       });
-
-      it('should return 500 status code when unexpected error from MapProxy occurs', async () => {
-        const layerRequest = createUpdateLayerRequest(validInputFiles);
-        const updatedLayer = createCatalogLayerResponse();
-        const updatedLayerMetadata = updatedLayer.metadata;
-        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
-
-        const findJobsParams = createFindJobsParams({
-          resourceId: updatedLayerMetadata.productId,
-          productType: updatedLayerMetadata.productType,
-        });
-
-        const rasterLayerMetadata = createCatalogLayerResponse({ metadata: updatedLayerMetadata }).metadata;
-        const updateJobRequest = createUpdateJobRequest({
-          ingestionUpdateLayer: { ...layerRequest, checksum: validInputFiles.checksum },
-          rasterLayerMetadata,
-        });
-
-        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
-        nock(jobManagerURL).post('/jobs', matches(updateJobRequest)).reply(httpStatusCodes.GATEWAY_TIMEOUT);
-        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
-        nock(mapProxyApiServiceUrl)
-          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
-          .reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
-
-        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
-      });
-
-      // TODO
-      it.todo('should return 500 status code when cannot calculate checksum for file');
     });
   });
 });
