@@ -176,7 +176,7 @@ export class IngestionManager {
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
-    const createJobRequest = await this.updateLayerJobPayload(catalogId, rasterLayerMetadata, updateLayer);
+    const createJobRequest = await this.updateLayerJobPayload(rasterLayerMetadata, updateLayer);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
     const taskId = taskIds[0];
 
@@ -391,11 +391,10 @@ export class IngestionManager {
 
   @withSpanAsyncV4
   private async updateLayerJobPayload(
-    catalogId: string,
     rasterLayerMetadata: RasterLayerMetadata,
     updateLayer: IngestionUpdateLayer
   ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters>> {
-    const { productId, productName, productType, productSubType, productVersion, tileOutputFormat, displayPath, footprint } = rasterLayerMetadata;
+    const { displayPath, footprint, id, productId, productType, productVersion, tileOutputFormat, productName, productSubType } = rasterLayerMetadata;
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === productType && supportedSwapObj.productSubType === productSubType;
     });
@@ -416,7 +415,7 @@ export class IngestionManager {
     const createJobRequest: ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> = {
       resourceId: productId,
       version: (parseFloat(productVersion) + 1).toFixed(1),
-      internalId: catalogId,
+      internalId: id,
       type: updateJobAction,
       productName,
       productType,
