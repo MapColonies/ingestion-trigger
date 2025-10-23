@@ -9,12 +9,6 @@ const fakeGpkgFilePath = `/${sourceDirectory}/${gpkgFileName}`;
 const fakeShapeMetadatafilePath = `/${sourceDirectory}/ShapeMetadata.shp`;
 const fakeProductShapaefilePath = `/${sourceDirectory}/Product.shp`;
 
-export const mockInputFiles: InputFiles = {
-    gpkgFilesPath: [fakeGpkgFilePath],
-    metadataShapefilePath: fakeShapeMetadatafilePath,
-    productShapefilePath: fakeProductShapaefilePath
-};
-
 function getFakeIngestionSources() {
   return {
     validSources: {
@@ -81,6 +75,12 @@ function getFakeIngestionSources() {
     },
   };
 }
+
+export const mockInputFiles: InputFiles = {
+    gpkgFilesPath: [fakeGpkgFilePath],
+    metadataShapefilePath: fakeShapeMetadatafilePath,
+    productShapefilePath: fakeProductShapaefilePath
+};
 
 export const fakeIngestionSources = getFakeIngestionSources();
 

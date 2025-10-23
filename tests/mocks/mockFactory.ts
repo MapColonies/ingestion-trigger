@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { join } from 'node:path';
 import { faker, fakerHE } from '@faker-js/faker';
-import { RecordType, TileOutputFormat, UpdateRasterLayerMetadata } from '@map-colonies/mc-model-types';
-import { OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
+import { RecordType, TileOutputFormat } from '@map-colonies/mc-model-types';
+import { OperationStatus, type ICreateJobBody, type IFindJobsByCriteriaBody } from '@map-colonies/mc-priority-queue';
 import {
   CORE_VALIDATIONS,
   INGESTION_VALIDATIONS,
@@ -25,7 +25,6 @@ import type { RasterLayersCatalog } from '../../src/ingestion/schemas/layerCatal
 import type { IngestionNewMetadata } from '../../src/ingestion/schemas/newMetadataSchema';
 import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
 import type { IngestionUpdateMetadata } from '../../src/ingestion/schemas/updateMetadataSchema';
-import type { Checksum } from '../../src/utils/hash/interface';
 import type { DeepPartial, FlatRecordValues, ReplaceValueWithFunctionResponse as ReplaceValueWithGenerator } from '../utils/types';
 import { configMock } from './configMock';
 import { mockInputFiles } from './sourcesRequestBody';
@@ -305,6 +304,25 @@ export const getTestFilesPath = (): string => {
   return TEST_FILES_RELATIVE_PATH;
 };
 
+export const createFindJobsParams = (findJobsParams: IFindJobsByCriteriaBody): IFindJobsByCriteriaBody => {
+  const defaultFindJobsParams = {
+    isCleaned: false,
+    shouldReturnTasks: false,
+    statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS, OperationStatus.FAILED, OperationStatus.SUSPENDED],
+    types: configMock.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion'),
+  } satisfies Required<Pick<IFindJobsByCriteriaBody, 'isCleaned' | 'shouldReturnTasks' | 'statuses' | 'types'>>;
+
+  return merge({}, defaultFindJobsParams, findJobsParams);
+};
+
+export const generateNewLayerRequest = (): IngestionNewLayer => {
+  return {
+    callbackUrls: faker.helpers.maybe(() => faker.helpers.multiple(() => generateCallbackUrl(), { count: { min: 1, max: 10 } })),
+    ingestionResolution: generateIngestionResolution(),
+    inputFiles: generateInputFiles(),
+    metadata: generateNewLayerMetadata(),
+  };
+};
 
 export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> => {
   const fakeProductId = faker.helpers.fromRegExp(randexp(INGESTION_VALIDATIONS.productId.pattern));
@@ -353,8 +371,6 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
   };
 };
 
-
-
 export const generateUpdateJobRequest = (isSwapUpdate = false): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
   const fakeProductId = faker.helpers.fromRegExp(randexp(INGESTION_VALIDATIONS.productId.pattern));
   const productName = faker.string.alphanumeric();
@@ -392,6 +408,62 @@ export const generateUpdateJobRequest = (isSwapUpdate = false): ICreateJobBody<I
         type: taskType,
         parameters: {
           checksums: [{ algorithm: 'XXH64', checksum, fileName: mockInputFiles.metadataShapefilePath }],
+        },
+      },
+    ],
+  };
+};
+
+
+export const createUpdateJobRequest = (
+  {
+    ingestionUpdateLayer,
+    rasterLayerMetadata,
+    checksums,
+  }: { ingestionUpdateLayer: IngestionUpdateLayer; rasterLayerMetadata: RasterLayerMetadata } & Pick<ValidationTaskParameters, 'checksums'>,
+  isSwapUpdate = false
+): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
+  const domain = configMock.get<string>('jobManager.jobDomain');
+  const updateJobType = configMock.get<string>('jobManager.ingestionUpdateJobType');
+  const swapUpdateJobType = configMock.get<string>('jobManager.ingestionSwapUpdateJobType');
+  const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
+  const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
+  const updateJobAction = isSwapUpdate ? swapUpdateJobType : updateJobType;
+
+  const {
+    ingestionResolution,
+    inputFiles,
+    metadata: { classification },
+  } = ingestionUpdateLayer;
+  const { displayPath, footprint, id, productId, productType, productVersion, productName, tileOutputFormat } = rasterLayerMetadata;
+
+  return {
+    resourceId: productId,
+    version: (parseFloat(productVersion) + 1).toFixed(1),
+    internalId: id,
+    type: updateJobAction,
+    productName,
+    productType,
+    status: OperationStatus.PENDING,
+    parameters: {
+      ingestionResolution,
+      metadata: {
+        classification,
+      },
+      inputFiles,
+      additionalParams: {
+        footprint,
+        tileOutputFormat,
+        displayPath,
+        jobTrackerServiceURL: jobTrackerServiceUrl,
+      },
+    },
+    domain,
+    tasks: [
+      {
+        type: validationTaskType,
+        parameters: {
+          checksums,
         },
       },
     ],

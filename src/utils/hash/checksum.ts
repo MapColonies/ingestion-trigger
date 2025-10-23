@@ -7,6 +7,7 @@ import { trace, type Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { CHECKSUM_PROCESSOR, SERVICES } from '../../common/constants';
 import type { IConfig } from '../../common/interfaces';
+import { ChecksumError } from '../../ingestion/errors/ingestionErrors';
 import type { LogContext } from '../logger/logContext';
 import type { HashAlgorithm, HashProcessor, Checksum as IChecksum } from './interface';
 
@@ -38,13 +39,19 @@ export class Checksum {
     if (this.checksumProcessor.reset) {
       this.checksumProcessor.reset();
     }
-    const { algorithm, checksum } = await this.fromStream(stream);
-    return { algorithm, checksum, fileName: basename(filePath) };
+
+    try {
+      const { algorithm, checksum } = await this.fromStream(stream);
+      this.logger.info({ msg: 'calculated checksum', filePath, algorithm, checksum, logContext: logCtx });
+      return { algorithm, checksum, fileName: basename(filePath) };
+    } catch (err) {
+      this.logger.error({ msg: 'error calculating checksum', err, logContext: logCtx });
+      throw new ChecksumError(`Failed to calculate checksum for file: ${filePath}`);
+    }
   }
 
   @withSpanAsyncV4
   private async fromStream(stream: Readable): Promise<{ checksum: string; algorithm: HashAlgorithm }> {
-    const logCtx: LogContext = { ...this.logContext, function: this.fromStream.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('checksum.fromStream');
 
@@ -56,11 +63,9 @@ export class Checksum {
         const digest = this.checksumProcessor.digest();
         // eslint-disable-next-line @typescript-eslint/no-magic-numbers
         const hash = Buffer.isBuffer(digest) ? digest.toString('hex') : digest.toString(16);
-        this.logger.info({ msg: 'calculated checksum', checksum: hash, logContext: logCtx });
         resolve(hash);
       });
       stream.on('error', (err) => {
-        this.logger.error({ msg: 'error calculating checksum', err, logContext: logCtx });
         reject(err);
       });
     });

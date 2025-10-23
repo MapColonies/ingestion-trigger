@@ -217,7 +217,6 @@ components:
         type: string
         pattern: ^https?:\/\/[^\s/$.?#].[^\s]*$
         description: callback url for ingestion status notifications
-      minItems: 1
       example: ['https://my-dns-for-callback']
     GpkgFilesPath:
       type: array
