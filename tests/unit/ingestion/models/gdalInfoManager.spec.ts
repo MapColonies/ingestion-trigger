@@ -1,5 +1,4 @@
-import nodePath from 'node:path';
-import { BadRequestError, ConflictError } from '@map-colonies/error-types';
+import { BadRequestError } from '@map-colonies/error-types';
 import { IConfig } from 'config';
 import { container } from 'tsyringe';
 import { GDAL_INFO_MANAGER_SYMBOL, GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
@@ -17,13 +16,6 @@ describe('GdalInfoManager', () => {
   let gdalInfoManager: GdalInfoManager;
   let schemaValidator: SchemasValidator;
   let sourceMount: string;
-  const schemasValidatorMock = {
-    validateInfoData: jest.fn(),
-  } as unknown as SchemasValidator;
-
-  const gdalUtilitiesMock = {
-    getInfoData: jest.fn(),
-  };
 
   beforeEach(() => {
     const [, container] = getApp({

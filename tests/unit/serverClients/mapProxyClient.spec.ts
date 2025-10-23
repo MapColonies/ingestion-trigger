@@ -4,7 +4,6 @@ import { trace } from '@opentelemetry/api';
 import nock from 'nock';
 import { MapProxyClient } from '../../../src/serviceClients/mapProxyClient';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../mocks/configMock';
-//import { newLayerRequest } from '../../mocks/newIngestionRequestMockData';
 import { faker } from '@faker-js/faker';
 import { randexp } from 'randexp';
 import { HttpClient } from '@map-colonies/mc-utils';

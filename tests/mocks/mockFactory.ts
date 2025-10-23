@@ -184,18 +184,19 @@ export const generateNewLayerRequest = (): IngestionNewLayer => {
   };
 };
 
-const generateUpdateLayerMetadata = (): IngestionUpdateMetadata => {
-  return {
-    classification: faker.number.int({ max: 100 }).toString(),
-  };
-};
 
-const generateUpdateLayerRequest = (): IngestionUpdateLayer => {
+export const generateUpdateLayerRequest = (): IngestionUpdateLayer => {
   return {
     callbackUrls: faker.helpers.maybe(() => faker.helpers.multiple(() => generateCallbackUrl(), { count: { min: 1, max: 10 } })),
     ingestionResolution: generateIngestionResolution(),
     inputFiles: generateInputFiles(),
     metadata: generateUpdateLayerMetadata(),
+  };
+};
+
+const generateUpdateLayerMetadata = (): IngestionUpdateMetadata => {
+  return {
+    classification: faker.number.int({ max: 100 }).toString(),
   };
 };
 

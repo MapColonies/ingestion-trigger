@@ -1,10 +1,9 @@
 import jsLogger from '@map-colonies/js-logger';
-import { IConfig } from 'config'; // Import the correct type for IConfig
 import { trace } from '@opentelemetry/api';
 import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
 import config from 'config';
-import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
-import { fakeIngestionSources, mockInputFiles } from '../../../mocks/sourcesRequestBody';
+import { registerDefaultConfig } from '../../../mocks/configMock';
+import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
 import { InvalidIndexError, UnsupportedGridError, UnsupportedTileSizeError } from '../../../../src/serviceClients/database/errors';
 import { SQLiteClient } from '../../../../src/serviceClients/database/SQLiteClient';
 import { Grid, TileSize } from '../../../../src/ingestion/interfaces';
