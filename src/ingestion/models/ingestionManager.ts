@@ -335,7 +335,7 @@ export class IngestionManager {
     this.logger.debug({ msg: 'validated sources', logContext: logCtx });
 
     // validate new ingestion product.shp against gpkg data extent
-    const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
+    const infoData = await this.getInfoData(inputFiles);
     const productGeometry = await this.productManager.extractAndRead(productShapefilePath);
     this.geoValidator.validate(infoData, productGeometry);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
@@ -366,12 +366,12 @@ export class IngestionManager {
     const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath);
     const taskParams: ValidationTaskParameters = { checksums };
 
-    const ingestionNewJobParams: IngestionNewJobParams = {
+    const ingestionNewJobParams = {
       ...newLayer,
       additionalParams: { jobTrackerServiceURL: this.jobTrackerServiceUrl },
     };
     const initialProductVersion = '1.0';
-    const createJobRequest: ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> = {
+    const createJobRequest = {
       resourceId: newLayer.metadata.productId,
       version: initialProductVersion,
       type: this.ingestionNewJobType,
@@ -399,7 +399,7 @@ export class IngestionManager {
     const checksums = await this.getFilesChecksum(updateLayer.inputFiles.metadataShapefilePath);
     const taskParams: ValidationTaskParameters = { checksums };
 
-    const ingestionUpdateJobParams: IngestionUpdateJobParams | IngestionSwapUpdateJobParams = {
+    const ingestionUpdateJobParams = {
       ...updateLayer,
       additionalParams: {
         footprint,
@@ -408,7 +408,7 @@ export class IngestionManager {
         ...(updateJobAction === this.updateJobType && { displayPath }),
       },
     };
-    const createJobRequest: ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> = {
+    const createJobRequest = {
       resourceId: productId,
       version: (parseFloat(productVersion) + 1).toFixed(1),
       internalId: id,
