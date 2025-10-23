@@ -56,12 +56,13 @@ export class Checksum {
 
     const checksum = await new Promise<string>((resolve, reject) => {
       stream.on('data', (chunk) => {
-        this.checksumProcessor.update(String(chunk));
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        this.checksumProcessor.update(chunk);
       });
       stream.on('end', () => {
         const digest = this.checksumProcessor.digest();
         // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-        const hash = Buffer.isBuffer(digest) ? digest.toString('hex') : digest.toString(16);
+        const hash = digest.toString(16);
         resolve(hash);
       });
       stream.on('error', (err) => {

@@ -12,7 +12,7 @@ import {
 } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
-import { inject, injectable } from 'tsyringe';
+import { container, inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import { IConfig, ISupportedIngestionSwapTypes } from '../../common/interfaces';
 import { CatalogClient } from '../../serviceClients/catalogClient';
@@ -57,8 +57,7 @@ export class IngestionManager {
     private readonly catalogClient: CatalogClient,
     private readonly jobManagerWrapper: JobManagerWrapper,
     private readonly mapProxyClient: MapProxyClient,
-    private readonly productManager: ProductManager,
-    private readonly checksum: Checksum
+    private readonly productManager: ProductManager
   ) {
     this.logContext = {
       fileName: __filename,
@@ -448,7 +447,8 @@ export class IngestionManager {
     this.logger.info({ msg: `calucalting checksum for: ${filePath}`, logContext: logCtx });
 
     try {
-      return await this.checksum.calculate(filePath);
+      const checksum = container.resolve<Checksum>(Checksum);
+      return await checksum.calculate(filePath);
     } catch (err) {
       const processingError = err instanceof ChecksumError ? err.message : 'Unknown error';
       activeSpan?.addEvent('ingestionManager.getFileChecksum.invalid', { processingError });
