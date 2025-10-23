@@ -7,7 +7,7 @@ import httpStatusCodes from 'http-status-codes';
 import { matches, unset } from 'lodash';
 import nock from 'nock';
 import { getApp } from '../../../src/app';
-import { Grid, type ResponseId } from '../../../src/ingestion/interfaces';
+import { Grid, type ResponseId, type ValidationTaskParameters } from '../../../src/ingestion/interfaces';
 import { GpkgManager } from '../../../src/ingestion/models/gpkgManager';
 import { infoDataSchemaArray } from '../../../src/ingestion/schemas/infoDataSchema';
 import type { IngestionUpdateLayer } from '../../../src/ingestion/schemas/updateLayerSchema';
@@ -498,13 +498,19 @@ describe('Ingestion', function () {
   });
 
   describe('PUT /ingestion/:id', () => {
-    const validInputFiles = {
+    const validInputFiles: Pick<ValidationTaskParameters, 'checksums'> & Pick<IngestionUpdateLayer, 'inputFiles'> = {
       inputFiles: {
         gpkgFilesPath: ['validIndexed.gpkg'],
         productShapefilePath: 'validIndexed',
         metadataShapefilePath: 'validIndexed',
       },
-      checksum: '6698161e08d90973',
+      checksums: [
+        { algorithm: 'XXH64', checksum: 'a0915c78be995614', fileName: 'testFiles/metadata/validIndexed/ShapeMetadata.cpg' },
+        { algorithm: 'XXH64', checksum: '1c4047022f216b6f', fileName: 'testFiles/metadata/validIndexed/ShapeMetadata.dbf' },
+        { algorithm: 'XXH64', checksum: '691fb87c5aeebb48', fileName: 'testFiles/metadata/validIndexed/ShapeMetadata.prj' },
+        { algorithm: 'XXH64', checksum: '5e371a633204f7eb', fileName: 'testFiles/metadata/validIndexed/ShapeMetadata.shp' },
+        { algorithm: 'XXH64', checksum: '89abcaac2015beff', fileName: 'testFiles/metadata/validIndexed/ShapeMetadata.shx' },
+      ],
     };
 
     // TODO: order this links
@@ -530,8 +536,9 @@ describe('Ingestion', function () {
         });
         const rasterLayerMetadata = createCatalogLayerResponse({ metadata: updatedLayerMetadata }).metadata;
         const updateJobRequest = createUpdateJobRequest({
-          ingestionUpdateLayer: { ...layerRequest, checksum: validInputFiles.checksum },
+          ingestionUpdateLayer: layerRequest,
           rasterLayerMetadata,
+          checksums: validInputFiles.checksums,
         });
 
         nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
@@ -566,7 +573,7 @@ describe('Ingestion', function () {
         });
 
         const updateSwapJobRequest = createUpdateJobRequest(
-          { ingestionUpdateLayer: { ...layerRequest, checksum: validInputFiles.checksum }, rasterLayerMetadata: updatedLayerMetadata },
+          { ingestionUpdateLayer: layerRequest, rasterLayerMetadata: updatedLayerMetadata, checksums: validInputFiles.checksums },
           true
         );
 
@@ -1157,8 +1164,9 @@ describe('Ingestion', function () {
 
         const rasterLayerMetadata = createCatalogLayerResponse({ metadata: updatedLayerMetadata }).metadata;
         const updateJobRequest = createUpdateJobRequest({
-          ingestionUpdateLayer: { ...layerRequest, checksum: validInputFiles.checksum },
+          ingestionUpdateLayer: layerRequest,
           rasterLayerMetadata,
+          checksums: validInputFiles.checksums,
         });
 
         nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);

@@ -317,7 +317,8 @@ export const createUpdateJobRequest = (
   {
     ingestionUpdateLayer,
     rasterLayerMetadata,
-  }: { ingestionUpdateLayer: IngestionUpdateLayer & Pick<Checksum, 'checksum'>; rasterLayerMetadata: RasterLayerMetadata },
+    checksums,
+  }: { ingestionUpdateLayer: IngestionUpdateLayer; rasterLayerMetadata: RasterLayerMetadata } & Pick<ValidationTaskParameters, 'checksums'>,
   isSwapUpdate = false
 ): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
   const domain = configMock.get<string>('jobManager.jobDomain');
@@ -331,7 +332,6 @@ export const createUpdateJobRequest = (
     ingestionResolution,
     inputFiles,
     metadata: { classification },
-    checksum,
   } = ingestionUpdateLayer;
   const { displayPath, footprint, id, productId, productType, productVersion, productName, tileOutputFormat } = rasterLayerMetadata;
 
@@ -361,7 +361,7 @@ export const createUpdateJobRequest = (
       {
         type: validationTaskType,
         parameters: {
-          checksums: [{ algorithm: 'XXH64', checksum, fileName: inputFiles.metadataShapefilePath }],
+          checksums,
         },
       },
     ],
