@@ -1,9 +1,10 @@
-import { join } from 'node:path';
+import { basename, dirname, join, sep } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { IFindJobsByCriteriaBody, OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
 import {
   getMapServingLayerName,
+  ShapefileExtensions,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
@@ -336,7 +337,7 @@ export class IngestionManager {
 
     // validate new ingestion product.shp against gpkg data extent
     const infoData = await this.getInfoData(inputFiles);
-    const productGeometry = await this.productManager.extractAndRead(productShapefilePath);
+    const productGeometry = await this.productManager.read(productShapefilePath);
     this.geoValidator.validate(infoData, productGeometry);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
   }

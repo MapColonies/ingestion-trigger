@@ -27,12 +27,17 @@ export class GpkgManager {
 
   @withSpanV4
   public validateGpkgFiles(files: string[]): void {
-    const logCtx = { ...this.logContext, function: this.validateGpkgFiles.name };
-    this.logger.debug({ msg: 'Validating GPKG files', logContext: logCtx, metadata: { files } });
-    this.validateGpkgIndex(files);
-    this.validateGpkgGrid(files);
-    this.validateTilesSize(files);
-    this.logger.debug({ msg: 'GPKG files are valid', logContext: logCtx, metadata: { files } });
+    try {
+      const logCtx = { ...this.logContext, function: this.validateGpkgFiles.name };
+      this.logger.debug({ msg: 'Validating GPKG files', logContext: logCtx, metadata: { files } });
+      this.validateGpkgIndex(files);
+      this.validateGpkgGrid(files);
+      this.validateTilesSize(files);
+      this.logger.debug({ msg: 'GPKG files are valid', logContext: logCtx, metadata: { files } });
+    } catch (error) {
+      this.logger.error({ msg: 'error while trying to validate gpkg files', metadata: { files } });
+      throw error;
+    }
   }
 
   @withSpanV4

@@ -1,6 +1,15 @@
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+
+import { faker } from "@faker-js/faker";
+import { InputFiles } from "@map-colonies/raster-shared";
+
+const gpkgFileName = faker.system.commonFileName('gpkg');
+const sourceDirectory = 'testFiles';
+const fakeGpkgFilePath = `/${sourceDirectory}/${gpkgFileName}`;
+const fakeShapeMetadatafilePath = `/${sourceDirectory}/ShapeMetadata.shp`;
+const fakeProductShapaefilePath = `/${sourceDirectory}/Product.shp`;
+
 function getFakeIngestionSources() {
-  const sourceDirectory = 'testFiles';
   return {
     validSources: {
       validInputFiles: {
@@ -66,6 +75,12 @@ function getFakeIngestionSources() {
     },
   };
 }
+
+export const mockInputFiles: InputFiles = {
+    gpkgFilesPath: [fakeGpkgFilePath],
+    metadataShapefilePath: fakeShapeMetadatafilePath,
+    productShapefilePath: fakeProductShapaefilePath
+};
 
 export const fakeIngestionSources = getFakeIngestionSources();
 

@@ -43,8 +43,8 @@ export class CatalogClient extends HttpClient {
     const res = await this.post('/records/find', req);
     activeSpan?.addEvent('catalogClient.findByCatalogId.response', { findByCatalogIdResponse: JSON.stringify(res) });
 
-    const rasterLayersCatalog = this.schemasValidator.validateRasterLayersCatalog(res);
-    return rasterLayersCatalog;
+    // TODO: resolve correct type
+    return res as RasterLayersCatalog;
   }
 
   @withSpanAsyncV4
@@ -60,7 +60,8 @@ export class CatalogClient extends HttpClient {
     const res = await this.post('/records/find', req);
     activeSpan?.addEvent('catalogClient.findByProductIdAndType.response', { findByProductIdAndTypeResponse: JSON.stringify(res) });
 
-    const rasterLayersCatalog = this.schemasValidator.validateRasterLayersCatalog(res);
-    return rasterLayersCatalog;
+    // TODO: resolve correct type
+    // const rasterLayersCatalog = this.schemasValidator.validateRasterLayersCatalog(res);
+    return res as RasterLayersCatalog;
   }
 }

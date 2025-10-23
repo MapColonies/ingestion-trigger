@@ -32,19 +32,19 @@ export class SourceValidator {
   }
 
   @withSpanAsyncV4
-  public async validateGdalInfo(files: string[]): Promise<void> {
+  public async validateGdalInfo(filesPath: string[]): Promise<void> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('sourceValidator.validateGdalInfo');
-    const gdalInfoData = await this.gdalInfoManager.getInfoData(files);
+    const gdalInfoData = await this.gdalInfoManager.getInfoData(filesPath);
     await this.gdalInfoManager.validateInfoData(gdalInfoData);
     activeSpan?.addEvent('sourceValidator.validateGdalInfo.passed');
   }
 
   @withSpanV4
-  public validateGpkgFiles(files: string[]): void {
+  public validateGpkgFiles(filesPath: string[]): void {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('sourceValidator.validateGpkgFiles');
-    this.gpkgManager.validateGpkgFiles(files);
+    this.gpkgManager.validateGpkgFiles(filesPath);
     activeSpan?.addEvent('sourceValidator.validateGpkgFiles.passed');
   }
 

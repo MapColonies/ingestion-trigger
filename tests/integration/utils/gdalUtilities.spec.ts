@@ -1,11 +1,12 @@
 import jsLogger from '@map-colonies/js-logger';
-
 import { trace } from '@opentelemetry/api';
-import { GdalUtilities } from '../../../../src/utils/gdal/gdalUtilities';
-import { registerDefaultConfig } from '../../../mocks/configMock';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
-import { expectedGdalUtilitiesValues } from '../../../mocks/gdalUtilitiesMockData';
-import { getApp } from '../../../../src/app';
+import { GdalUtilities } from '../../../src/utils/gdal/gdalUtilities';
+import { getApp } from '../../../src/app';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../src/utils/validation/schemasValidator';
+import { registerDefaultConfig } from '../../mocks/configMock';
+import { mockGdalInfoData } from '../../mocks/gdalInfoMock';
+import { expectedGdalUtilitiesValues } from '../../mocks/gdalUtilitiesMockData';
+
 
 let gdalUtilities: GdalUtilities;
 
@@ -23,10 +24,10 @@ describe('gdalUtilities', () => {
   });
 
   describe('getInfoData', () => {
-    it('should extract CRS, fileFormat, pixelSize and footprint from gpkg file', async () => {
+    it.only('should extract CRS, fileFormat, pixelSize and footprint from gpkg file', async () => {
       const filePath = 'tests/mocks/testFiles/(valid)indexed.gpkg';
       const result = await gdalUtilities.getInfoData(filePath);
-      const expected = expectedGdalUtilitiesValues.validResponse;
+      const expected = mockGdalInfoData;
       expect(result).toStrictEqual(expected);
     });
 

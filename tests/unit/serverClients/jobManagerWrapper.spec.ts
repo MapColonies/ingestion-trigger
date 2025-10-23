@@ -3,78 +3,58 @@ import nock from 'nock';
 import { trace } from '@opentelemetry/api';
 import { JobManagerWrapper } from '../../../src/serviceClients/jobManagerWrapper';
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
-import { newLayerRequest, jobResponse, newJobRequest } from '../../mocks/newIngestionRequestMockData';
-import { updateJobRequest, updateLayerRequest, updatedLayer } from '../../mocks/updateRequestMockData';
-import { LayerDetails } from '../../../src/common/interfaces';
+import { jobResponse } from '../../mocks/newIngestionRequestMockData';
+import { InternalServerError } from '@map-colonies/error-types';
+import { generateNewJobRequest, generateUpdateJobRequest } from '../../mocks/mockFactory';
 
 describe('jobManagerWrapper', () => {
   let jobManagerWrapper: JobManagerWrapper;
   let jobManagerURL = '';
-  const updateJobType = 'Ingestion_Update';
+  let createJobSpy: jest.SpyInstance;
 
   beforeEach(() => {
     registerDefaultConfig();
     jobManagerURL = configMock.get<string>('services.jobManagerURL');
-
     jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
+    createJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'createJob');
   });
   afterEach(() => {
     nock.cleanAll();
     clearConfig();
-    jest.resetAllMocks();
+    jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
-  describe('check CreateInitJob function', () => {
-    it('should return jobResponse when init creation is successful', async () => {
-      nock(jobManagerURL).post('/jobs', newJobRequest).reply(200, jobResponse);
-      const action = async () => jobManagerWrapper.createInitJob(newLayerRequest.valid);
+  describe('createIngestionJob', () => {
+    it('should return jobResponse when new job with validation task creation is successful', async () => {
+      createJobSpy.mockResolvedValue(jobResponse);
+      const newJobRequest = generateNewJobRequest();
+
+      const action = async () => jobManagerWrapper.createIngestionJob(newJobRequest);
       await expect(action()).resolves.toEqual(jobResponse);
     });
 
-    it('should throw error when init creation wasnt successful', async () => {
-      nock(jobManagerURL).post('/jobs', newJobRequest).reply(504);
-      const action = async () => jobManagerWrapper.createInitJob(newLayerRequest.valid);
+    it('should throw an error if job manager client throws unexpected error while trying to create new job', async () => {
+      const newJobRequest = generateNewJobRequest();
+      createJobSpy.mockRejectedValue(InternalServerError);
+
+      const action = async () => jobManagerWrapper.createIngestionJob(newJobRequest);
       await expect(action()).rejects.toThrow();
     });
-  });
 
-  describe('check CreateInitUpdateJob function', () => {
-    it('should return jobResponse when init update creation is successful', async () => {
-      const layerRequest = updateLayerRequest.valid;
-      const { productId, productVersion, tileOutputFormat, displayPath, productType, id, footprint, productName, productSubType } =
-        updatedLayer.metadata;
-      const layerDetails: LayerDetails = {
-        productId,
-        productVersion,
-        tileOutputFormat,
-        displayPath,
-        productType,
-        productName,
-        productSubType,
-        footprint,
-      };
-      nock(jobManagerURL).post('/jobs', updateJobRequest).reply(200, jobResponse);
-      const action = async () => jobManagerWrapper.createInitUpdateJob(layerDetails, id, layerRequest, updateJobType);
+    it('should return jobResponse when update job with validation task creation is successful', async () => {
+      const updateJobRequest = generateUpdateJobRequest();
+      createJobSpy.mockResolvedValue(jobResponse);
+
+      const action = async () => jobManagerWrapper.createIngestionJob(updateJobRequest);
       await expect(action()).resolves.toEqual(jobResponse);
     });
 
-    it('should throw error when init update creation wasnt successful', async () => {
-      const layerRequest = updateLayerRequest.valid;
-      const { productId, productVersion, tileOutputFormat, displayPath, productType, id, footprint, productName, productSubType } =
-        updatedLayer.metadata;
-      const layerDetails: LayerDetails = {
-        productId,
-        productVersion,
-        tileOutputFormat,
-        displayPath,
-        productType,
-        productName,
-        productSubType,
-        footprint,
-      };
-      nock(jobManagerURL).post('/jobs', updateJobRequest).reply(504);
+    it('should throw an error if job manager client throws unexpected error while trying to create update job', async () => {
+      const updateJobRequest = generateUpdateJobRequest();
+      createJobSpy.mockRejectedValue(InternalServerError);
 
-      const action = async () => jobManagerWrapper.createInitUpdateJob(layerDetails, id, layerRequest, updateJobType);
+      const action = async () => jobManagerWrapper.createIngestionJob(updateJobRequest);
       await expect(action()).rejects.toThrow();
     });
   });

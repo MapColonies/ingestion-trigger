@@ -1,18 +1,14 @@
 import { inject, injectable } from "tsyringe";
 import { LogContext } from "../../utils/logger/logContext";
-import { IConfig } from "config";
+import type { IConfig } from '../../common/interfaces';
 import { Logger } from "@map-colonies/js-logger";
 import { Tracer } from "@opentelemetry/api";
 import { SERVICES } from "../../common/constants";
-import { withSpanAsyncV4 } from "@map-colonies/telemetry";
 import { BadRequestError } from '@map-colonies/error-types';
 import { ChunkProcessor, ReaderOptions, ShapefileChunk, ShapefileChunkReader } from "@map-colonies/mc-utils";
 import { Feature, Geometry, Polygon, MultiPolygon } from "geojson";
-import { chunk } from "lodash";
 import { multiPolygonSchema, polygonSchema } from "@map-colonies/raster-shared";
-import { dirname, format, parse } from 'path';
 import z from "zod";
-import { unzipFileStream } from "../../utils/unzipper";
 
 export type AllowedProductGeometry = Polygon | MultiPolygon;
 const productGeometrySchema = z.union([
@@ -56,16 +52,12 @@ export class ProductManager {
     }
   }
 
-  public async extractAndRead(filePath: string): Promise<AllowedProductGeometry> {
+  public async read(productShapefilePath: string): Promise<AllowedProductGeometry> {
     try {
-      await this.extractProductZip(filePath);
-      this.logger.info({ msg: `start reading product shapefile in path: ${filePath}` });
-      // rename zip extention to '.shp'
-      const productShpFilePath = format({ ...parse(filePath), base: '', ext: '.shp' });
-      await this.reader.readAndProcess(productShpFilePath, this.processor);
+      await this.reader.readAndProcess(productShapefilePath, this.processor);
       if (this.features.length > 1) {
         const errorMessage = "product shapefile contains more than a single feature";
-        this.logger.error({ msg: errorMessage, productShpFilePath })
+        this.logger.error({ msg: errorMessage, productShapefilePath })
         throw new BadRequestError(errorMessage);
       }
 
@@ -80,19 +72,6 @@ export class ProductManager {
       throw error;
     }
   };
-
-  private async extractProductZip(productZipFilePath: string): Promise<void> {
-    try {
-      const parentDirname = dirname(productZipFilePath);
-      this.logger.info({ msg: `extracting product file zip in path: ${parentDirname}` });
-      await unzipFileStream(productZipFilePath, parentDirname);
-    } catch (error) {
-      this.logger.error({
-        msg: `an unexpected error occurred during product shape zip extract, error: ${error}`
-      });
-      throw error;
-    }
-  }
 
   private async process(chunk: ShapefileChunk): Promise<void> {
     this.logger.debug({ msg: 'start processing', features: chunk.features, count: chunk.features.length });

@@ -6,13 +6,14 @@ import { OperationStatus, type ICreateJobBody, type IFindJobsByCriteriaBody } fr
 import {
   CORE_VALIDATIONS,
   INGESTION_VALIDATIONS,
+  IngestionNewJobParams,
   RasterProductTypes,
   Transparency,
   type CallbackUrlsTargetArray,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
 } from '@map-colonies/raster-shared';
-import { RecordStatus, TilesMimeFormat } from '@map-colonies/types';
+import { Domain, RecordStatus, TilesMimeFormat } from '@map-colonies/types';
 import { randomPolygon } from '@turf/turf';
 import type { BBox, Polygon } from 'geojson';
 import merge from 'lodash.merge';
@@ -24,9 +25,9 @@ import type { RasterLayersCatalog } from '../../src/ingestion/schemas/layerCatal
 import type { IngestionNewMetadata } from '../../src/ingestion/schemas/newMetadataSchema';
 import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
 import type { IngestionUpdateMetadata } from '../../src/ingestion/schemas/updateMetadataSchema';
-import type { Checksum } from '../../src/utils/hash/interface';
 import type { DeepPartial, FlatRecordValues, ReplaceValueWithFunctionResponse as ReplaceValueWithGenerator } from '../utils/types';
 import { configMock } from './configMock';
+import { mockInputFiles } from './sourcesRequestBody';
 
 // adjust path to test files location relative to source mount
 const TEST_FILES_RELATIVE_PATH = '/testFiles';
@@ -173,15 +174,6 @@ const generateNewLayerMetadata = (): IngestionNewMetadata => {
   };
 };
 
-const generateNewLayerRequest = (): IngestionNewLayer => {
-  return {
-    callbackUrls: faker.helpers.maybe(() => faker.helpers.multiple(() => generateCallbackUrl(), { count: { min: 1, max: 10 } })),
-    ingestionResolution: generateIngestionResolution(),
-    inputFiles: generateInputFiles(),
-    metadata: generateNewLayerMetadata(),
-  };
-};
-
 const generateUpdateLayerMetadata = (): IngestionUpdateMetadata => {
   return {
     classification: faker.number.int({ max: 100 }).toString(),
@@ -276,7 +268,7 @@ export const generateCatalogLayerResponse = (): RasterLayerCatalog => {
   };
 };
 
-export const createNewLayerRequest = (newLayerRequest: DeepPartial<IngestionNewLayer> & Pick<IngestionNewLayer, 'inputFiles'>): IngestionNewLayer => {
+export const createNewLayerRequest = (newLayerRequest: IngestionNewLayer): IngestionNewLayer => {
   const override = structuredClone(newLayerRequest);
   override.inputFiles = getTestFilePath(override.inputFiles);
   const mergedNewLayerRequest = merge(generateNewLayerRequest(), override);
@@ -312,6 +304,106 @@ export const createFindJobsParams = (findJobsParams: IFindJobsByCriteriaBody): I
 
   return merge({}, defaultFindJobsParams, findJobsParams);
 };
+
+export const generateNewLayerRequest = (): IngestionNewLayer => {
+  return {
+    callbackUrls: faker.helpers.maybe(() => faker.helpers.multiple(() => generateCallbackUrl(), { count: { min: 1, max: 10 } })),
+    ingestionResolution: generateIngestionResolution(),
+    inputFiles: generateInputFiles(),
+    metadata: generateNewLayerMetadata(),
+  };
+};
+
+export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> => {
+  const fakeProductId = faker.helpers.fromRegExp(randexp(INGESTION_VALIDATIONS.productId.pattern));
+  const productName = faker.string.alphanumeric();
+  const productType = RasterProductTypes.ORTHOPHOTO;
+  const transparency = Transparency.TRANSPARENT;
+  const domain = Domain.RASTER;
+  const jobType = 'Ingestion_New';
+  const taskType = 'validation';
+  const checksum = 'checksome_result';
+
+  return {
+    resourceId: fakeProductId,
+    version: '1.0',
+    internalId: faker.string.uuid(),
+    type: jobType,
+    productName,
+    productType,
+    status: OperationStatus.PENDING,
+    parameters: {
+      ingestionResolution: 0.000000335276126861572,
+      metadata: {
+        productId: fakeProductId,
+        productName,
+        classification: '6',
+        productType,
+        region: ['test'],
+        srs: '4326',
+        srsName: 'WGS84GEO',
+        transparency: transparency
+      },
+      inputFiles: mockInputFiles,
+      additionalParams: {
+        jobTrackerServiceURL: faker.internet.url(),
+      },
+    },
+    domain,
+    tasks: [
+      {
+        type: taskType,
+        parameters: {
+          checksums: [{ algorithm: 'XXH64', checksum, fileName: mockInputFiles.metadataShapefilePath }],
+        },
+      },
+    ],
+  };
+};
+
+export const generateUpdateJobRequest = (isSwapUpdate = false): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
+  const fakeProductId = faker.helpers.fromRegExp(randexp(INGESTION_VALIDATIONS.productId.pattern));
+  const productName = faker.string.alphanumeric();
+  const productType = RasterProductTypes.ORTHOPHOTO;
+  const domain = Domain.RASTER;
+  const taskType = 'validation';
+  const checksum = 'checksome_result';
+  const updateJobType = isSwapUpdate ? 'Ingestion_Update' : 'Ingestion_Swap_Update';
+  const footprint: Polygon = {coordinates: [], type: 'Polygon'};
+
+  return {
+    resourceId: fakeProductId,
+    version: '2.0',
+    internalId: faker.string.uuid(),
+    type: updateJobType,
+    productName,
+    productType,
+    status: OperationStatus.PENDING,
+    parameters: {
+      ingestionResolution: 0.000000335276126861572,
+      metadata: {
+        classification: '6',
+      },
+      inputFiles: mockInputFiles,
+      additionalParams: {
+        footprint,
+        tileOutputFormat: TileOutputFormat.PNG,
+        displayPath:faker.string.uuid(),
+        jobTrackerServiceURL: faker.internet.url(),
+      },
+    },
+    domain,
+    tasks: [
+      {
+        type: taskType,
+        parameters: {
+          checksums: [{ algorithm: 'XXH64', checksum, fileName: mockInputFiles.metadataShapefilePath }],
+        },
+      },
+    ],
+  };
+};
+
 
 export const createUpdateJobRequest = (
   {

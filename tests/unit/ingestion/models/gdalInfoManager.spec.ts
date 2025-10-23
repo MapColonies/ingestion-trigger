@@ -1,13 +1,13 @@
 import nodePath from 'node:path';
-import { BadRequestError } from '@map-colonies/error-types';
+import { BadRequestError, ConflictError } from '@map-colonies/error-types';
 import { IConfig } from 'config';
 import { container } from 'tsyringe';
 import { GDAL_INFO_MANAGER_SYMBOL, GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
 import { registerDefaultConfig } from '../../../mocks/configMock';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
 import { GdalUtilities } from '../../../../src/utils/gdal/gdalUtilities';
-import { fakeIngestionSources } from '../../../mocks/sourcesRequestBody';
-import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
+import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
+import { mockGdalInfoDataWithFile } from '../../../mocks/gdalInfoMock';
 import { GdalInfoError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { getApp } from '../../../../src/app';
 import { getTestContainerConfig } from '../../../integration/ingestion/helpers/containerConfig';
@@ -38,88 +38,68 @@ describe('GdalInfoManager', () => {
 
   afterEach(() => {
     container.clearInstances();
+    jest.clearAllMocks();
     jest.restoreAllMocks();
   });
 
   afterAll(() => {
     container.clearInstances();
     jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
   describe('validateInfoData', () => {
-    it('should validate gdal info data', async () => {
-      const { fileNames } = fakeIngestionSources.validSources.validInputFiles;
-      const fileName = fileNames[0];
-      const validGdalInfo = { ...gdalInfoCases.validGdalInfo, fileName };
+    it('should succesfuly validate gdal info data according to number of gpkg source files', async () => {
+      const { gpkgFilesPath } = mockInputFiles;
 
-      const schemaValidatorSpy = jest.spyOn(schemaValidator, 'validateInfoData').mockResolvedValue(validGdalInfo);
-
-      expect(await gdalInfoManager.validateInfoData([validGdalInfo])).toBeUndefined();
-
-      expect(schemaValidatorSpy).toHaveBeenCalledTimes(fileNames.length);
+      const schemaValidatorSpy = jest.spyOn(schemaValidator, 'validateInfoData').mockResolvedValue(mockGdalInfoDataWithFile);
+      
+      expect(await gdalInfoManager.validateInfoData([mockGdalInfoDataWithFile])).toBeUndefined();
+      expect(schemaValidatorSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
     });
 
     it('should throw gdal info error - Unsupported CRS', async () => {
-      const { originDirectory, fileNames } = fakeIngestionSources.invalidSources.unsupportedCrs;
-      const fileName = fileNames[0];
-      const fullPath = `${sourceMount}/${originDirectory}/${fileName}`;
-      const invalidGdalInfo = { ...gdalInfoCases.unsupportedCrs, fileName };
+      const invalidGdalInfo = { ...mockGdalInfoDataWithFile, crs: 3857 };
 
-      jest.spyOn(nodePath, 'join').mockReturnValue(fullPath);
-      jest.spyOn(gdalUtilitiesMock, 'getInfoData').mockResolvedValue(invalidGdalInfo);
-      jest.spyOn(schemasValidatorMock, 'validateInfoData').mockRejectedValue(new BadRequestError('Unsupported CRS'));
-      await expect(gdalInfoManager.validateInfoData([invalidGdalInfo])).rejects.toThrow(GdalInfoError);
+      jest.spyOn(schemaValidator, 'validateInfoData').mockRejectedValue(new BadRequestError('Unsupported CRS'));
+      await expect(gdalInfoManager.validateInfoData([invalidGdalInfo])).rejects.toThrow(/Unsupported CRS/);
     });
 
     it('should throw gdal info error - Unsupported pixel size', async () => {
-      const { originDirectory, fileNames } = fakeIngestionSources.invalidSources.unsupportedPixelSize;
-      const fileName = fileNames[0];
-      const fullPath = `${sourceMount}/${originDirectory}/${fileName}`;
-      const invalidGdalInfo = { ...gdalInfoCases.unsupportedPixelSize, fileName };
+      const invalidGdalInfo = { ...mockGdalInfoDataWithFile, pixelSize: 0.9};
 
-      jest.spyOn(nodePath, 'join').mockReturnValue(fullPath);
-      jest.spyOn(gdalUtilitiesMock, 'getInfoData').mockResolvedValue(invalidGdalInfo);
-      jest.spyOn(schemasValidatorMock, 'validateInfoData').mockRejectedValue(new BadRequestError('Unsupported pixel size'));
-      await expect(gdalInfoManager.validateInfoData([invalidGdalInfo])).rejects.toThrow(GdalInfoError);
+      jest.spyOn(schemaValidator, 'validateInfoData').mockRejectedValue(new BadRequestError('Unsupported pixel size'));
+      await expect(gdalInfoManager.validateInfoData([invalidGdalInfo])).rejects.toThrow(/Unsupported pixel size/);
     });
 
     it('should throw gdal info error - Unsupported file format', async () => {
-      const { originDirectory, fileNames } = fakeIngestionSources.invalidValidation.notGpkg;
-      const fileName = fileNames[0];
-      const fullPath = `${sourceMount}/${originDirectory}/${fileName}`;
-      const invalidGdalInfo = { ...gdalInfoCases.unsupportedFileFormat, fileName };
+      const invalidGdalInfo = { ...mockGdalInfoDataWithFile, fileFormat: 'TIFF'};
 
-      jest.spyOn(nodePath, 'join').mockReturnValue(fullPath);
-      jest.spyOn(gdalUtilitiesMock, 'getInfoData').mockResolvedValue(invalidGdalInfo);
-      jest.spyOn(schemasValidatorMock, 'validateInfoData').mockRejectedValue(new BadRequestError('Unsupported file format'));
-      await expect(gdalInfoManager.validateInfoData([invalidGdalInfo])).rejects.toThrow(GdalInfoError);
+      jest.spyOn(schemaValidator, 'validateInfoData').mockRejectedValue(new BadRequestError('Unsupported file format'));
+      await expect(gdalInfoManager.validateInfoData([invalidGdalInfo])).rejects.toThrow(/Unsupported file format/);
     });
   });
 
-  describe('getFilesGdalInfoData', () => {
-    it('should return gdal info data', async () => {
-      const { originDirectory, fileNames } = fakeIngestionSources.validSources.validInputFiles;
-      const fileName = fileNames[0];
-      const validGdalInfoData = { ...gdalInfoCases.validGdalInfo, fileName };
+  describe('getInfoData', () => {
+    it('should return gdal info data array', async () => {
+      const gpkgFilesPath: string[] = [mockGdalInfoDataWithFile.gpkgFilePath];
+      const managerGdalInfoSpy = jest.spyOn(GdalInfoManager.prototype, 'getInfoData');
+      const utilityGdalInfoSpy = jest.spyOn(GdalUtilities.prototype, 'getInfoData');
+      utilityGdalInfoSpy.mockResolvedValue(mockGdalInfoDataWithFile);
 
-      jest.spyOn(nodePath, 'join').mockReturnValue(`${sourceMount}/${originDirectory}/${fileName}`);
-      jest.spyOn(gdalUtilitiesMock, 'getInfoData').mockResolvedValue(validGdalInfoData);
-      const getInfoDataSpy = jest.spyOn(GdalInfoManager.prototype, 'getInfoData');
+      const result = await gdalInfoManager.getInfoData(gpkgFilesPath);
 
-      const result = await gdalInfoManager.getInfoData(originDirectory, fileNames);
-
-      expect(result).toEqual([validGdalInfoData]);
-
-      expect(getInfoDataSpy).toHaveBeenCalledTimes(1);
-      expect(getInfoDataSpy).toHaveBeenCalledWith(originDirectory, fileNames);
+      expect(result).toEqual([mockGdalInfoDataWithFile]);
+      expect(managerGdalInfoSpy).toHaveBeenCalledTimes(1);
+      expect(utilityGdalInfoSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
+      expect(managerGdalInfoSpy).toHaveBeenCalledWith(gpkgFilesPath);
     });
 
     it('should throw an GdalError when error occur', async () => {
-      const { originDirectory, fileNames } = fakeIngestionSources.invalidSources.filesNotExist;
+      const gpkgFilesPath: string[] = [mockGdalInfoDataWithFile.gpkgFilePath];
 
-      jest.spyOn(nodePath, 'join').mockReturnValue(`${sourceMount}/${originDirectory}/${fileNames[0]}`);
       jest.spyOn(GdalUtilities.prototype, 'getInfoData').mockRejectedValue(new Error('Unknown Error'));
-      await expect(gdalInfoManager.getInfoData(originDirectory, fileNames)).rejects.toThrow(GdalInfoError);
+      await expect(gdalInfoManager.getInfoData(gpkgFilesPath)).rejects.toThrow(GdalInfoError);
     });
   });
 });
