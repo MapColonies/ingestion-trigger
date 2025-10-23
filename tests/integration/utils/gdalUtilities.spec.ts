@@ -25,7 +25,7 @@ describe('gdalUtilities', () => {
 
   describe('getInfoData', () => {
     it.only('should extract CRS, fileFormat, pixelSize and footprint from gpkg file', async () => {
-      const filePath = 'tests/mocks/testFiles/(valid)indexed.gpkg';
+      const filePath = 'tests/mocks/testFiles/validIndexed.gpkg';
       const result = await gdalUtilities.getInfoData(filePath);
       const expected = mockGdalInfoData;
       expect(result).toStrictEqual(expected);
