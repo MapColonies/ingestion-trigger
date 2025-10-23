@@ -1,5 +1,4 @@
 import { constants, createReadStream } from 'node:fs';
-import { basename } from 'node:path';
 import { Readable } from 'node:stream';
 import type { Logger } from '@map-colonies/js-logger';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
@@ -43,7 +42,7 @@ export class Checksum {
     try {
       const { algorithm, checksum } = await this.fromStream(stream);
       this.logger.info({ msg: 'calculated checksum', filePath, algorithm, checksum, logContext: logCtx });
-      return { algorithm, checksum, fileName: basename(filePath) };
+      return { algorithm, checksum, fileName: filePath };
     } catch (err) {
       this.logger.error({ msg: 'error calculating checksum', err, logContext: logCtx });
       throw new ChecksumError(`Failed to calculate checksum for file: ${filePath}`);

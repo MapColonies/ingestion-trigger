@@ -1,17 +1,16 @@
-import { basename, dirname, join, sep } from 'node:path';
+import { join } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { IFindJobsByCriteriaBody, OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
 import {
   getMapServingLayerName,
-  ShapefileExtensions,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
   type InputFiles,
-  type RasterProductTypes
+  type RasterProductTypes,
 } from '@map-colonies/raster-shared';
-import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
@@ -144,11 +143,16 @@ export class IngestionManager {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.newLayer');
 
-    await this.newLayerValidations(newLayer);
+    const newLayerLocal = {
+      ...newLayer,
+      ...this.getLocalPathInputFiles(newLayer),
+    };
+
+    await this.newLayerValidations(newLayerLocal);
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
-    const createJobRequest = await this.newLayerJobPayload(newLayer);
+    const createJobRequest = await this.newLayerJobPayload(newLayerLocal);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
     const taskId = taskIds[0];
 
@@ -169,11 +173,16 @@ export class IngestionManager {
 
     const rasterLayerMetadata = await this.getLayerMetadata(catalogId);
 
-    await this.updateLayerValidations(rasterLayerMetadata, updateLayer);
+    const updateLayerLocal = {
+      ...updateLayer,
+      ...this.getLocalPathInputFiles(updateLayer),
+    };
+
+    await this.updateLayerValidations(rasterLayerMetadata, updateLayerLocal);
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
-    const createJobRequest = await this.updateLayerJobPayload(rasterLayerMetadata, updateLayer);
+    const createJobRequest = await this.updateLayerJobPayload(rasterLayerMetadata, updateLayerLocal);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
     const taskId = taskIds[0];
 
@@ -436,16 +445,25 @@ export class IngestionManager {
     activeSpan?.updateName('ingestionManager.getFileChecksum');
     const logCtx: LogContext = { ...this.logContext, function: this.getFileChecksum.name };
 
-    const fullFilePath = join(this.sourceMount, filePath);
-    this.logger.info({ msg: `calucalting checksum for: ${fullFilePath}`, logContext: logCtx });
+    this.logger.info({ msg: `calucalting checksum for: ${filePath}`, logContext: logCtx });
 
     try {
-      const { fileName, ...checksum } = await this.checksum.calculate(fullFilePath);
-      return { ...checksum, fileName: filePath };
+      return await this.checksum.calculate(filePath);
     } catch (err) {
       const processingError = err instanceof ChecksumError ? err.message : 'Unknown error';
       activeSpan?.addEvent('ingestionManager.getFileChecksum.invalid', { processingError });
       throw err;
     }
+  }
+
+  @withSpanV4
+  private getLocalPathInputFiles({ inputFiles }: Pick<IngestionNewLayer, 'inputFiles'>): Pick<IngestionNewLayer, 'inputFiles'> {
+    return {
+      inputFiles: {
+        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => join(this.sourceMount, gpkgFilePath)),
+        metadataShapefilePath: join(this.sourceMount, inputFiles.metadataShapefilePath),
+        productShapefilePath: join(this.sourceMount, inputFiles.productShapefilePath),
+      },
+    };
   }
 }

@@ -342,7 +342,7 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
         region: ['test'],
         srs: '4326',
         srsName: 'WGS84GEO',
-        transparency: transparency
+        transparency: transparency,
       },
       inputFiles: mockInputFiles,
       additionalParams: {
@@ -361,7 +361,9 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
   };
 };
 
-export const generateUpdateJobRequest = (isSwapUpdate = false): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
+export const generateUpdateJobRequest = (
+  isSwapUpdate = false
+): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
   const fakeProductId = faker.helpers.fromRegExp(randexp(INGESTION_VALIDATIONS.productId.pattern));
   const productName = faker.string.alphanumeric();
   const productType = RasterProductTypes.ORTHOPHOTO;
@@ -369,7 +371,7 @@ export const generateUpdateJobRequest = (isSwapUpdate = false): ICreateJobBody<I
   const taskType = 'validation';
   const checksum = 'checksome_result';
   const updateJobType = isSwapUpdate ? 'Ingestion_Update' : 'Ingestion_Swap_Update';
-  const footprint: Polygon = {coordinates: [], type: 'Polygon'};
+  const footprint: Polygon = { coordinates: [], type: 'Polygon' };
 
   return {
     resourceId: fakeProductId,
@@ -388,7 +390,7 @@ export const generateUpdateJobRequest = (isSwapUpdate = false): ICreateJobBody<I
       additionalParams: {
         footprint,
         tileOutputFormat: TileOutputFormat.PNG,
-        displayPath:faker.string.uuid(),
+        displayPath: faker.string.uuid(),
         jobTrackerServiceURL: faker.internet.url(),
       },
     },
@@ -404,7 +406,6 @@ export const generateUpdateJobRequest = (isSwapUpdate = false): ICreateJobBody<I
   };
 };
 
-
 export const createUpdateJobRequest = (
   {
     ingestionUpdateLayer,
@@ -418,6 +419,7 @@ export const createUpdateJobRequest = (
   const swapUpdateJobType = configMock.get<string>('jobManager.ingestionSwapUpdateJobType');
   const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
   const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
+  const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
   const updateJobAction = isSwapUpdate ? swapUpdateJobType : updateJobType;
 
   const {
@@ -440,7 +442,11 @@ export const createUpdateJobRequest = (
       metadata: {
         classification,
       },
-      inputFiles,
+      inputFiles: {
+        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => join(sourceMount, gpkgFilePath)),
+        metadataShapefilePath: join(sourceMount, inputFiles.metadataShapefilePath),
+        productShapefilePath: join(sourceMount, inputFiles.productShapefilePath),
+      },
       additionalParams: {
         footprint,
         tileOutputFormat,
@@ -453,7 +459,9 @@ export const createUpdateJobRequest = (
       {
         type: validationTaskType,
         parameters: {
-          checksums,
+          checksums: checksums.map((checksum) => {
+            return { ...checksum, fileName: join(sourceMount, checksum.fileName) };
+          }),
         },
       },
     ],

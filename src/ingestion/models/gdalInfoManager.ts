@@ -1,23 +1,19 @@
-import { join } from 'node:path';
-import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
-import { IConfig } from 'config';
 import { context, SpanKind, trace, Tracer } from '@opentelemetry/api';
-import { GdalUtilities } from '../../utils/gdal/gdalUtilities';
+import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { GdalInfoError } from '../errors/ingestionErrors';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
-import { LogContext } from '../../utils/logger/logContext';
-import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import { createSpanMetadata } from '../../common/tracing';
+import { GdalUtilities } from '../../utils/gdal/gdalUtilities';
+import { LogContext } from '../../utils/logger/logContext';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
+import { GdalInfoError } from '../errors/ingestionErrors';
+import { InfoDataWithFile } from '../schemas/infoDataSchema';
 
 @injectable()
 export class GdalInfoManager {
-  private readonly sourceMount: string;
   private readonly logContext: LogContext;
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator,
     private readonly gdalUtilities: GdalUtilities
@@ -26,7 +22,6 @@ export class GdalInfoManager {
       fileName: __filename,
       class: GdalInfoManager.name,
     };
-    this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
   }
 
   public async getInfoData(gpkgFilesPath: string[]): Promise<InfoDataWithFile[]> {
@@ -40,8 +35,7 @@ export class GdalInfoManager {
       return await context.with(trace.setSpan(context.active(), getInfoSpan), async () => {
         const filesGdalInfoData = await Promise.all(
           gpkgFilesPath.map(async (gpkgFilePath) => {
-            const filePath = join(this.sourceMount, gpkgFilePath);
-            const infoData = await this.gdalUtilities.getInfoData(filePath);
+            const infoData = await this.gdalUtilities.getInfoData(gpkgFilePath);
             getInfoSpan.addEvent('gdalInfoManager.get_info.data', { gpkgFilePath, fileInfo: JSON.stringify(infoData) });
             return { ...infoData, gpkgFilePath };
           })
