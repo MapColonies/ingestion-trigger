@@ -426,6 +426,7 @@ export const createUpdateJobRequest = (
     ingestionResolution,
     inputFiles,
     metadata: { classification },
+    callbackUrls,
   } = ingestionUpdateLayer;
   const { displayPath, footprint, id, productId, productType, productVersion, productName, tileOutputFormat } = rasterLayerMetadata;
 
@@ -450,9 +451,10 @@ export const createUpdateJobRequest = (
       additionalParams: {
         footprint,
         tileOutputFormat,
-        displayPath,
         jobTrackerServiceURL: jobTrackerServiceUrl,
+        ...(updateJobAction === updateJobType && { displayPath }),
       },
+      callbackUrls,
     },
     domain,
     tasks: [
