@@ -8,7 +8,7 @@ import { CHECKSUM_PROCESSOR, SERVICES } from '../../common/constants';
 import type { IConfig } from '../../common/interfaces';
 import { ChecksumError } from '../../ingestion/errors/ingestionErrors';
 import type { LogContext } from '../logger/logContext';
-import type { HashAlgorithm, HashProcessor, Checksum as IChecksum } from './interface';
+import type { HashProcessor, Checksum as IChecksum } from './interface';
 
 @injectable()
 export class Checksum {
@@ -40,9 +40,9 @@ export class Checksum {
     }
 
     try {
-      const { algorithm, checksum } = await this.fromStream(stream);
-      this.logger.info({ msg: 'calculated checksum', filePath, algorithm, checksum, logContext: logCtx });
-      return { algorithm, checksum, fileName: filePath };
+      const { checksum } = await this.fromStream(stream);
+      this.logger.info({ msg: 'calculated checksum', filePath, algorithm: this.checksumProcessor.algorithm, checksum, logContext: logCtx });
+      return { algorithm: this.checksumProcessor.algorithm, checksum, fileName: filePath };
     } catch (err) {
       this.logger.error({ msg: 'error calculating checksum', err, logContext: logCtx });
       throw new ChecksumError(`Failed to calculate checksum for file: ${filePath}`);
@@ -50,7 +50,7 @@ export class Checksum {
   }
 
   @withSpanAsyncV4
-  private async fromStream(stream: Readable): Promise<{ checksum: string; algorithm: HashAlgorithm }> {
+  private async fromStream(stream: Readable): Promise<Pick<IChecksum, 'checksum'>> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('checksum.fromStream');
 
@@ -70,6 +70,6 @@ export class Checksum {
       });
     });
 
-    return { checksum, algorithm: this.checksumProcessor.algorithm };
+    return { checksum };
   }
 }
