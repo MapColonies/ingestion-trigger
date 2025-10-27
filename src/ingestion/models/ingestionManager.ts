@@ -25,15 +25,17 @@ import { Checksum as IChecksum } from '../../utils/hash/interface';
 import { LogContext } from '../../utils/logger/logContext';
 import { getShapefileFiles } from '../../utils/shapefile';
 import { ChecksumError, FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import type { ResponseId, SourcesValidationResponse, ValidationTaskParameters } from '../interfaces';
+import type { GpkgInputFiles, ResponseId, SourcesValidationResponse, ValidationTaskParameters } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
 import { GeoValidator } from '../validators/geoValidator';
 import { SourceValidator } from '../validators/sourceValidator';
-import { GdalInfoManager } from './gdalInfoManager';
+import { GdalInfoManager } from '../../info/models/gdalInfoManager';
 import { ProductManager } from './productManager';
+import { InputFiles as SourceValidationInput } from '@map-colonies/mc-model-types'
+import { InfoManager } from '../../info/models/infoManager';
 
 @injectable()
 export class IngestionManager {
@@ -58,6 +60,7 @@ export class IngestionManager {
     private readonly catalogClient: CatalogClient,
     private readonly jobManagerWrapper: JobManagerWrapper,
     private readonly mapProxyClient: MapProxyClient,
+    private readonly infoManager: InfoManager,
     private readonly productManager: ProductManager,
     private readonly checksum: Checksum
   ) {
@@ -77,22 +80,6 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  public async getInfoData(inputFiles: InputFiles): Promise<InfoDataWithFile[]> {
-    const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
-    const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('ingestionManager.getInfoData');
-    const { gpkgFilesPath } = inputFiles;
-    this.logger.info({ msg: 'getting gdal info for files', logContext: logCtx, metadata: { gpkgFilesPath } });
-
-    await this.sourceValidator.validateFilesExist(gpkgFilesPath);
-    this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
-
-    const filesGdalInfoData = await this.gdalInfoManager.getInfoData(gpkgFilesPath);
-    activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('getInfoData.get.ok');
-    return filesGdalInfoData;
-  }
-
-  @withSpanAsyncV4
   public async validateSources(inputFiles: InputFiles): Promise<SourcesValidationResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateSources.name };
     const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = inputFiles;
@@ -106,11 +93,7 @@ export class IngestionManager {
       await this.sourceValidator.validateFilesExist(inputFilesPaths);
       this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
 
-      await this.sourceValidator.validateGdalInfo(gpkgFilesPath);
-      this.logger.debug({ msg: 'GDAL info validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
-
-      this.sourceValidator.validateGpkgFiles(gpkgFilesPath);
-      this.logger.debug({ msg: 'GPKG files validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
+      await this.validateGpkgs({ gpkgFilesPath });
 
       const validationResult: SourcesValidationResponse = { isValid: true, message: 'Sources are valid' };
 
@@ -132,7 +115,7 @@ export class IngestionManager {
         msg: `An unexpected error occurred during source validation`,
         logContext: logCtx,
         err,
-        metadata: { gpkgFilesPath },
+        metadata: { inputFiles },
       });
       throw err;
     }
@@ -184,6 +167,41 @@ export class IngestionManager {
     activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId });
 
     return { jobId, taskId };
+  }
+
+  @withSpanAsyncV4
+  public async validateGpkgs(gpkgInputFiles: GpkgInputFiles): Promise<SourcesValidationResponse> {
+    const { gpkgFilesPath } = gpkgInputFiles;
+    const logCtx: LogContext = { ...this.logContext, function: this.validateGpkgs.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('ValidationManager.validateGpkgs');
+    try {
+      await this.sourceValidator.validateFilesExist(gpkgFilesPath);
+      this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
+
+      await this.sourceValidator.validateGdalInfo(gpkgFilesPath);
+      this.logger.debug({ msg: 'GDAL info validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
+
+      this.sourceValidator.validateGpkgFiles(gpkgFilesPath);
+      this.logger.debug({ msg: 'GPKG files validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
+
+      const validationResult: SourcesValidationResponse = { isValid: true, message: 'Sources are valid' };
+      return validationResult;
+    } catch (err) {
+      if (err instanceof FileNotFoundError || err instanceof GdalInfoError || err instanceof GpkgError) {
+        this.logger.info({ msg: `Sources are not valid:${err.message}`, logContext: logCtx, err: err, metadata: { gpkgFilesPath } });
+        activeSpan?.addEvent('ValidationManager.validateGpkgSources.invalid', { isValid: false, validationError: err.message });
+        return { isValid: false, message: err.message };
+      }
+
+      this.logger.error({
+        msg: `An unexpected error occurred during gpkg sources validation`,
+        logContext: logCtx,
+        err,
+        metadata: { gpkgInputFiles },
+      });
+      throw err;
+    }
   }
 
   @withSpanAsyncV4
@@ -336,7 +354,7 @@ export class IngestionManager {
     this.logger.debug({ msg: 'validated sources', logContext: logCtx });
 
     // validate new ingestion product.shp against gpkg data extent
-    const infoData = await this.getInfoData(inputFiles);
+    const infoData = await this.infoManager.getInfoData(inputFiles);
     const productGeometry = await this.productManager.read(productShapefilePath);
     this.geoValidator.validate(infoData, productGeometry);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });

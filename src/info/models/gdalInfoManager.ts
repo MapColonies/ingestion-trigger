@@ -5,10 +5,10 @@ import { IConfig } from 'config';
 import { context, SpanKind, trace, Tracer } from '@opentelemetry/api';
 import { GdalUtilities } from '../../utils/gdal/gdalUtilities';
 import { SERVICES } from '../../common/constants';
-import { GdalInfoError } from '../errors/ingestionErrors';
+import { GdalInfoError } from '../../ingestion/errors/ingestionErrors';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { LogContext } from '../../utils/logger/logContext';
-import { InfoDataWithFile } from '../schemas/infoDataSchema';
+import { InfoDataWithFile } from '../../ingestion/schemas/infoDataSchema';
 import { createSpanMetadata } from '../../common/tracing';
 
 @injectable()

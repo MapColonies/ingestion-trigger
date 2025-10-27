@@ -11,6 +11,7 @@ import { tracing } from './common/tracing';
 import { INGESTION_ROUTER_SYMBOL, ingestionRouterFactory } from './ingestion/routes/ingestionRouter';
 import type { HashAlgorithm, HashProcessor } from './utils/hash/interface';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, schemasValidationsFactory } from './utils/validation/schemasValidator';
+import { INFO_ROUTER_SYMBOL, infoRouterFactory } from './info/routes/infoRouter';
 
 export interface RegisterOptions {
   override?: InjectionObject<unknown>[];
@@ -32,6 +33,7 @@ export const registerExternalValues = (options?: RegisterOptions): DependencyCon
     { token: SERVICES.TRACER, provider: { useValue: tracer } },
     { token: SERVICES.METER, provider: { useValue: OtelMetrics.getMeterProvider().getMeter(SERVICE_NAME) } },
     { token: INGESTION_ROUTER_SYMBOL, provider: { useFactory: ingestionRouterFactory } },
+    { token: INFO_ROUTER_SYMBOL, provider: { useFactory: infoRouterFactory } },
     { token: INGESTION_SCHEMAS_VALIDATOR_SYMBOL, provider: { useFactory: instancePerContainerCachingFactory(schemasValidationsFactory) } },
     {
       token: CHECKSUM_PROCESSOR,

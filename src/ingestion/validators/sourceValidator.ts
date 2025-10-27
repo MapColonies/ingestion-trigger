@@ -8,7 +8,7 @@ import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import { LogContext } from '../../utils/logger/logContext';
 import { FileNotFoundError } from '../errors/ingestionErrors';
-import { GdalInfoManager } from '../models/gdalInfoManager';
+import { GdalInfoManager } from '../../info/models/gdalInfoManager';
 import { GpkgManager } from '../models/gpkgManager';
 
 @injectable()

@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import type { Checksum } from '../utils/hash/interface';
-
+import { inputFilesSchema } from '@map-colonies/raster-shared';
+import z from 'zod';
 export interface SourcesValidationResponse {
   isValid: boolean;
   message: string;
@@ -50,3 +51,6 @@ export interface TileSize {
 export interface ValidationTaskParameters {
   checksums: Checksum[];
 }
+
+export const gpkgInputFilesSchema = inputFilesSchema.pick({ gpkgFilesPath: true });
+export type GpkgInputFiles = z.infer<typeof gpkgInputFilesSchema>;

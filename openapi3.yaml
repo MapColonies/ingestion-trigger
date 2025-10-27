@@ -117,24 +117,21 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
-  /ingestion/validateSources:
+  /ingestion/validate/gpkgs:
     post:
-      operationId: validateSources
+      operationId: validateGpkgs
       tags:
         - ingestion
-      summary: checks that all provided files have valid raw data
+      summary: checks that all provided gpkgs files have valid raw data
       requestBody:
-        description: A json object containing array of files and origin source path
+        description: A json object containing array of gpkg files path
         required: true
         content:
           application/json:
             schema:
-              $ref: >-
-                ./Schema/ingestionTrigger/inputFiles/rasterLayerInputFiles.yaml#/components/schemas/InputFiles
+              $ref: '#/components/schemas/GpkgInputFiles'
             example:
-              originDirectory: string
-              fileNames:
-                - example.gpkg
+              gpkgFilesPath: ["/path/to/blue_marble.gpkg"]
       responses:
         '200':
           description: OK
@@ -157,20 +154,19 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
-  /ingestion/sourcesInfo:
+  /info/gpkgs:
     post:
-      operationId: getGdalInfo
+      operationId: getInfoData
       tags:
-        - ingestion
-      summary: returns the GDAL info for the provided source files
+        - info
+      summary: returns the GDAL info for the provided gpkgs files
       requestBody:
-        description: A json object containing array of files and origin source path
+        description: A json object containing array ofgpkg files paths
         required: true
         content:
           application/json:
             schema:
-              $ref: >-
-                ./Schema/ingestionTrigger/inputFiles/rasterLayerInputFiles.yaml#/components/schemas/InputFiles
+              $ref: '#/components/schemas/GpkgInputFiles'
       responses:
         '200':
           description: OK
@@ -318,6 +314,13 @@ components:
           $ref: '#/components/schemas/MetadataShapefilePath'
         productShapefilePath:
           $ref: '#/components/schemas/ProductShapefilePath'
+    GpkgInputFiles:
+      type: object
+      required:
+        - gpkgFilesPath
+      properties:
+        gpkgFilesPath:
+          $ref: '#/components/schemas/GpkgFilesPath'
     MetadataShapefilePath:
       type: string
       pattern: ^(\/[\w-]+)+\/ShapeMetadata\.shp$
