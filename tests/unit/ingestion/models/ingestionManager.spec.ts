@@ -1,4 +1,6 @@
-import { ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { faker } from '@faker-js/faker';
+import { randexp } from 'randexp';
+import { ConflictError } from '@map-colonies/error-types';
 import jsLogger from '@map-colonies/js-logger';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { getMapServingLayerName, INGESTION_VALIDATIONS, RasterProductTypes } from '@map-colonies/raster-shared';
@@ -11,24 +13,15 @@ import { SourceValidator } from '../../../../src/ingestion/validators/sourceVali
 import { CatalogClient } from '../../../../src/serviceClients/catalogClient';
 import { GpkgError } from '../../../../src/serviceClients/database/errors';
 import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
-import { Xxh64 } from '@node-rs/xxhash';
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 // import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
-import { fakeIngestionSources, mockInputFiles } from '../../../mocks/sourcesRequestBody';
-import {
-  updateRunningJobResponse,
-  updatedLayer,
-  updatedSwapLayer,
-} from '../../../mocks/updateRequestMockData';
 import { ProductManager } from '../../../../src/ingestion/models/productManager';
-import { Checksum } from '../../../../src/utils/hash/checksum';
-import { HASH_ALGORITHM } from '../../../../src/utils/hash/constants';
-import { randexp } from 'randexp';
-import { faker } from '@faker-js/faker';
 import { GeoValidator } from '../../../../src/ingestion/validators/geoValidator';
+import { Checksum } from '../../../../src/utils/hash/checksum';
 import { mockGdalInfoData } from '../../../mocks/gdalInfoMock';
 import { generateNewLayerRequest } from '../../../mocks/mockFactory';
+import { fakeIngestionSources, mockInputFiles } from '../../../mocks/sourcesRequestBody';
 
 describe('IngestionManager', () => {
   let ingestionManager: IngestionManager;
@@ -81,7 +74,6 @@ describe('IngestionManager', () => {
     catalogClient = new CatalogClient(configMock, testLogger, testTracer);
     jobManagerWrapper = new JobManagerWrapper(configMock, testLogger, testTracer);
     productManager = new ProductManager(configMock, testLogger, testTracer);
-    checksum = new Checksum(configMock, testLogger, testTracer, Object.assign(new Xxh64(), { algorithm: HASH_ALGORITHM[0] }));
     createIngestionJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'createIngestionJob');
     findJobsSpy = jest.spyOn(JobManagerWrapper.prototype, 'findJobs');
     existsMapproxySpy = jest.spyOn(MapProxyClient.prototype, 'exists');
@@ -100,7 +92,6 @@ describe('IngestionManager', () => {
       jobManagerWrapper,
       mapProxyClient,
       productManager,
-      checksum
     );
   });
 
