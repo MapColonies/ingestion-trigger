@@ -315,7 +315,7 @@ export const generateNewLayerRequest = (): IngestionNewLayer => {
 };
 
 export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> => {
-  const fakeProductId = faker.helpers.fromRegExp(randexp(INGESTION_VALIDATIONS.productId.pattern));
+  const productId = randexp(INGESTION_VALIDATIONS.productId.pattern);
   const productName = faker.string.alphanumeric();
   const productType = RasterProductTypes.ORTHOPHOTO;
   const transparency = Transparency.TRANSPARENT;
@@ -325,7 +325,7 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
   const checksum = 'checksome_result';
 
   return {
-    resourceId: fakeProductId,
+    resourceId: productId,
     version: '1.0',
     internalId: faker.string.uuid(),
     type: jobType,
@@ -335,7 +335,7 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
     parameters: {
       ingestionResolution: 0.000000335276126861572,
       metadata: {
-        productId: fakeProductId,
+        productId,
         productName,
         classification: '6',
         productType,
@@ -364,7 +364,7 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
 export const generateUpdateJobRequest = (
   isSwapUpdate = false
 ): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
-  const fakeProductId = faker.helpers.fromRegExp(randexp(INGESTION_VALIDATIONS.productId.pattern));
+  const productId = randexp(INGESTION_VALIDATIONS.productId.pattern);
   const productName = faker.string.alphanumeric();
   const productType = RasterProductTypes.ORTHOPHOTO;
   const domain = Domain.RASTER;
@@ -373,7 +373,7 @@ export const generateUpdateJobRequest = (
   const updateJobType = isSwapUpdate ? 'Ingestion_Update' : 'Ingestion_Swap_Update';
 
   return {
-    resourceId: fakeProductId,
+    resourceId: productId,
     version: '2.0',
     internalId: faker.string.uuid(),
     type: updateJobType,
