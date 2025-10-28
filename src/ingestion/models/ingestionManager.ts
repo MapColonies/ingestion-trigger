@@ -373,7 +373,7 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async newLayerJobPayload(newLayer: IngestionNewLayer): Promise<ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters>> {
     const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath);
-    const taskParams: ValidationTaskParameters = { checksums };
+    const taskParameters = { checksums };
 
     const ingestionNewJobParams = {
       ...newLayer,
@@ -389,7 +389,7 @@ export class IngestionManager {
       productName: newLayer.metadata.productName,
       productType: newLayer.metadata.productType,
       domain: this.jobDomain,
-      tasks: [{ type: this.validationTaskType, parameters: taskParams }],
+      tasks: [{ type: this.validationTaskType, parameters: taskParameters }],
     };
     return createJobRequest;
   }
@@ -406,7 +406,7 @@ export class IngestionManager {
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
 
     const checksums = await this.getFilesChecksum(updateLayer.inputFiles.metadataShapefilePath);
-    const taskParams: ValidationTaskParameters = { checksums };
+    const taskParameters = { checksums };
 
     const ingestionUpdateJobParams = {
       ...updateLayer,
@@ -427,7 +427,7 @@ export class IngestionManager {
       status: OperationStatus.PENDING,
       parameters: ingestionUpdateJobParams,
       domain: this.jobDomain,
-      tasks: [{ type: this.validationTaskType, parameters: taskParams }],
+      tasks: [{ type: this.validationTaskType, parameters: taskParameters }],
     };
     return createJobRequest;
   }
