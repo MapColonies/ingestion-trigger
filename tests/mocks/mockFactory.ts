@@ -470,52 +470,41 @@ export const createUpdateJobRequest = (
   };
 };
 
-export const createNewJobRequest = (
-  { ingestionNewLayer, checksums }: { ingestionNewLayer: IngestionNewLayer } & Pick<ValidationTaskParameters, 'checksums'>,
-  isSwapUpdate = false
-): ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> => {
+export const createNewJobRequest = ({
+  ingestionNewLayer,
+  checksums,
+}: { ingestionNewLayer: IngestionNewLayer } & Pick<ValidationTaskParameters, 'checksums'>): ICreateJobBody<
+  IngestionNewJobParams,
+  ValidationTaskParameters
+> => {
   const domain = configMock.get<string>('jobManager.jobDomain');
-  const updateJobType = configMock.get<string>('jobManager.ingestionUpdateJobType');
-  const swapUpdateJobType = configMock.get<string>('jobManager.ingestionSwapUpdateJobType');
+  const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
   const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
   const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
   const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
-  const updateJobAction = isSwapUpdate ? swapUpdateJobType : updateJobType;
 
-  const {
-    ingestionResolution,
-    inputFiles,
-    metadata: { classification },
-    callbackUrls,
-  } = ingestionNewLayer;
-  const { displayPath, footprint, id, productId, productType, productVersion, productName, tileOutputFormat } = rasterLayerMetadata;
+  const { ingestionResolution, inputFiles, metadata, callbackUrls } = ingestionNewLayer;
 
   return {
-    resourceId: productId,
-    version: (parseFloat(productVersion) + 1).toFixed(1),
-    internalId: id,
-    type: updateJobAction,
-    productName,
-    productType,
+    resourceId: metadata.productId,
+    version: '1.0',
+    type: ingestionNewJobType,
     status: OperationStatus.PENDING,
     parameters: {
-      ingestionResolution,
-      metadata: {
-        classification,
-      },
       inputFiles: {
         gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => join(sourceMount, gpkgFilePath)),
         metadataShapefilePath: join(sourceMount, inputFiles.metadataShapefilePath),
         productShapefilePath: join(sourceMount, inputFiles.productShapefilePath),
       },
+      ingestionResolution,
+      metadata,
       additionalParams: {
-        footprint, // TODO: footprint is needed and if so does it has to come from the layer and not from the inputfiles product shp?!
-        tileOutputFormat,
         jobTrackerServiceURL: jobTrackerServiceUrl,
-        ...(updateJobAction === updateJobType && { displayPath }),
       },
       callbackUrls,
     },
+    productName: metadata.productName,
+    productType: metadata.productType,
     domain,
     tasks: [
       {
