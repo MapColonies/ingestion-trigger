@@ -85,7 +85,7 @@ export class GpkgManager {
   @withSpanV4
   private readGpkgFiles(files: string[], readFn: (file: string, sqlClient: SQLiteClient) => void): void {
     files.forEach((file) => {
-      const sqliteClient = new SQLiteClient(this.logger, this.config, this.tracer, file);
+      const sqliteClient = new SQLiteClient(this.logger, this.tracer, file);
       readFn(file, sqliteClient);
     });
   }

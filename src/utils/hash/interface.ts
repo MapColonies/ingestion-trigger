@@ -24,13 +24,13 @@ export interface HashProcessor {
    * @param data - The data to include in the hash calculation
    * @returns The hash calculator instance for chaining
    */
-  update: (data: string) => HashProcessor;
+  update: (data: string | Uint8Array) => HashProcessor;
 
   /**
    * Finalizes the hash calculation and returns the result
    * @returns The final hash value
    */
-  digest: () => Buffer | bigint;
+  digest: () => bigint;
 
   /**
    * Optional method to reset the hash calculator state

@@ -1,5 +1,5 @@
 import { constants as fsConstants, promises as fsPromises } from 'node:fs';
-import { join } from 'node:path';
+import { basename, dirname } from 'node:path';
 import { Logger } from '@map-colonies/js-logger';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 import { trace, Tracer } from '@opentelemetry/api';
@@ -52,22 +52,23 @@ export class SourceValidator {
   public async validateFilesExist(filesPath: string[]): Promise<void> {
     const logCtx = { ...this.logContext, function: this.validateFilesExist.name };
     this.logger.debug({ msg: 'validating source files exist', logContext: logCtx, metadata: { filesPath } });
-    const fullPaths: string[] = [];
+    const fullFileSPath: string[] = [];
 
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('sourceValidator.validateFilesExist');
 
-    const filePromises = filesPath.map(async (filePath) => {
-      const fullPath = join(this.sourceMount, filePath);
-      fullPaths.push(fullPath);
-      return fsPromises.access(fullPath, fsConstants.F_OK).catch(() => {
-        this.logger.error({ msg: `File '${filePath}' not found at '${fullPath}'`, logContext: logCtx, metadata: { fullPath } });
-        const error = new FileNotFoundError(filePath, fullPath);
+    const filePromises = filesPath.map(async (fullFilePath) => {
+      fullFileSPath.push(fullFilePath);
+      return fsPromises.access(fullFilePath, fsConstants.F_OK).catch(() => {
+        const fileName = basename(fullFilePath);
+        const filePath = dirname(fullFilePath);
+        this.logger.error({ msg: `File '${fileName}' not found at '${filePath}'`, logContext: logCtx, metadata: { fullFilePath } });
+        const error = new FileNotFoundError(fileName, filePath);
         throw error;
       });
     });
     await Promise.all(filePromises);
     activeSpan?.addEvent('sourceValidator.validateFilesExist.valid');
-    this.logger.debug({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullPaths } });
+    this.logger.debug({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullFileSPath } });
   }
 }

@@ -1,16 +1,16 @@
-import { Geometry, Polygon } from 'geojson';
-import booleanContains from '@turf/boolean-contains';
-import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
-import { IConfig } from 'config';
-import { Tracer, trace } from '@opentelemetry/api';
 import { withSpanV4 } from '@map-colonies/telemetry';
-import { LogContext } from '../../utils/logger/logContext';
+import { Tracer, trace } from '@opentelemetry/api';
+import booleanContains from '@turf/boolean-contains';
+import { IConfig } from 'config';
+import { Geometry, Polygon } from 'geojson';
+import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';
+import { LogContext } from '../../utils/logger/logContext';
 import { ValidationError } from '../errors/ingestionErrors';
-import { AllowedProductGeometry, ProudctGeometry } from '../models/productManager';
+import { type AllowedProductGeometry } from '../models/productManager';
+import { InfoDataWithFile } from '../schemas/infoDataSchema';
 
 @injectable()
 export class GeoValidator {
@@ -58,9 +58,8 @@ export class GeoValidator {
   @withSpanV4
   private hasFootprintCorrelation(gpkgGeometry: Geometry, productGeometry: AllowedProductGeometry): boolean {
     const activeSpan = trace.getActiveSpan();
-    let isValid: boolean = true;
     activeSpan?.updateName('GeoValidator.hasFootprintCorrelation');
-    if (productGeometry.type === ProudctGeometry.MULTI_POLYGON) {
+    if (productGeometry.type === 'MultiPolygon') {
       productGeometry.coordinates.forEach((coordinate) => {
         const polygon: Polygon = { type: 'Polygon', coordinates: coordinate };
         if (!booleanContains(gpkgGeometry, polygon)) {
@@ -68,7 +67,7 @@ export class GeoValidator {
             gpkgGeometry: JSON.stringify(gpkgGeometry),
             productFootprint: JSON.stringify(productGeometry),
           });
-          isValid = false;
+          return false;
         }
       });
     } else if (!booleanContains(gpkgGeometry, productGeometry)) {
@@ -76,9 +75,9 @@ export class GeoValidator {
         gpkgGeometry: JSON.stringify(gpkgGeometry),
         productFootprint: JSON.stringify(productGeometry),
       });
-      isValid = false;
+      return false;
     }
     activeSpan?.addEvent('GeoValidator.hasFootprintCorrelation.true');
-    return isValid;
+    return true;
   }
 }

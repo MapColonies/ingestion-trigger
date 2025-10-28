@@ -278,7 +278,7 @@ export const generateCatalogLayerResponse = (): RasterLayerCatalog => {
   };
 };
 
-export const createNewLayerRequest = (newLayerRequest: IngestionNewLayer): IngestionNewLayer => {
+export const createNewLayerRequest = (newLayerRequest: DeepPartial<IngestionNewLayer> & Pick<IngestionNewLayer, 'inputFiles'>): IngestionNewLayer => {
   const override = structuredClone(newLayerRequest);
   override.inputFiles = getTestFilePath(override.inputFiles);
   const mergedNewLayerRequest = merge(generateNewLayerRequest(), override);
@@ -352,7 +352,7 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
         region: ['test'],
         srs: '4326',
         srsName: 'WGS84GEO',
-        transparency: transparency
+        transparency: transparency,
       },
       inputFiles: mockInputFiles,
       additionalParams: {
@@ -371,7 +371,9 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
   };
 };
 
-export const generateUpdateJobRequest = (isSwapUpdate = false): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
+export const generateUpdateJobRequest = (
+  isSwapUpdate = false
+): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
   const fakeProductId = faker.helpers.fromRegExp(randexp(INGESTION_VALIDATIONS.productId.pattern));
   const productName = faker.string.alphanumeric();
   const productType = RasterProductTypes.ORTHOPHOTO;
@@ -379,7 +381,7 @@ export const generateUpdateJobRequest = (isSwapUpdate = false): ICreateJobBody<I
   const taskType = 'validation';
   const checksum = 'checksome_result';
   const updateJobType = isSwapUpdate ? 'Ingestion_Update' : 'Ingestion_Swap_Update';
-  const footprint: Polygon = {coordinates: [], type: 'Polygon'};
+  const footprint: Polygon = { coordinates: [], type: 'Polygon' };
 
   return {
     resourceId: fakeProductId,
@@ -398,7 +400,7 @@ export const generateUpdateJobRequest = (isSwapUpdate = false): ICreateJobBody<I
       additionalParams: {
         footprint,
         tileOutputFormat: TileOutputFormat.PNG,
-        displayPath:faker.string.uuid(),
+        displayPath: faker.string.uuid(),
         jobTrackerServiceURL: faker.internet.url(),
       },
     },
@@ -414,7 +416,6 @@ export const generateUpdateJobRequest = (isSwapUpdate = false): ICreateJobBody<I
   };
 };
 
-
 export const createUpdateJobRequest = (
   {
     ingestionUpdateLayer,
@@ -428,12 +429,14 @@ export const createUpdateJobRequest = (
   const swapUpdateJobType = configMock.get<string>('jobManager.ingestionSwapUpdateJobType');
   const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
   const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
+  const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
   const updateJobAction = isSwapUpdate ? swapUpdateJobType : updateJobType;
 
   const {
     ingestionResolution,
     inputFiles,
     metadata: { classification },
+    callbackUrls,
   } = ingestionUpdateLayer;
   const { displayPath, footprint, id, productId, productType, productVersion, productName, tileOutputFormat } = rasterLayerMetadata;
 
@@ -450,20 +453,76 @@ export const createUpdateJobRequest = (
       metadata: {
         classification,
       },
-      inputFiles,
-      additionalParams: {
-        footprint,
-        tileOutputFormat,
-        displayPath,
-        jobTrackerServiceURL: jobTrackerServiceUrl,
+      inputFiles: {
+        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => join(sourceMount, gpkgFilePath)),
+        metadataShapefilePath: join(sourceMount, inputFiles.metadataShapefilePath),
+        productShapefilePath: join(sourceMount, inputFiles.productShapefilePath),
       },
+      additionalParams: {
+        footprint, // TODO: footprint is needed and if so does it has to come from the layer and not from the inputfiles product shp?!
+        tileOutputFormat,
+        jobTrackerServiceURL: jobTrackerServiceUrl,
+        ...(updateJobAction === updateJobType && { displayPath }),
+      },
+      callbackUrls,
     },
     domain,
     tasks: [
       {
         type: validationTaskType,
         parameters: {
-          checksums,
+          checksums: checksums.map((checksum) => {
+            return { ...checksum, fileName: join(sourceMount, checksum.fileName) };
+          }),
+        },
+      },
+    ],
+  };
+};
+
+export const createNewJobRequest = ({
+  ingestionNewLayer,
+  checksums,
+}: { ingestionNewLayer: IngestionNewLayer } & Pick<ValidationTaskParameters, 'checksums'>): ICreateJobBody<
+  IngestionNewJobParams,
+  ValidationTaskParameters
+> => {
+  const domain = configMock.get<string>('jobManager.jobDomain');
+  const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
+  const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
+  const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
+  const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
+
+  const { ingestionResolution, inputFiles, metadata, callbackUrls } = ingestionNewLayer;
+
+  return {
+    resourceId: metadata.productId,
+    version: '1.0',
+    type: ingestionNewJobType,
+    status: OperationStatus.PENDING,
+    parameters: {
+      inputFiles: {
+        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => join(sourceMount, gpkgFilePath)),
+        metadataShapefilePath: join(sourceMount, inputFiles.metadataShapefilePath),
+        productShapefilePath: join(sourceMount, inputFiles.productShapefilePath),
+      },
+      ingestionResolution,
+      metadata,
+      additionalParams: {
+        jobTrackerServiceURL: jobTrackerServiceUrl,
+      },
+      callbackUrls,
+    },
+    productName: metadata.productName,
+    productType: metadata.productType,
+    domain,
+    tasks: [
+      {
+        type: validationTaskType,
+        parameters: {
+          checksums: checksums.map((checksum) => {
+            return { ...checksum, fileName: join(sourceMount, checksum.fileName) };
+          }),
         },
       },
     ],
