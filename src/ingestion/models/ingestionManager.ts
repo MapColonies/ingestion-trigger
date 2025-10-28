@@ -399,7 +399,7 @@ export class IngestionManager {
     rasterLayerMetadata: RasterLayerMetadata,
     updateLayer: IngestionUpdateLayer
   ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters>> {
-    const { displayPath, footprint, id, productId, productType, productVersion, tileOutputFormat, productName, productSubType } = rasterLayerMetadata;
+    const { displayPath, id, productId, productType, productVersion, tileOutputFormat, productName, productSubType } = rasterLayerMetadata;
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === productType && supportedSwapObj.productSubType === productSubType;
     });
@@ -411,7 +411,6 @@ export class IngestionManager {
     const ingestionUpdateJobParams = {
       ...updateLayer,
       additionalParams: {
-        footprint,
         tileOutputFormat,
         jobTrackerServiceURL: this.jobTrackerServiceUrl,
         ...(updateJobAction === this.updateJobType && { displayPath }),

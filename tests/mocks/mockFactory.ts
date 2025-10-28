@@ -371,7 +371,6 @@ export const generateUpdateJobRequest = (
   const taskType = 'validation';
   const checksum = 'checksome_result';
   const updateJobType = isSwapUpdate ? 'Ingestion_Update' : 'Ingestion_Swap_Update';
-  const footprint: Polygon = { coordinates: [], type: 'Polygon' };
 
   return {
     resourceId: fakeProductId,
@@ -388,7 +387,6 @@ export const generateUpdateJobRequest = (
       },
       inputFiles: mockInputFiles,
       additionalParams: {
-        footprint,
         tileOutputFormat: TileOutputFormat.PNG,
         displayPath: faker.string.uuid(),
         jobTrackerServiceURL: faker.internet.url(),
@@ -428,7 +426,7 @@ export const createUpdateJobRequest = (
     metadata: { classification },
     callbackUrls,
   } = ingestionUpdateLayer;
-  const { displayPath, footprint, id, productId, productType, productVersion, productName, tileOutputFormat } = rasterLayerMetadata;
+  const { displayPath, id, productId, productType, productVersion, productName, tileOutputFormat } = rasterLayerMetadata;
 
   return {
     resourceId: productId,
@@ -449,7 +447,6 @@ export const createUpdateJobRequest = (
         productShapefilePath: join(sourceMount, inputFiles.productShapefilePath),
       },
       additionalParams: {
-        footprint, // TODO: footprint is needed and if so does it has to come from the layer and not from the inputfiles product shp?!
         tileOutputFormat,
         jobTrackerServiceURL: jobTrackerServiceUrl,
         ...(updateJobAction === updateJobType && { displayPath }),
