@@ -238,8 +238,7 @@ export const rasterLayerMetadataGenerators: RasterLayerMetadataPropertiesGenerat
     faker.number.float({ min: INGESTION_VALIDATIONS.resolutionMeter.min, max: INGESTION_VALIDATIONS.resolutionMeter.max }),
   horizontalAccuracyCE90: (): number =>
     faker.number.float({ min: INGESTION_VALIDATIONS.horizontalAccuracyCE90.min, max: INGESTION_VALIDATIONS.horizontalAccuracyCE90.max }),
-  // TODO: sensor: (): string => randexp(INGESTION_VALIDATIONS.sensor.pattern),
-  sensor: (): string => randexp('^([^\\s]).+([^\\s])$'),
+  sensor: (): string => randexp(INGESTION_VALIDATIONS.sensor.pattern),
   tileMimeFormat: (): TilesMimeFormat => faker.helpers.arrayElement(['image/png', 'image/jpeg']),
   productStatus: (): RecordStatus => faker.helpers.enumValue(RecordStatus),
   type: (): RecordType.RECORD_RASTER => RecordType.RECORD_RASTER,
