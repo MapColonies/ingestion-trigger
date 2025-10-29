@@ -82,8 +82,6 @@ const generateCatalogLayerLinks = ({ productId, productType }: { productId: stri
   return faker.helpers.arrayElements(templateLinks);
 };
 
-const generateCallbackUrl = (): CallbackUrlsTargetArray[number] => faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
-
 const generateIngestionResolution = (): IngestionUpdateLayer['ingestionResolution'] =>
   faker.number.float({
     min: CORE_VALIDATIONS.resolutionDeg.min,
@@ -208,6 +206,8 @@ const generateInputFiles = (): InputFiles => {
     productShapefilePath: join(faker.system.directoryPath(), 'Product.shp'),
   };
 };
+
+export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] => faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
 
 export const rasterLayerInputFilesGenerators: IngestionLayerInputFilesPropertiesGenerators = {
   gpkgFilesPath: () => [join(getTestFilesPath(), 'gpkg', fakerHE.system.commonFileName('gpkg'))],
