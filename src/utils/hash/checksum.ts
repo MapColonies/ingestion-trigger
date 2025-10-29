@@ -5,7 +5,6 @@ import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { trace, type Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { CHECKSUM_PROCESSOR, SERVICES } from '../../common/constants';
-import type { IConfig } from '../../common/interfaces';
 import { ChecksumError } from '../../ingestion/errors/ingestionErrors';
 import type { LogContext } from '../logger/logContext';
 import type { HashProcessor, Checksum as IChecksum } from './interface';
@@ -15,7 +14,6 @@ export class Checksum {
   private readonly logContext: LogContext;
 
   public constructor(
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.LOGGER) protected readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     @inject(CHECKSUM_PROCESSOR) private readonly checksumProcessor: HashProcessor

@@ -315,15 +315,6 @@ export const createFindJobsParams = (findJobsParams: IFindJobsByCriteriaBody): I
   return merge({}, defaultFindJobsParams, findJobsParams);
 };
 
-export const generateNewLayerRequest = (): IngestionNewLayer => {
-  return {
-    callbackUrls: faker.helpers.maybe(() => faker.helpers.multiple(() => generateCallbackUrl(), { count: { min: 1, max: 10 } })),
-    ingestionResolution: generateIngestionResolution(),
-    inputFiles: generateInputFiles(),
-    metadata: generateNewLayerMetadata(),
-  };
-};
-
 export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> => {
   const fakeProductId = faker.helpers.fromRegExp(randexp(INGESTION_VALIDATIONS.productId.pattern));
   const productName = faker.string.alphanumeric();

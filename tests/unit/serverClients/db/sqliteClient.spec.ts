@@ -6,6 +6,7 @@ import { init as initMockConfig, configMock, clear as clearMockConfig } from '..
 import { Grid, IMatrixValues } from '../../../../src/ingestion/interfaces';
 import { SQLiteClient } from '../../../../src/serviceClients/database/SQLiteClient';
 import { describe } from 'node:test';
+import { fakeGpkgFilePath, mockInputFiles } from '../../../mocks/sourcesRequestBody';
 
 jest.mock('better-sqlite3');
 let sqlClient: SQLiteClient;
@@ -25,7 +26,7 @@ describe('SQLClient', () => {
     getDbSpy = jest.spyOn(SQLiteClient.prototype, 'getDB');
     mockDB = { close: jest.fn } as unknown as SQLiteDB;
 
-    sqlClient = new SQLiteClient(jsLogger({ enabled: false }), configMock, trace.getTracer('testTracer'), 'test_dir/test_gpkg');
+    sqlClient = new SQLiteClient(jsLogger({ enabled: false }), trace.getTracer('testTracer'), fakeGpkgFilePath);
   });
 
   describe('getGrid', () => {

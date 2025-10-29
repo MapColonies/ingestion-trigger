@@ -60,15 +60,20 @@ export class GeoValidator {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('GeoValidator.hasFootprintCorrelation');
     if (productGeometry.type === 'MultiPolygon') {
-      productGeometry.coordinates.forEach((coordinate) => {
-        const polygon: Polygon = { type: 'Polygon', coordinates: coordinate };
-        if (!booleanContains(gpkgGeometry, polygon)) {
+      const polygons: Polygon[] = productGeometry.coordinates.map((coordinate) => {
+        return { type: 'Polygon', coordinates: coordinate };
+      })
+      // check for each of the single polygons if its contains within the gpkg geometry
+      return !polygons.some((polygon) => {
+        const isContains = booleanContains(gpkgGeometry, polygon) === false;
+
+        if(!isContains){
           activeSpan?.addEvent('GeoValidator.hasFootprintCorrelation.false', {
             gpkgGeometry: JSON.stringify(gpkgGeometry),
             productFootprint: JSON.stringify(productGeometry),
           });
-          return false;
         }
+        return isContains;
       });
     } else if (!booleanContains(gpkgGeometry, productGeometry)) {
       activeSpan?.addEvent('GeoValidator.hasFootprintCorrelation.false', {

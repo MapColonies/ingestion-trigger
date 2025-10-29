@@ -1,11 +1,10 @@
 import { faker } from '@faker-js/faker';
-import { randexp } from 'randexp';
-import { ConflictError } from '@map-colonies/error-types';
+import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import jsLogger from '@map-colonies/js-logger';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { trace } from '@opentelemetry/api';
 import nock from 'nock';
-import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../../../../src/ingestion/errors/ingestionErrors';
+import { ChecksumError, FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
 import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
@@ -15,17 +14,16 @@ import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrap
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
-import {
-  updatedLayer,
-  updatedSwapLayer,
-} from '../../../mocks/updateRequestMockData';
-// import { gdalInfoCases } from '../../../mocks/gdalInfoMock';
 import { ProductManager } from '../../../../src/ingestion/models/productManager';
 import { GeoValidator } from '../../../../src/ingestion/validators/geoValidator';
 import { Checksum } from '../../../../src/utils/hash/checksum';
 import { mockGdalInfoData } from '../../../mocks/gdalInfoMock';
-import { generateNewLayerRequest } from '../../../mocks/mockFactory';
-import { fakeIngestionSources, mockInputFiles } from '../../../mocks/sourcesRequestBody';
+import { generateCatalogLayerResponse, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
+import { container } from 'tsyringe';
+import { Xxh64 } from '@node-rs/xxhash';
+import { HashAlgorithm, HashProcessor } from '../../../../src/utils/hash/interface';
+import { CHECKSUM_PROCESSOR, SERVICES } from '../../../../src/common/constants';
+import { RasterProductTypes } from '@map-colonies/raster-shared';
 
 describe('IngestionManager', () => {
   let ingestionManager: IngestionManager;
@@ -56,14 +54,21 @@ describe('IngestionManager', () => {
   let mapProxyClient: MapProxyClient;
   let jobManagerWrapper: JobManagerWrapper;
   let productManager: ProductManager;
-  let checksum: Checksum;
 
-  registerDefaultConfig();
   const testTracer = trace.getTracer('testTracer');
   const testLogger = jsLogger({ enabled: false });
 
   beforeEach(() => {
     registerDefaultConfig();
+    // Reset container for a clean test
+    container.reset();
+    container.register(SERVICES.TRACER, { useValue: testTracer });
+    container.register(SERVICES.LOGGER, { useValue: testLogger });
+    container.register(CHECKSUM_PROCESSOR, {
+      useFactory: (): HashProcessor => {
+        return Object.assign(new Xxh64(), { algorithm: 'XXH64' as const satisfies HashAlgorithm });
+      },
+    });
 
     mapProxyClient = new MapProxyClient(configMock, testLogger, testTracer);
     catalogClient = new CatalogClient(configMock, testLogger, testTracer);
@@ -98,8 +103,8 @@ describe('IngestionManager', () => {
   });
 
   describe('newLayer', () => {
-    it('should not throw any errors when the request is valid', async () => {
-      const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] }
+    it('should not throw any errors when the request is valid and create ingestion new job', async () => {
+      const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] };
       const layerRequest = generateNewLayerRequest();
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
@@ -110,13 +115,14 @@ describe('IngestionManager', () => {
       existsCatalogSpy.mockResolvedValue(false);
       findJobsSpy.mockResolvedValue([]);
       readSpy.mockImplementation(undefined);
-      calcualteChecksumSpy.mockResolvedValue(checksum);
-      createIngestionJobSpy.mockResolvedValue(createJobResponse)
+      calcualteChecksumSpy.mockResolvedValue(faker.string.sample());
+      createIngestionJobSpy.mockResolvedValue(createJobResponse);
 
       const action = async () => {
         await ingestionManager.newLayer(layerRequest);
       };
       await expect(action()).resolves.not.toThrow();
+      expect(createIngestionJobSpy).toHaveBeenCalledWith(expect.objectContaining({ "type": "Ingestion_New" }));
     });
 
     it('should throw conflict error when there is a job running', async () => {
@@ -160,7 +166,7 @@ describe('IngestionManager', () => {
       sourceValidator.validateGpkgFiles.mockReturnValue(0);
       geoValidatorMock.validate.mockImplementation(async () => Promise.resolve());
 
-      existsMapproxySpy.mockResolvedValue(true);
+      existsMapproxySpy.mockResolvedValue(false);
       existsCatalogSpy.mockResolvedValue(true);
 
       const action = async () => {
@@ -182,11 +188,32 @@ describe('IngestionManager', () => {
       };
       await expect(action()).rejects.toThrow(UnsupportedEntityError);
     });
+
+    it('should throw an error when checksum calcualte throws an error', async () => {
+      const layerRequest = generateNewLayerRequest();
+
+      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateGpkgFiles.mockReturnValue(0);
+      geoValidatorMock.validate.mockImplementation(async () => Promise.resolve());
+
+      existsMapproxySpy.mockResolvedValue(false);
+      existsCatalogSpy.mockResolvedValue(false);
+      findJobsSpy.mockResolvedValue([]);
+      readSpy.mockImplementation(undefined);
+      calcualteChecksumSpy.mockRejectedValue(new ChecksumError(''));
+
+      const action = async () => {
+        await ingestionManager.newLayer(layerRequest);
+      };
+      await expect(action()).rejects.toThrow(ChecksumError);
+    });
   });
 
-  describe('validateUpdateLayer', () => {
-    it('should not throw any errors when the request is valid and create update job', async () => {
+  describe('updateLayer', () => {
+    it('should not throw any errors when the request is valid and create update ingestion update job', async () => {
       const layerRequest = generateUpdateLayerRequest();
+      const catalogLayerResponse = generateCatalogLayerResponse();
       const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] }
 
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
@@ -194,22 +221,27 @@ describe('IngestionManager', () => {
       sourceValidator.validateGpkgFiles.mockReturnValue(0);
       geoValidatorMock.validate.mockImplementation(async () => Promise.resolve());
 
-
-      findByIdSpy.mockResolvedValue([updatedLayer])
+      findByIdSpy.mockResolvedValue([catalogLayerResponse])
       existsMapproxySpy.mockResolvedValue(true);
       findJobsSpy.mockResolvedValue([]);
       createIngestionJobSpy.mockResolvedValue(createJobResponse);
       readSpy.mockImplementation(undefined);
-      calcualteChecksumSpy.mockResolvedValue(checksum);
+      calcualteChecksumSpy.mockResolvedValue(faker.string.sample());
 
       const action = async () => {
-        await ingestionManager.updateLayer(updatedLayer.metadata.id, layerRequest);
+        await ingestionManager.updateLayer(catalogLayerResponse.metadata.id, layerRequest);
       };
       await expect(action()).resolves.not.toThrow();
+      expect(createIngestionJobSpy).toHaveBeenCalledWith(expect.objectContaining({ "type": "Ingestion_Update" }));
     });
 
     it('should not throw any errors when the request is valid and create update swap job', async () => {
       const layerRequest = generateUpdateLayerRequest();
+      const catalogLayerResponse = generateCatalogLayerResponse();
+      const swapLayer = {
+        ...catalogLayerResponse,
+        metadata: { ...catalogLayerResponse.metadata, productType: RasterProductTypes.RASTER_VECTOR_BEST, productSubType: 'testProductSubType' }
+      };
       const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] }
 
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
@@ -218,74 +250,79 @@ describe('IngestionManager', () => {
       geoValidatorMock.validate.mockImplementation(async () => Promise.resolve());
 
 
-      findByIdSpy.mockResolvedValue([updatedSwapLayer]);
+      findByIdSpy.mockResolvedValue([swapLayer]);
       existsMapproxySpy.mockResolvedValue(true);
       findJobsSpy.mockResolvedValue([]);
       createIngestionJobSpy.mockResolvedValue(createJobResponse);
       readSpy.mockImplementation(undefined);
-      calcualteChecksumSpy.mockResolvedValue(checksum);
+      calcualteChecksumSpy.mockResolvedValue(faker.string.sample());
 
       const action = async () => {
-        await ingestionManager.updateLayer(updatedSwapLayer.metadata.id, layerRequest);
+        await ingestionManager.updateLayer(swapLayer.metadata.id, layerRequest);
       };
       await expect(action()).resolves.not.toThrow();
+      expect(createIngestionJobSpy).toHaveBeenCalledWith(expect.objectContaining({ "type": "Ingestion_Swap_Update" }));
     });
 
     it('should throw conflict error when there is a conflicting job running', async () => {
       const layerRequest = generateUpdateLayerRequest();
+      const catalogLayerResponse = generateCatalogLayerResponse();
 
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGpkgFiles.mockReturnValue(0);
       geoValidatorMock.validate.mockImplementation(async () => Promise.resolve());
 
-      findByIdSpy.mockResolvedValue([updatedLayer]);
+      findByIdSpy.mockResolvedValue([catalogLayerResponse]);
       existsMapproxySpy.mockResolvedValue(true);
       findJobsSpy.mockResolvedValue([{ status: OperationStatus.IN_PROGRESS }]);
       readSpy.mockImplementation(undefined);
-      calcualteChecksumSpy.mockResolvedValue(checksum);
+      calcualteChecksumSpy.mockResolvedValue(faker.string.sample());
 
       const action = async () => {
-        await ingestionManager.updateLayer(updatedLayer.metadata.id, layerRequest);
+        await ingestionManager.updateLayer(catalogLayerResponse.metadata.id, layerRequest);
       };
       await expect(action()).rejects.toThrow(ConflictError);
     });
 
     it('should throw not found error when there is no layer in mapProxy', async () => {
       const layerRequest = generateUpdateLayerRequest();
+      const catalogLayerResponse = generateCatalogLayerResponse();
 
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGpkgFiles.mockReturnValue(0);
       geoValidatorMock.validate.mockImplementation(async () => Promise.resolve());
 
-      findByIdSpy.mockResolvedValue([updatedLayer]);
+      findByIdSpy.mockResolvedValue([catalogLayerResponse]);
       existsMapproxySpy.mockResolvedValue(false);
 
       const action = async () => {
-        await ingestionManager.updateLayer(updatedLayer.metadata.id, layerRequest);
+        await ingestionManager.updateLayer(catalogLayerResponse.metadata.id, layerRequest);
       };
       await expect(action()).rejects.toThrow(NotFoundError);
     });
 
     it('should throw conflict error when there is more then one layer in catalog', async () => {
       const layerRequest = generateUpdateLayerRequest();
+      const catalogLayerResponse = generateCatalogLayerResponse();
 
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGpkgFiles.mockReturnValue(0);
       geoValidatorMock.validate.mockImplementation(async () => Promise.resolve());
 
-      findByIdSpy.mockResolvedValue([updatedLayer, updatedLayer]);
+      findByIdSpy.mockResolvedValue([catalogLayerResponse, catalogLayerResponse]);
 
       const action = async () => {
-        await ingestionManager.updateLayer(updatedLayer.metadata.id, layerRequest);
+        await ingestionManager.updateLayer(catalogLayerResponse.metadata.id, layerRequest);
       };
       await expect(action()).rejects.toThrow(ConflictError);
     });
 
     it('should throw not found error when there is no layer in catalog', async () => {
       const layerRequest = generateUpdateLayerRequest();
+      const catalogLayerResponse = generateCatalogLayerResponse();
 
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
@@ -295,7 +332,7 @@ describe('IngestionManager', () => {
       findByIdSpy.mockResolvedValue([]);
 
       const action = async () => {
-        await ingestionManager.updateLayer(updatedLayer.metadata.id, layerRequest);
+        await ingestionManager.updateLayer(catalogLayerResponse.metadata.id, layerRequest);
       };
       await expect(action()).rejects.toThrow(NotFoundError);
     });

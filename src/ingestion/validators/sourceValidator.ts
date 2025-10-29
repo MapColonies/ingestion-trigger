@@ -3,7 +3,7 @@ import { basename, dirname } from 'node:path';
 import { Logger } from '@map-colonies/js-logger';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 import { trace, Tracer } from '@opentelemetry/api';
-import { IConfig } from 'config';
+import { IConfig } from '../../common/interfaces';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import { LogContext } from '../../utils/logger/logContext';
