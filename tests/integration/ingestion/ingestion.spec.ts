@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { OperationStatus } from '@map-colonies/mc-priority-queue';
+import { OperationStatus, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { CORE_VALIDATIONS, getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
 import { SqliteError } from 'better-sqlite3';
 import gdal from 'gdal-async';
@@ -28,7 +28,6 @@ import {
   rasterLayerInputFilesGenerators,
   rasterLayerMetadataGenerators,
 } from '../../mocks/mockFactory';
-import { jobResponse } from '../../mocks/newIngestionRequestMockData';
 import { fakeIngestionSources } from '../../mocks/sourcesRequestBody';
 import type { DeepPartial } from '../../utils/types';
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
@@ -54,11 +53,16 @@ describe('Ingestion', function () {
   const jobManagerURL = 'http://jobmanagerurl';
   const mapProxyApiServiceUrl = 'http://mapproxyapiserviceurl';
   const catalogServiceURL = 'http://catalogserviceurl';
+  let jobResponse: ICreateJobResponse;
 
   beforeEach(function () {
     const [app] = getApp({
       override: [...getTestContainerConfig()],
     });
+    jobResponse = {
+      id: faker.string.uuid(),
+      taskIds: [faker.string.uuid()],
+    };
 
     requestSender = new IngestionRequestSender(app);
   });

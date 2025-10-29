@@ -43,7 +43,7 @@ describe('IngestionManager', () => {
   let createIngestionJobSpy: jest.SpyInstance;
   let findJobsSpy: jest.SpyInstance;
   let existsMapproxySpy: jest.SpyInstance;
-  let existsCatalogSpy: jest.SpyInstance
+  let existsCatalogSpy: jest.SpyInstance;
   let readSpy: jest.SpyInstance;
   let calcualteChecksumSpy: jest.SpyInstance;
 
@@ -52,6 +52,7 @@ describe('IngestionManager', () => {
   let jobManagerWrapper: JobManagerWrapper;
   let productManager: ProductManager;
   let checksum: Checksum;
+  let jobResponse: ICreateJobResponse;
 
   registerDefaultConfig();
   const jobManagerURL = configMock.get<string>('services.jobManagerURL');
@@ -69,6 +70,11 @@ describe('IngestionManager', () => {
 
   beforeEach(() => {
     registerDefaultConfig();
+
+    jobResponse = {
+      id: faker.string.uuid(),
+      taskIds: [faker.string.uuid()],
+    };
 
     mapProxyClient = new MapProxyClient(configMock, testLogger, testTracer);
     catalogClient = new CatalogClient(configMock, testLogger, testTracer);
@@ -103,7 +109,6 @@ describe('IngestionManager', () => {
 
   describe('newLayer', () => {
     it('should not throw any errors when the request is valid', async () => {
-      const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] }
       const layerRequest = generateNewLayerRequest();
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
@@ -115,7 +120,7 @@ describe('IngestionManager', () => {
       findJobsSpy.mockResolvedValue([]);
       readSpy.mockImplementation(undefined);
       calcualteChecksumSpy.mockResolvedValue(checksum);
-      createIngestionJobSpy.mockResolvedValue(createJobResponse)
+      createIngestionJobSpy.mockResolvedValue(jobResponse);
 
       const action = async () => {
         await ingestionManager.newLayer(layerRequest);
