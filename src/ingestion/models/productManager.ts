@@ -3,7 +3,7 @@ import { Logger } from '@map-colonies/js-logger';
 import { ChunkProcessor, ReaderOptions, ShapefileChunk, ShapefileChunkReader } from '@map-colonies/mc-utils';
 import { multiPolygonSchema, polygonSchema } from '@map-colonies/raster-shared';
 import { Tracer } from '@opentelemetry/api';
-import { Feature, Geometry } from 'geojson';
+import { Feature } from 'geojson';
 import { inject, injectable } from 'tsyringe';
 import z from 'zod';
 import { SERVICES } from '../../common/constants';
@@ -19,7 +19,7 @@ export class ProductManager {
   private readonly options: ReaderOptions;
   private readonly reader: ShapefileChunkReader;
   private readonly processor: ChunkProcessor;
-  private features: Feature<Geometry>[] = [];
+  private features: Feature[] = [];
   private readonly maxVerticesPerChunk: number;
 
   public constructor(
