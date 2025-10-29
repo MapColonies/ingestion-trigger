@@ -230,6 +230,7 @@ components:
     IngestionNewLayerMetadata:
       type: object
       required:
+        - classification
         - productId
         - productName
         - productType

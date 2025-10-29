@@ -45,7 +45,7 @@ describe('IngestionManager', () => {
   let createIngestionJobSpy: jest.SpyInstance;
   let findJobsSpy: jest.SpyInstance;
   let existsMapproxySpy: jest.SpyInstance;
-  let existsCatalogSpy: jest.SpyInstance
+  let existsCatalogSpy: jest.SpyInstance;
   let readSpy: jest.SpyInstance;
   let calcualteChecksumSpy: jest.SpyInstance;
   let findByIdSpy: jest.SpyInstance;
@@ -54,6 +54,7 @@ describe('IngestionManager', () => {
   let mapProxyClient: MapProxyClient;
   let jobManagerWrapper: JobManagerWrapper;
   let productManager: ProductManager;
+  let jobResponse: ICreateJobResponse;
 
   const testTracer = trace.getTracer('testTracer');
   const testLogger = jsLogger({ enabled: false });
@@ -69,6 +70,11 @@ describe('IngestionManager', () => {
         return Object.assign(new Xxh64(), { algorithm: 'XXH64' as const satisfies HashAlgorithm });
       },
     });
+
+    jobResponse = {
+      id: faker.string.uuid(),
+      taskIds: [faker.string.uuid()],
+    };
 
     mapProxyClient = new MapProxyClient(configMock, testLogger, testTracer);
     catalogClient = new CatalogClient(configMock, testLogger, testTracer);

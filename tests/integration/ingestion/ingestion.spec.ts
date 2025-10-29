@@ -1,15 +1,17 @@
 import { faker } from '@faker-js/faker';
-import { OperationStatus } from '@map-colonies/mc-priority-queue';
+import { OperationStatus, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { CORE_VALIDATIONS, getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
 import { SqliteError } from 'better-sqlite3';
 import gdal from 'gdal-async';
 import httpStatusCodes from 'http-status-codes';
 import { matches, merge, set, unset } from 'lodash';
 import nock from 'nock';
+import { randexp } from 'randexp';
 import { getApp } from '../../../src/app';
 import { Grid, type ResponseId, type ValidationTaskParameters } from '../../../src/ingestion/interfaces';
 import { GpkgManager } from '../../../src/ingestion/models/gpkgManager';
 import { infoDataSchemaArray } from '../../../src/ingestion/schemas/infoDataSchema';
+import type { IngestionNewLayer } from '../../../src/ingestion/schemas/ingestionLayerSchema';
 import type { IngestionUpdateLayer } from '../../../src/ingestion/schemas/updateLayerSchema';
 import { SourceValidator } from '../../../src/ingestion/validators/sourceValidator';
 import { SQLiteClient } from '../../../src/serviceClients/database/SQLiteClient';
@@ -22,12 +24,12 @@ import {
   createNewLayerRequest,
   createUpdateJobRequest,
   createUpdateLayerRequest,
+  generateCallbackUrl,
   rasterLayerInputFilesGenerators,
   rasterLayerMetadataGenerators,
 } from '../../mocks/mockFactory';
-import { jobResponse } from '../../mocks/newIngestionRequestMockData';
 import { fakeIngestionSources } from '../../mocks/sourcesRequestBody';
-import type { DeepPartial } from '../../utils/types';
+import type { DeepPartial, DeepRequired, FlattenKeyTupleUnion } from '../../utils/types';
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
 import { IngestionRequestSender } from './helpers/ingestionRequestSender';
 
@@ -51,11 +53,16 @@ describe('Ingestion', function () {
   const jobManagerURL = 'http://jobmanagerurl';
   const mapProxyApiServiceUrl = 'http://mapproxyapiserviceurl';
   const catalogServiceURL = 'http://catalogserviceurl';
+  let jobResponse: ICreateJobResponse;
 
   beforeEach(function () {
     const [app] = getApp({
       override: [...getTestContainerConfig()],
     });
+    jobResponse = {
+      id: faker.string.uuid(),
+      taskIds: [faker.string.uuid()],
+    };
 
     requestSender = new IngestionRequestSender(app);
   });
@@ -380,9 +387,6 @@ describe('Ingestion', function () {
   });
 
   describe('POST /ingestion', () => {
-    // TODO: work with the config lib, not parallel to it
-    // at least use configMock.get() to get the following values
-
     describe('Happy Path', () => {
       it('should return 200 status code', async () => {
         const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
@@ -396,8 +400,17 @@ describe('Ingestion', function () {
           checksums: validInputFiles.checksums,
         });
         nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
-        nock(jobManagerURL).post('/jobs', matches(newJobRequest)).reply(httpStatusCodes.OK, jobResponse);
-        nock(catalogServiceURL).post('/records/find', {}).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL)
+          .post('/jobs', matches(JSON.parse(JSON.stringify(newJobRequest))))
+          .reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL)
+          .post('/records/find', {
+            metadata: {
+              productId: layerRequest.metadata.productId,
+              productType: layerRequest.metadata.productType,
+            },
+          })
+          .reply(httpStatusCodes.OK, []);
         nock(mapProxyApiServiceUrl)
           .get(`/layer/${encodeURIComponent(newLayerName)}`)
           .reply(httpStatusCodes.NOT_FOUND);
@@ -410,89 +423,593 @@ describe('Ingestion', function () {
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
-        expect(response.body).toBe(expectedResponseBody);
+        expect(response.body).toStrictEqual(expectedResponseBody);
       });
     });
 
     describe('Bad Path', () => {
-      it('should return 400 status code when the validation of the metadata fails', async () => {
-        // const layerRequest = invalidNewLayerRequest.metadata;
+      const badRequestBodyTestCases: {
+        testCase: string;
+        badNewLayerRequest: DeepPartial<IngestionNewLayer>;
+        removeProperty?: FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>;
+      }[] = [
+        {
+          testCase: 'req body is not an object',
+          badNewLayerRequest: '' as DeepPartial<IngestionNewLayer>,
+        },
+        {
+          testCase: 'inputFiles in req body is not set',
+          badNewLayerRequest: createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }),
+          removeProperty: ['inputFiles'],
+        },
+        {
+          testCase: 'inputFiles in req body is not an object',
+          badNewLayerRequest: merge(createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
+            inputFiles: '',
+          }),
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is not set',
+          badNewLayerRequest: createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }),
+          removeProperty: ['inputFiles', 'gpkgFilesPath'],
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is not an array',
+          badNewLayerRequest: merge(createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
+            inputFiles: { gpkgFilesPath: faker.string.alphanumeric({ length: { min: 1, max: 100 } }) },
+          }),
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is an array with items count not equal to 1',
+          badNewLayerRequest: set(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            ['inputFiles', 'gpkgFilesPath'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
+            faker.helpers.arrayElement([
+              [],
+              faker.helpers.multiple(() => faker.string.alphanumeric({ length: { min: 1, max: 100 } }), {
+                count: { min: 2, max: 10 },
+              }),
+            ])
+          ),
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is an array with 1 item that is not a string',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { gpkgFilesPath: [false] } }
+          ),
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is an array with 1 item that does not match file pattern',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: {
+              ...validInputFiles.inputFiles,
+              gpkgFilesPath: [rasterLayerInputFilesGenerators.gpkgFilesPath()[0] + ' '],
+            },
+          }),
+        },
+        {
+          testCase: 'productShapefilePath in inputFiles in req body is not set',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['inputFiles', 'productShapefilePath'],
+        },
+        {
+          testCase: 'productShapefilePath in inputFiles in req body is not a string',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { productShapefilePath: false } }
+          ),
+        },
+        {
+          testCase: 'productShapefilePath in inputFiles in req body does not match file pattern',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { productShapefilePath: rasterLayerInputFilesGenerators.productShapefilePath() + ' ' } }
+          ),
+        },
+        {
+          testCase: 'metadataShapefilePath in inputFiles in req body is not set',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['inputFiles', 'metadataShapefilePath'],
+        },
+        {
+          testCase: 'metadataShapefilePath in inputFiles in req body is not a string',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { metadataShapefilePath: false } }
+          ),
+        },
+        {
+          testCase: 'metadataShapefilePath in inputFiles in req body does not match file pattern',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { metadataShapefilePath: rasterLayerInputFilesGenerators.metadataShapefilePath() + ' ' } }
+          ),
+        },
+        {
+          testCase: 'metadata in req body is not set',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata'],
+        },
+        {
+          testCase: 'metadata in req body is not an object',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            metadata: '' as unknown as IngestionNewLayer['metadata'],
+          }),
+        },
+        {
+          testCase: 'classification in metadata in req body is not a string',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { classification: false } }
+          ),
+        },
+        {
+          testCase: 'classification in metadata in req body does not match string pattern',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { classification: '00' } }
+          ),
+        },
+        {
+          testCase: 'productId in metadata in req body is not set',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'productId'],
+        },
+        {
+          testCase: 'productId in metadata in req body is not a string',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { productId: false } }
+          ),
+        },
+        {
+          testCase: 'productId in metadata in req body does not match string pattern',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            {
+              metadata: {
+                productId: faker.helpers.arrayElement([
+                  randexp('^[^A-Za-z]{1}[A-Za-z0-9_]{0,37}$'),
+                  randexp('^[A-Za-z]{1}[A-Za-z0-9_]{37}$') + faker.string.alphanumeric(),
+                ]),
+              },
+            }
+          ),
+        },
+        {
+          testCase: 'productName in metadata in req body is not set',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'productName'],
+        },
+        {
+          testCase: 'productName in metadata in req body is not a string',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { productName: false } }
+          ),
+        },
+        {
+          testCase: 'productName in metadata in req body must have a length of at least 1',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { productName: '' } }
+          ),
+        },
+        {
+          testCase: 'productType in metadata in req body is not set',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'productType'],
+        },
+        {
+          testCase: 'productType in metadata in req body is not a string',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { productType: false } }
+          ),
+        },
+        {
+          testCase: 'productType in metadata in req body must be one of allowed raster product types',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { productType: '' } }
+          ),
+        },
+        {
+          testCase: 'srs in metadata in req body is not set',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'srs'],
+        },
+        {
+          testCase: 'srs in metadata in req body is not a string',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { srs: false } }
+          ),
+        },
+        {
+          testCase: 'srs in metadata in req body must be one of allowed srs values',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { srs: '' } }
+          ),
+        },
+        {
+          testCase: 'srsName in metadata in req body is not set',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'srsName'],
+        },
+        {
+          testCase: 'srsName in metadata in req body is not a string',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { srsName: false } }
+          ),
+        },
+        {
+          testCase: 'srsName in metadata in req body must be one of allowed srsName values',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { srsName: '' } }
+          ),
+        },
+        {
+          testCase: 'transparency in metadata in req body is not set',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'transparency'],
+        },
+        {
+          testCase: 'transparency in metadata in req body is not a string',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { transparency: false } }
+          ),
+        },
+        {
+          testCase: 'transparency in metadata in req body must be one of allowed transparency values',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { transparency: '' } }
+          ),
+        },
+        {
+          testCase: 'region in metadata in req body is not set',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'region'],
+        },
+        {
+          testCase: 'region in metadata in req body is not an array',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { region: false } }
+          ),
+        },
+        {
+          testCase: 'region in metadata in req body is an empty array',
+          badNewLayerRequest: set(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            ['metadata', 'region'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
+            []
+          ),
+        },
+        {
+          testCase: 'region in metadata in req body is an array with a region of min length of 1',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { region: [...faker.helpers.multiple(() => rasterLayerMetadataGenerators.region(), { count: { min: 1, max: 10 } }), ''] } }
+          ),
+        },
+        {
+          testCase: 'description in metadata in req body is not a string',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { description: false } }
+          ),
+        },
+        {
+          testCase: 'scale in metadata in req body is not a number',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { scale: false } }
+          ),
+        },
+        {
+          testCase: 'producerName in metadata in req body is not a string',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { producerName: false } }
+          ),
+        },
+        {
+          testCase: 'productSubType in metadata in req body is not a string',
+          badNewLayerRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { productSubType: false } }
+          ),
+        },
+        {
+          testCase: 'ingestionResolution in req body is not set',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['ingestionResolution'],
+        },
+        {
+          testCase: 'ingestionResolution in req body is not a number',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            ingestionResolution: '' as unknown as number,
+          }),
+        },
+        {
+          testCase: 'ingestionResolution in req body is not in a range of valid values',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            ingestionResolution: faker.helpers.arrayElement([
+              faker.number.float({ min: Number.MIN_SAFE_INTEGER, max: CORE_VALIDATIONS.resolutionDeg.min }),
+              faker.number.float({ min: CORE_VALIDATIONS.resolutionDeg.max + Number.EPSILON, max: Number.MAX_SAFE_INTEGER }),
+            ]),
+          }),
+        },
+        {
+          testCase: 'callbackUrls in req body is not an array',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            callbackUrls: '' as unknown as string[],
+          }),
+        },
+        {
+          testCase: 'callbackUrls in req body is an empty array',
+          badNewLayerRequest: set(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            ['callbackUrls'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
+            []
+          ),
+        },
+        {
+          testCase: 'callbackUrls in req body does not match url pattern',
+          badNewLayerRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            callbackUrls: [generateCallbackUrl() + ' '],
+          }),
+        },
+      ];
 
+      it.each(badRequestBodyTestCases)(
+        'should return 400 status code when invalid input - $testCase',
+        async ({ badNewLayerRequest, removeProperty }) => {
+          const layerRequest = badNewLayerRequest as IngestionNewLayer;
+          if (removeProperty) {
+            unset(layerRequest, removeProperty);
+          }
+
+          const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+
+          const response = await requestSender.ingestNewLayer(layerRequest);
+
+          expect(response).toSatisfyApiSpec();
+          expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+          expect(scope.isDone()).toBe(false);
+        }
+      );
+
+      it('should return 400 status code when product shapefile is not contained within gpkg extent', async () => {
+        const layerRequest = createNewLayerRequest({
+          inputFiles: {
+            gpkgFilesPath: ['validIndexed.gpkg'],
+            metadataShapefilePath: 'validIndexed',
+            productShapefilePath: 'blueMarble',
+          },
+        });
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
         const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
       });
+    });
 
-      it('should return 400 status code when partsData polygon geometry is not contained by extent', async () => {
-        const layerRequest = invalidNewLayerRequest.notContainedPolygon;
-        const response = await requestSender.ingestNewLayer(layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-      });
-
-      it('should return 409 status when the ingested layer is in mapProxy', async () => {
-        const layerRequest = validNewLayerRequest.valid;
-
-        nock(mapProxyApiServiceUrl)
-          .get(`/layer/${encodeURIComponent(layerName)}`)
-          .reply(httpStatusCodes.OK, []);
-        const response = await requestSender.ingestNewLayer(layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.CONFLICT);
-      });
-
+    describe('Sad Path', () => {
       it('should return 422 status code when invalid gdal info', async () => {
-        const layerRequest = invalidNewLayerRequest.gdalInfo;
+        const layerRequest = createNewLayerRequest({
+          inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+        });
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
 
         const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
       });
-    });
 
-    describe('Sad Path', () => {
+      it('should return 409 status code when the ingested layer is in MapProxy', async () => {
+        const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(newLayerName)}`)
+          .reply(httpStatusCodes.OK, []);
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+        expect(scope.isDone()).toBe(false);
+      });
+
       it('should return 500 status code when failed to read sqlite file', async () => {
-        const layerRequest = validNewLayerRequest.valid;
+        const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
         jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
           throw new SqliteError('failed read sqlite file', 'SQLITE_ERROR');
         });
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
 
         const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        expect(scope.isDone()).toBe(false);
       });
 
-      it('should return 500 status code when failed to create new init job', async () => {
-        const layerRequest = validNewLayerRequest.valid;
+      it('should return 500 status code when unexpected error from MapProxy occurs', async () => {
+        const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(newLayerName)}`)
+          .reply(httpStatusCodes.GATEWAY_TIMEOUT);
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 500 status code when failed to calculate checksum for input file', async () => {
+        const layerRequest = createNewLayerRequest({
+          inputFiles: {
+            gpkgFilesPath: ['validIndexed.gpkg'],
+            metadataShapefilePath: 'validIndexed',
+            productShapefilePath: 'validIndexed',
+          },
+        });
+        const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
 
         const findJobsParams = createFindJobsParams({
           resourceId: layerRequest.metadata.productId,
           productType: layerRequest.metadata.productType,
         });
+
         nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
-        nock(jobManagerURL).post('/jobs', newJobRequest).reply(httpStatusCodes.GATEWAY_TIMEOUT);
-        nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(httpStatusCodes.OK, []);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL)
+          .post('/records/find', {
+            metadata: {
+              productId: layerRequest.metadata.productId,
+              productType: layerRequest.metadata.productType,
+            },
+          })
+          .reply(httpStatusCodes.OK, []);
         nock(mapProxyApiServiceUrl)
-          .get(`/layer/${encodeURIComponent(layerName)}`)
+          .get(`/layer/${encodeURIComponent(newLayerName)}`)
           .reply(httpStatusCodes.NOT_FOUND);
+        jest.spyOn(Checksum.prototype, 'calculate').mockRejectedValueOnce(new Error());
 
         const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        expect(scope.isDone()).toBe(false);
       });
 
-      it('should return 500 status code when unexpected error from mapproxy occurs', async () => {
-        const layerRequest = validNewLayerRequest.valid;
+      it('should return 500 status code when failed to create new init job', async () => {
+        const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
 
+        const findJobsParams = createFindJobsParams({
+          resourceId: layerRequest.metadata.productId,
+          productType: layerRequest.metadata.productType,
+        });
+
+        const newJobRequest = createNewJobRequest({ ingestionNewLayer: layerRequest, checksums: validInputFiles.checksums });
+
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL).post('/jobs', matches(newJobRequest)).reply(httpStatusCodes.GATEWAY_TIMEOUT);
+        nock(catalogServiceURL)
+          .post('/records/find', {
+            metadata: {
+              productId: layerRequest.metadata.productId,
+              productType: layerRequest.metadata.productType,
+            },
+          })
+          .reply(httpStatusCodes.OK, []);
         nock(mapProxyApiServiceUrl)
-          .get(`/layer/${encodeURIComponent(layerName)}`)
-          .reply(httpStatusCodes.GATEWAY_TIMEOUT);
+          .get(`/layer/${encodeURIComponent(newLayerName)}`)
+          .reply(httpStatusCodes.NOT_FOUND);
 
         const response = await requestSender.ingestNewLayer(layerRequest);
 
@@ -595,7 +1112,7 @@ describe('Ingestion', function () {
       const badRequestBodyTestCases: {
         testCase: string;
         badUpdateLayerRequest: DeepPartial<IngestionUpdateLayer>;
-        removeProperty?: string[];
+        removeProperty?: FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>;
       }[] = [
         {
           testCase: 'req body is not an object',
@@ -610,7 +1127,7 @@ describe('Ingestion', function () {
           testCase: 'inputFiles in req body is not an object',
           badUpdateLayerRequest: merge(createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
             inputFiles: '',
-          }) as DeepPartial<IngestionUpdateLayer>,
+          }),
         },
         {
           testCase: 'gpkgFilesPath in inputFiles in req body is not set',
@@ -629,7 +1146,7 @@ describe('Ingestion', function () {
             createUpdateLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            ['inputFiles', 'gpkgFilesPath'],
+            ['inputFiles', 'gpkgFilesPath'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
             faker.helpers.arrayElement([
               [],
               faker.helpers.multiple(() => faker.string.alphanumeric({ length: { min: 1, max: 100 } }), {
@@ -778,7 +1295,7 @@ describe('Ingestion', function () {
             createUpdateLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            ['callbackUrls'],
+            ['callbackUrls'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
             []
           ),
         },

@@ -33,7 +33,7 @@ import { mockInputFiles } from './sourcesRequestBody';
 const TEST_FILES_RELATIVE_PATH = '/testFiles';
 
 type UnAggregateKeys<T extends object> = {
-  [K in keyof T as K extends `max${infer Q}` | `min${infer Q}` ? Uncapitalize<Q> : K]: T[K];
+  [K in keyof T as K extends `max${infer P}` | `min${infer P}` ? Uncapitalize<P> : K]: T[K];
 };
 
 type RasterLayerCatalog = RasterLayersCatalog[number];
@@ -81,8 +81,6 @@ const generateCatalogLayerLinks = ({ productId, productType }: { productId: stri
   });
   return faker.helpers.arrayElements(templateLinks);
 };
-
-const generateCallbackUrl = (): CallbackUrlsTargetArray[number] => faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
 
 const generateIngestionResolution = (): IngestionUpdateLayer['ingestionResolution'] =>
   faker.number.float({
@@ -219,6 +217,9 @@ const generateInputFiles = (): InputFiles => {
   };
 };
 
+export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] =>
+  faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
+
 export const rasterLayerInputFilesGenerators: IngestionLayerInputFilesPropertiesGenerators = {
   gpkgFilesPath: () => [join(getTestFilesPath(), 'gpkg', fakerHE.system.commonFileName('gpkg'))],
   metadataShapefilePath: () => join(getTestFilesPath(), 'metadata', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'ShapeMetadata.shp'),
@@ -248,8 +249,7 @@ export const rasterLayerMetadataGenerators: RasterLayerMetadataPropertiesGenerat
     faker.number.float({ min: INGESTION_VALIDATIONS.resolutionMeter.min, max: INGESTION_VALIDATIONS.resolutionMeter.max }),
   horizontalAccuracyCE90: (): number =>
     faker.number.float({ min: INGESTION_VALIDATIONS.horizontalAccuracyCE90.min, max: INGESTION_VALIDATIONS.horizontalAccuracyCE90.max }),
-  // TODO: sensor: (): string => randexp(INGESTION_VALIDATIONS.sensor.pattern),
-  sensor: (): string => randexp('^([^\\s]).+([^\\s])$'),
+  sensor: (): string => randexp(INGESTION_VALIDATIONS.sensor.pattern),
   tileMimeFormat: (): TilesMimeFormat => faker.helpers.arrayElement(['image/png', 'image/jpeg']),
   productStatus: (): RecordStatus => faker.helpers.enumValue(RecordStatus),
   type: (): RecordType.RECORD_RASTER => RecordType.RECORD_RASTER,
@@ -316,7 +316,7 @@ export const createFindJobsParams = (findJobsParams: IFindJobsByCriteriaBody): I
 };
 
 export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> => {
-  const fakeProductId = faker.helpers.fromRegExp(randexp(INGESTION_VALIDATIONS.productId.pattern));
+  const productId = randexp(INGESTION_VALIDATIONS.productId.pattern);
   const productName = faker.string.alphanumeric();
   const productType = RasterProductTypes.ORTHOPHOTO;
   const transparency = Transparency.TRANSPARENT;
@@ -326,7 +326,7 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
   const checksum = 'checksome_result';
 
   return {
-    resourceId: fakeProductId,
+    resourceId: productId,
     version: '1.0',
     internalId: faker.string.uuid(),
     type: jobType,
@@ -336,7 +336,7 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
     parameters: {
       ingestionResolution: 0.000000335276126861572,
       metadata: {
-        productId: fakeProductId,
+        productId,
         productName,
         classification: '6',
         productType,
@@ -365,17 +365,16 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
 export const generateUpdateJobRequest = (
   isSwapUpdate = false
 ): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
-  const fakeProductId = faker.helpers.fromRegExp(randexp(INGESTION_VALIDATIONS.productId.pattern));
+  const productId = randexp(INGESTION_VALIDATIONS.productId.pattern);
   const productName = faker.string.alphanumeric();
   const productType = RasterProductTypes.ORTHOPHOTO;
   const domain = Domain.RASTER;
   const taskType = 'validation';
   const checksum = 'checksome_result';
   const updateJobType = isSwapUpdate ? 'Ingestion_Update' : 'Ingestion_Swap_Update';
-  const footprint: Polygon = { coordinates: [], type: 'Polygon' };
 
   return {
-    resourceId: fakeProductId,
+    resourceId: productId,
     version: '2.0',
     internalId: faker.string.uuid(),
     type: updateJobType,
@@ -389,7 +388,6 @@ export const generateUpdateJobRequest = (
       },
       inputFiles: mockInputFiles,
       additionalParams: {
-        footprint,
         tileOutputFormat: TileOutputFormat.PNG,
         displayPath: faker.string.uuid(),
         jobTrackerServiceURL: faker.internet.url(),
@@ -429,7 +427,7 @@ export const createUpdateJobRequest = (
     metadata: { classification },
     callbackUrls,
   } = ingestionUpdateLayer;
-  const { displayPath, footprint, id, productId, productType, productVersion, productName, tileOutputFormat } = rasterLayerMetadata;
+  const { displayPath, id, productId, productType, productVersion, productName, tileOutputFormat } = rasterLayerMetadata;
 
   return {
     resourceId: productId,
@@ -450,7 +448,6 @@ export const createUpdateJobRequest = (
         productShapefilePath: join(sourceMount, inputFiles.productShapefilePath),
       },
       additionalParams: {
-        footprint, // TODO: footprint is needed and if so does it has to come from the layer and not from the inputfiles product shp?!
         tileOutputFormat,
         jobTrackerServiceURL: jobTrackerServiceUrl,
         ...(updateJobAction === updateJobType && { displayPath }),

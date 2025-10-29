@@ -1,22 +1,26 @@
-import jsLogger from '@map-colonies/js-logger';
-import nock from 'nock';
-import { trace } from '@opentelemetry/api';
-import { JobManagerWrapper } from '../../../src/serviceClients/jobManagerWrapper';
-import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
-import { jobResponse } from '../../mocks/newIngestionRequestMockData';
+import { faker } from '@faker-js/faker';
 import { InternalServerError } from '@map-colonies/error-types';
+import jsLogger from '@map-colonies/js-logger';
+import type { ICreateJobResponse } from '@map-colonies/mc-priority-queue';
+import { trace } from '@opentelemetry/api';
+import nock from 'nock';
+import { JobManagerWrapper } from '../../../src/serviceClients/jobManagerWrapper';
+import { clear as clearConfig, configMock, registerDefaultConfig } from '../../mocks/configMock';
 import { generateNewJobRequest, generateUpdateJobRequest } from '../../mocks/mockFactory';
 
 describe('jobManagerWrapper', () => {
   let jobManagerWrapper: JobManagerWrapper;
-  let jobManagerURL = '';
   let createJobSpy: jest.SpyInstance;
+  let jobResponse: ICreateJobResponse;
 
   beforeEach(() => {
     registerDefaultConfig();
-    jobManagerURL = configMock.get<string>('services.jobManagerURL');
     jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
     createJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'createJob');
+    jobResponse = {
+      id: faker.string.uuid(),
+      taskIds: [faker.string.uuid()],
+    };
   });
   afterEach(() => {
     nock.cleanAll();
