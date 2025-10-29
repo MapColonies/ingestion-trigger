@@ -29,7 +29,7 @@ import {
   rasterLayerMetadataGenerators,
 } from '../../mocks/mockFactory';
 import { fakeIngestionSources } from '../../mocks/sourcesRequestBody';
-import type { DeepPartial } from '../../utils/types';
+import type { DeepPartial, DeepRequired, FlattenKeyTupleUnion } from '../../utils/types';
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
 import { IngestionRequestSender } from './helpers/ingestionRequestSender';
 
@@ -431,7 +431,7 @@ describe('Ingestion', function () {
       const badRequestBodyTestCases: {
         testCase: string;
         badNewLayerRequest: DeepPartial<IngestionNewLayer>;
-        removeProperty?: string[];
+        removeProperty?: FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>;
       }[] = [
         {
           testCase: 'req body is not an object',
@@ -465,7 +465,7 @@ describe('Ingestion', function () {
             createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            ['inputFiles', 'gpkgFilesPath'],
+            ['inputFiles', 'gpkgFilesPath'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
             faker.helpers.arrayElement([
               [],
               faker.helpers.multiple(() => faker.string.alphanumeric({ length: { min: 1, max: 100 } }), {
@@ -753,7 +753,7 @@ describe('Ingestion', function () {
             createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            ['metadata', 'region'],
+            ['metadata', 'region'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
             []
           ),
         },
@@ -839,7 +839,7 @@ describe('Ingestion', function () {
             createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            ['callbackUrls'],
+            ['callbackUrls'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
             []
           ),
         },
@@ -1112,7 +1112,7 @@ describe('Ingestion', function () {
       const badRequestBodyTestCases: {
         testCase: string;
         badUpdateLayerRequest: DeepPartial<IngestionUpdateLayer>;
-        removeProperty?: string[];
+        removeProperty?: FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>;
       }[] = [
         {
           testCase: 'req body is not an object',
@@ -1146,7 +1146,7 @@ describe('Ingestion', function () {
             createUpdateLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            ['inputFiles', 'gpkgFilesPath'],
+            ['inputFiles', 'gpkgFilesPath'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
             faker.helpers.arrayElement([
               [],
               faker.helpers.multiple(() => faker.string.alphanumeric({ length: { min: 1, max: 100 } }), {
@@ -1295,7 +1295,7 @@ describe('Ingestion', function () {
             createUpdateLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            ['callbackUrls'],
+            ['callbackUrls'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
             []
           ),
         },
