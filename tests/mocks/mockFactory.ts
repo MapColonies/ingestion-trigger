@@ -33,7 +33,7 @@ import { mockInputFiles } from './sourcesRequestBody';
 const TEST_FILES_RELATIVE_PATH = '/testFiles';
 
 type UnAggregateKeys<T extends object> = {
-  [K in keyof T as K extends `max${infer Q}` | `min${infer Q}` ? Uncapitalize<Q> : K]: T[K];
+  [K in keyof T as K extends `max${infer P}` | `min${infer P}` ? Uncapitalize<P> : K]: T[K];
 };
 
 type RasterLayerCatalog = RasterLayersCatalog[number];
@@ -207,7 +207,8 @@ const generateInputFiles = (): InputFiles => {
   };
 };
 
-export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] => faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
+export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] =>
+  faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
 
 export const rasterLayerInputFilesGenerators: IngestionLayerInputFilesPropertiesGenerators = {
   gpkgFilesPath: () => [join(getTestFilesPath(), 'gpkg', fakerHE.system.commonFileName('gpkg'))],
