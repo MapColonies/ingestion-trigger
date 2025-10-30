@@ -441,9 +441,9 @@ export const createUpdateJobRequest = (
         classification,
       },
       inputFiles: {
-        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => join(sourceMount, gpkgFilePath)),
-        metadataShapefilePath: join(sourceMount, inputFiles.metadataShapefilePath),
-        productShapefilePath: join(sourceMount, inputFiles.productShapefilePath),
+        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => relative(sourceMount, join(sourceMount, gpkgFilePath))),
+        metadataShapefilePath: relative(sourceMount, join(sourceMount, inputFiles.metadataShapefilePath)),
+        productShapefilePath: relative(sourceMount, join(sourceMount, inputFiles.productShapefilePath)),
       },
       additionalParams: {
         tileOutputFormat,
@@ -488,9 +488,9 @@ export const createNewJobRequest = ({
     status: OperationStatus.PENDING,
     parameters: {
       inputFiles: {
-        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => join(sourceMount, gpkgFilePath)),
-        metadataShapefilePath: join(sourceMount, inputFiles.metadataShapefilePath),
-        productShapefilePath: join(sourceMount, inputFiles.productShapefilePath),
+        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => relative(sourceMount, join(sourceMount, gpkgFilePath))),
+        metadataShapefilePath: relative(sourceMount, join(sourceMount, inputFiles.metadataShapefilePath)),
+        productShapefilePath: relative(sourceMount, join(sourceMount, inputFiles.productShapefilePath)),
       },
       ingestionResolution,
       metadata,
