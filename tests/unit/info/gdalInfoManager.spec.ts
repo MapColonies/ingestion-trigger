@@ -1,16 +1,16 @@
 import { BadRequestError } from '@map-colonies/error-types';
 import { IConfig } from 'config';
 import { container } from 'tsyringe';
-import { GDAL_INFO_MANAGER_SYMBOL, GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
-import { registerDefaultConfig } from '../../../mocks/configMock';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
-import { GdalUtilities } from '../../../../src/utils/gdal/gdalUtilities';
-import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
-import { mockGdalInfoDataWithFile } from '../../../mocks/gdalInfoMock';
-import { GdalInfoError } from '../../../../src/ingestion/errors/ingestionErrors';
-import { getApp } from '../../../../src/app';
-import { getTestContainerConfig } from '../../../integration/ingestion/helpers/containerConfig';
-import { SERVICES } from '../../../../src/common/constants';
+import { GDAL_INFO_MANAGER_SYMBOL, GdalInfoManager } from '../../../src/info/models/gdalInfoManager';
+import { registerDefaultConfig } from '../../mocks/configMock';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../src/utils/validation/schemasValidator';
+import { GdalUtilities } from '../../../src/utils/gdal/gdalUtilities';
+import { mockInputFiles } from '../../mocks/sourcesRequestBody';
+import { mockGdalInfoDataWithFile } from '../../mocks/gdalInfoMock';
+import { GdalInfoError } from '../../../src/ingestion/errors/ingestionErrors';
+import { getApp } from '../../../src/app';
+import { getTestContainerConfig } from '../../integration/ingestion/helpers/containerConfig';
+import { SERVICES } from '../../../src/common/constants';
 
 describe('GdalInfoManager', () => {
   let gdalInfoManager: GdalInfoManager;

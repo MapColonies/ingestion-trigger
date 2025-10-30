@@ -6,8 +6,8 @@ import { createSpanMetadata } from '../../common/tracing';
 import { GdalUtilities } from '../../utils/gdal/gdalUtilities';
 import { LogContext } from '../../utils/logger/logContext';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
-import { GdalInfoError } from '../errors/ingestionErrors';
-import { InfoDataWithFile } from '../schemas/infoDataSchema';
+import { GdalInfoError } from '../../ingestion/errors/ingestionErrors';
+import { InfoDataWithFile } from '../../ingestion/schemas/infoDataSchema';
 
 @injectable()
 export class GdalInfoManager {

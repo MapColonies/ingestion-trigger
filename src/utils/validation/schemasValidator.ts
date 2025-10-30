@@ -1,20 +1,22 @@
-import { InputFiles } from '@map-colonies/raster-shared';
+import { gpkgFileNameSchema, InputFiles } from '@map-colonies/raster-shared';
 import { DependencyContainer } from 'tsyringe';
 import { gdalInfoSchema, type GdalInfo } from '../../ingestion/schemas/gdalDataSchema';
 import { InfoData, createInfoDataSchema } from '../../ingestion/schemas/infoDataSchema';
 import { createNewIngestionLayerSchema, type IngestionNewLayer } from '../../ingestion/schemas/ingestionLayerSchema';
-import { createInputFilesSchema } from '../../ingestion/schemas/inputFilesSchema';
+import { createGpkgInputFilesSchema, createInputFilesSchema } from '../../ingestion/schemas/inputFilesSchema';
 import { createRasterLayersCatalogSchema, type RasterLayersCatalog } from '../../ingestion/schemas/layerCatalogSchema';
 import { createNewMetadataSchema, type IngestionNewMetadata } from '../../ingestion/schemas/newMetadataSchema';
 import { createUpdateLayerSchema, type IngestionUpdateLayerRequest } from '../../ingestion/schemas/updateLayerSchema';
 import { createUpdateMetadataSchema, type IngestionUpdateMetadata } from '../../ingestion/schemas/updateMetadataSchema';
 import { ZodValidator } from './zodValidator';
+import { GpkgInputFiles } from '../../ingestion/interfaces';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function schemasValidationsFactory(container: DependencyContainer) {
   const validator = container.resolve(ZodValidator);
 
   const inputFilesSchema = createInputFilesSchema();
+  const gpkgInputFilesSchema = createGpkgInputFilesSchema();
   const infoDataSchema = createInfoDataSchema(container);
   const newLayerSchema = createNewIngestionLayerSchema();
   const newMetadataSchema = createNewMetadataSchema();
@@ -24,6 +26,7 @@ export function schemasValidationsFactory(container: DependencyContainer) {
 
   return {
     validateInputFilesRequestBody: async (value: unknown): Promise<InputFiles> => validator.validate(inputFilesSchema, value),
+    validateGpkgsInputFilesRequestBody: async (value: unknown): Promise<GpkgInputFiles> => validator.validate(gpkgInputFilesSchema, value),
     validateInfoData: async (value: unknown): Promise<InfoData> => validator.validate(infoDataSchema, value),
     validateGdalInfo: async (value: unknown): Promise<GdalInfo> => validator.validate(gdalInfoSchema, value),
     validateNewLayerRequest: async (value: unknown): Promise<IngestionNewLayer> => validator.validate(newLayerSchema, value),

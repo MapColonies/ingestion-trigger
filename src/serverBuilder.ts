@@ -13,6 +13,7 @@ import { SERVICES } from './common/constants';
 import { IConfig } from './common/interfaces';
 import { makeInsensitive } from './utils/stringCapitalizationPermutations';
 import { INGESTION_ROUTER_SYMBOL } from './ingestion/routes/ingestionRouter';
+import { INFO_ROUTER_SYMBOL } from './info/routes/infoRouter';
 
 @injectable()
 export class ServerBuilder {
@@ -21,7 +22,8 @@ export class ServerBuilder {
   public constructor(
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(INGESTION_ROUTER_SYMBOL) private readonly ingestionRouter: Router
+    @inject(INGESTION_ROUTER_SYMBOL) private readonly ingestionRouter: Router,
+    @inject(INFO_ROUTER_SYMBOL) private readonly infoRouter: Router
   ) {
     this.serverInstance = express();
   }
@@ -45,6 +47,7 @@ export class ServerBuilder {
 
   private buildRoutes(): void {
     this.serverInstance.use('/ingestion', this.ingestionRouter);
+    this.serverInstance.use('/info', this.infoRouter);
     this.buildDocsRoutes();
   }
 

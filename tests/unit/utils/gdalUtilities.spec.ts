@@ -6,6 +6,7 @@ import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../s
 import { registerDefaultConfig } from '../../mocks/configMock';
 import { mockGdalInfoData } from '../../mocks/gdalInfoMock';
 import { expectedGdalUtilitiesValues } from '../../mocks/gdalUtilitiesMockData';
+import { InfoData } from '../../../src/ingestion/schemas/infoDataSchema';
 
 
 let gdalUtilities: GdalUtilities;
@@ -24,23 +25,57 @@ describe('gdalUtilities', () => {
   });
 
   describe('getInfoData', () => {
-    it.only('should extract CRS, fileFormat, pixelSize and footprint from gpkg file', async () => {
-      const filePath = 'tests/mocks/testFiles/validIndexed.gpkg';
+    it('should extract CRS, fileFormat, pixelSize and footprint from gpkg file', async () => {
+      const filePath = 'tests/mocks/testFiles/gpkg/validIndexed.gpkg';
       const result = await gdalUtilities.getInfoData(filePath);
-      const expected = mockGdalInfoData;
+      const expected: InfoData = {
+        crs: 4326,
+        extentPolygon: {
+          coordinates: [
+            [
+              [34.61517, 34.10156],
+              [ 34.61517,32.242124],
+              [36.4361539, 32.242124],
+              [36.4361539, 34.10156],
+              [34.61517, 34.10156],
+            ],
+          ],
+          type: 'Polygon',
+        },
+        fileFormat: "GPKG",
+        pixelSize: 0.001373291015625,
+      }
+      
       expect(result).toStrictEqual(expected);
     });
 
     //Added this test to make sure that pixelSize is not a rounded number but the exact number resolution
     it('should extract CRS, fileFormat, pixelSize and footprint from gpkg file with zoom level 21', async () => {
-      const filePath = 'tests/mocks/testFiles/zoom21.gpkg';
+      const filePath = 'tests/mocks/testFiles/gpkg/zoom21.gpkg';
       const result = await gdalUtilities.getInfoData(filePath);
-      const expected = expectedGdalUtilitiesValues.validResponseZoom21;
+      const expected: InfoData = {
+        crs: 4326,
+        extentPolygon: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [34.4870513, 31.5316438],
+              [34.4870513, 31.5297716],
+              [34.4892373, 31.5297716],
+              [34.4892373, 31.5316438],
+              [34.4870513, 31.5316438],
+            ],
+          ],
+        },
+        fileFormat: 'GPKG',
+        pixelSize: 0.000000335276126861572,
+      };
+
       expect(result).toStrictEqual(expected);
     });
 
     it('should throw error when fails to create dataset', async () => {
-      const filePath = 'tests/mocks/testFiles/invalidFile.gpkg';
+      const filePath = 'tests/mocks/testFiles/gpkg/invalidFile.gpkg';
       const action = async () => gdalUtilities.getInfoData(filePath);
       await expect(action).rejects.toThrow(Error);
     });

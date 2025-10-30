@@ -4,7 +4,7 @@ import { configMock } from '../../../mocks/configMock';
 import { trace } from '@opentelemetry/api';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
-import { GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
+import { GdalInfoManager } from '../../../../src/info/models/gdalInfoManager';
 import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
 import { FileNotFoundError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { getApp } from '../../../../src/app';

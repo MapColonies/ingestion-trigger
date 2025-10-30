@@ -68,7 +68,7 @@ const registerDefaultConfig = (): void => {
       },
     },
     storageExplorer: {
-      layerSourceDir: 'tests/mocks',
+      layerSourceDir: 'tests/mocks/testFiles',
       displayNameDir: '\\layerSources',
       watchDirectory: 'watch',
       validFileExtensions: ['gpkg'],
