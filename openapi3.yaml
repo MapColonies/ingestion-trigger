@@ -321,12 +321,12 @@ components:
           $ref: '#/components/schemas/ProductShapefilePath'
     MetadataShapefilePath:
       type: string
-      pattern: ^(\/[\w-]+)+\/ShapeMetadata\.shp$
+      pattern: ^(\/?[\w-]+)(\/[\w-]+)*\/ShapeMetadata\.shp$
       description: metadata shape file path
       example: '/path/to/ShapeMetadata.shp'
     ProductShapefilePath:
       type: string
-      pattern: ^(\/[\w-]+)+\/Product\.shp$
+      pattern: ^(\/?[\w-]+)(\/[\w-]+)*\/Product\.shp$
       description: product shape file path
       example: '/path/to/Product.shp'
     SuccessfulIngestionResponse:
