@@ -207,16 +207,19 @@ const generateInputFiles = (): InputFiles => {
   };
 };
 
-export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] =>
-  faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
-
 export const rasterLayerInputFilesGenerators: IngestionLayerInputFilesPropertiesGenerators = {
   gpkgFilesPath: () => [join(getTestFilesPath(), 'gpkg', fakerHE.system.commonFileName('gpkg'))],
   metadataShapefilePath: () => join(getTestFilesPath(), 'metadata', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'ShapeMetadata.shp'),
   productShapefilePath: () => join(getTestFilesPath(), 'product', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'Product.shp'),
 };
 
-// TODO: fakerHE!!!!! - check hebrew generation
+export const getTestFilesPath = (): string => {
+  return TEST_FILES_RELATIVE_PATH;
+};
+
+export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] =>
+  faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
+
 export const rasterLayerMetadataGenerators: RasterLayerMetadataPropertiesGenerators = {
   id: (): string => faker.string.uuid(),
   classification: (): string => faker.number.int({ max: 100 }).toString(),
@@ -266,43 +269,6 @@ export const generateCatalogLayerResponse = (): RasterLayerCatalog => {
     metadata: generateCatalogLayerMetadata({ productId, productType }),
     links: faker.helpers.arrayElements(generateCatalogLayerLinks({ productId, productType })),
   };
-};
-
-export const createNewLayerRequest = (newLayerRequest: DeepPartial<IngestionNewLayer> & Pick<IngestionNewLayer, 'inputFiles'>): IngestionNewLayer => {
-  const override = structuredClone(newLayerRequest);
-  override.inputFiles = getTestFilePath(override.inputFiles);
-  const mergedNewLayerRequest = merge(generateNewLayerRequest(), override);
-  return mergedNewLayerRequest;
-};
-
-export const createUpdateLayerRequest = (
-  newLayerRequest: DeepPartial<IngestionUpdateLayer> & Pick<IngestionUpdateLayer, 'inputFiles'>
-): IngestionUpdateLayer => {
-  const override = structuredClone(newLayerRequest);
-  override.inputFiles = getTestFilePath(override.inputFiles);
-  const mergedUpdateLayerRequest = merge(generateUpdateLayerRequest(), override);
-  return mergedUpdateLayerRequest;
-};
-
-export const createCatalogLayerResponse = (rasterLayerCatalog?: DeepPartial<RasterLayerCatalog>): RasterLayerCatalog => {
-  const override = structuredClone(rasterLayerCatalog);
-  const mergedRasterLayerCatalog = merge(generateCatalogLayerResponse(), override);
-  return mergedRasterLayerCatalog;
-};
-
-export const getTestFilesPath = (): string => {
-  return TEST_FILES_RELATIVE_PATH;
-};
-
-export const createFindJobsParams = (findJobsParams: IFindJobsByCriteriaBody): IFindJobsByCriteriaBody => {
-  const defaultFindJobsParams = {
-    isCleaned: false,
-    shouldReturnTasks: false,
-    statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS, OperationStatus.FAILED, OperationStatus.SUSPENDED],
-    types: configMock.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion'),
-  } satisfies Required<Pick<IFindJobsByCriteriaBody, 'isCleaned' | 'shouldReturnTasks' | 'statuses' | 'types'>>;
-
-  return merge({}, defaultFindJobsParams, findJobsParams);
 };
 
 export const generateNewLayerRequest = (): IngestionNewLayer => {
@@ -402,6 +368,39 @@ export const generateUpdateJobRequest = (
       },
     ],
   };
+};
+
+export const createNewLayerRequest = (newLayerRequest: DeepPartial<IngestionNewLayer> & Pick<IngestionNewLayer, 'inputFiles'>): IngestionNewLayer => {
+  const override = structuredClone(newLayerRequest);
+  override.inputFiles = getTestFilePath(override.inputFiles);
+  const mergedNewLayerRequest = merge(generateNewLayerRequest(), override);
+  return mergedNewLayerRequest;
+};
+
+export const createUpdateLayerRequest = (
+  newLayerRequest: DeepPartial<IngestionUpdateLayer> & Pick<IngestionUpdateLayer, 'inputFiles'>
+): IngestionUpdateLayer => {
+  const override = structuredClone(newLayerRequest);
+  override.inputFiles = getTestFilePath(override.inputFiles);
+  const mergedUpdateLayerRequest = merge(generateUpdateLayerRequest(), override);
+  return mergedUpdateLayerRequest;
+};
+
+export const createCatalogLayerResponse = (rasterLayerCatalog?: DeepPartial<RasterLayerCatalog>): RasterLayerCatalog => {
+  const override = structuredClone(rasterLayerCatalog);
+  const mergedRasterLayerCatalog = merge(generateCatalogLayerResponse(), override);
+  return mergedRasterLayerCatalog;
+};
+
+export const createFindJobsParams = (findJobsParams: IFindJobsByCriteriaBody): IFindJobsByCriteriaBody => {
+  const defaultFindJobsParams = {
+    isCleaned: false,
+    shouldReturnTasks: false,
+    statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS, OperationStatus.FAILED, OperationStatus.SUSPENDED],
+    types: configMock.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion'),
+  } satisfies Required<Pick<IFindJobsByCriteriaBody, 'isCleaned' | 'shouldReturnTasks' | 'statuses' | 'types'>>;
+
+  return merge({}, defaultFindJobsParams, findJobsParams);
 };
 
 export const createUpdateJobRequest = (
