@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { join } from 'node:path';
-import { faker, fakerHE } from '@faker-js/faker';
+import { join, relative } from 'node:path';
+import { faker } from '@faker-js/faker';
 import { RecordType, TileOutputFormat } from '@map-colonies/mc-model-types';
 import { OperationStatus, type ICreateJobBody, type IFindJobsByCriteriaBody } from '@map-colonies/mc-priority-queue';
 import {
@@ -25,17 +25,13 @@ import type { RasterLayersCatalog } from '../../src/ingestion/schemas/layerCatal
 import type { IngestionNewMetadata } from '../../src/ingestion/schemas/newMetadataSchema';
 import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
 import type { IngestionUpdateMetadata } from '../../src/ingestion/schemas/updateMetadataSchema';
+import { getShapefileFiles } from '../../src/utils/shapefile';
 import type { DeepPartial, FlatRecordValues, ReplaceValueWithFunctionResponse as ReplaceValueWithGenerator } from '../utils/types';
 import { configMock } from './configMock';
-import { mockInputFiles } from './sourcesRequestBody';
-
-// adjust path to test files location relative to source mount
-const TEST_FILES_RELATIVE_PATH = '/testFiles';
 
 type UnAggregateKeys<T extends object> = {
   [K in keyof T as K extends `max${infer P}` | `min${infer P}` ? Uncapitalize<P> : K]: T[K];
 };
-
 type RasterLayerCatalog = RasterLayersCatalog[number];
 type Link = NonNullable<RasterLayerCatalog['links']>[number];
 type RasterLayerMetadata = RasterLayerCatalog['metadata'];
@@ -46,8 +42,22 @@ type SimpleRasterLayerMetadata = Omit<
 >;
 type SingleRasterLayerMetadata = FlatRecordValues<UnAggregateKeys<SimpleRasterLayerMetadata>>;
 type RasterLayerMetadataPropertiesGenerators = ReplaceValueWithGenerator<SingleRasterLayerMetadata>;
-
 type IngestionLayerInputFilesPropertiesGenerators = ReplaceValueWithGenerator<IngestionUpdateLayer['inputFiles']>;
+
+// adjust path to test files location relative to source mount
+const TEST_FILES_RELATIVE_PATH = '/testFiles';
+
+const LOWER_ALPHA_CHARS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+const UPPER_ALPHA_CHARS = [...'abcdefghijklmnopqrstuvwxyz'];
+const NUMERIC_CHARS = [...'0123456789'];
+const HEBREW_CHARS = [...'אבגדהוזחטיכלמנסעפצקרשתךםןףץ'];
+
+const generateHebrewCommonFileName = (extension: string, options: { min: number; max: number }): string =>
+  `${faker.string.fromCharacters([...LOWER_ALPHA_CHARS, ...UPPER_ALPHA_CHARS, ...NUMERIC_CHARS, ...HEBREW_CHARS, '-', '_'], options)}.${extension}`;
+
+const generateHebrewAlphanumeric = (options: { min: number; max: number }): string => {
+  return faker.helpers.multiple(() => faker.helpers.arrayElement(HEBREW_CHARS), { count: options }).join('');
+};
 
 const generateCatalogLayerLinks = ({ productId, productType }: { productId: string; productType: RasterProductTypes }): Link[] => {
   const templateLinks = [
@@ -172,25 +182,6 @@ const generateNewLayerMetadata = (): IngestionNewMetadata => {
   };
 };
 
-export const generateNewLayerRequest = (): IngestionNewLayer => {
-  return {
-    callbackUrls: faker.helpers.maybe(() => faker.helpers.multiple(() => generateCallbackUrl(), { count: { min: 1, max: 10 } })),
-    ingestionResolution: generateIngestionResolution(),
-    inputFiles: generateInputFiles(),
-    metadata: generateNewLayerMetadata(),
-  };
-};
-
-
-export const generateUpdateLayerRequest = (): IngestionUpdateLayer => {
-  return {
-    callbackUrls: faker.helpers.maybe(() => faker.helpers.multiple(() => generateCallbackUrl(), { count: { min: 1, max: 10 } })),
-    ingestionResolution: generateIngestionResolution(),
-    inputFiles: generateInputFiles(),
-    metadata: generateUpdateLayerMetadata(),
-  };
-};
-
 const generateUpdateLayerMetadata = (): IngestionUpdateMetadata => {
   return {
     classification: faker.number.int({ max: 100 }).toString(),
@@ -211,33 +202,36 @@ const getTestFilePath = (inputFiles: InputFiles): InputFiles => {
  */
 const generateInputFiles = (): InputFiles => {
   return {
-    gpkgFilesPath: [join(faker.system.directoryPath(), fakerHE.system.commonFileName('gpkg'))],
+    gpkgFilesPath: [join(faker.system.directoryPath(), generateHebrewCommonFileName('gpkg', { min: 1, max: 100 }))],
     metadataShapefilePath: join(faker.system.directoryPath(), 'ShapeMetadata.shp'),
     productShapefilePath: join(faker.system.directoryPath(), 'Product.shp'),
   };
 };
 
-export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] =>
-  faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
-
 export const rasterLayerInputFilesGenerators: IngestionLayerInputFilesPropertiesGenerators = {
-  gpkgFilesPath: () => [join(getTestFilesPath(), 'gpkg', fakerHE.system.commonFileName('gpkg'))],
+  gpkgFilesPath: () => [join(getTestFilesPath(), 'gpkg', generateHebrewCommonFileName('gpkg', { min: 1, max: 100 }))],
   metadataShapefilePath: () => join(getTestFilesPath(), 'metadata', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'ShapeMetadata.shp'),
   productShapefilePath: () => join(getTestFilesPath(), 'product', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'Product.shp'),
 };
 
-// TODO: fakerHE!!!!! - check hebrew generation
+export const getTestFilesPath = (): string => {
+  return TEST_FILES_RELATIVE_PATH;
+};
+
+export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] =>
+  faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
+
 export const rasterLayerMetadataGenerators: RasterLayerMetadataPropertiesGenerators = {
   id: (): string => faker.string.uuid(),
   classification: (): string => faker.number.int({ max: 100 }).toString(),
   productName: (): string => faker.string.alphanumeric({ length: { min: 1, max: 100 } }),
   productId: (): string => randexp(INGESTION_VALIDATIONS.productId.pattern),
   productType: (): RasterProductTypes => faker.helpers.enumValue(RasterProductTypes),
-  region: (): string => fakerHE.string.alphanumeric({ length: { min: 1, max: 100 } }),
+  region: (): string => generateHebrewAlphanumeric({ min: 1, max: 100 }),
   transparency: (): Transparency => faker.helpers.enumValue(Transparency),
-  description: (): string => fakerHE.string.alphanumeric({ length: { min: 0, max: 100 } }),
-  producerName: (): string => fakerHE.string.alphanumeric({ length: { min: 0, max: 100 } }),
-  productSubType: (): string => fakerHE.string.alphanumeric({ length: { min: 0, max: 100 } }),
+  description: (): string => generateHebrewAlphanumeric({ min: 0, max: 100 }),
+  producerName: (): string => generateHebrewAlphanumeric({ min: 0, max: 100 }),
+  productSubType: (): string => generateHebrewAlphanumeric({ min: 0, max: 100 }),
   scale: (): number => faker.number.int({ min: INGESTION_VALIDATIONS.scale.min, max: INGESTION_VALIDATIONS.scale.max }),
   srs: (): '4326' => '4326',
   srsName: (): 'WGS84GEO' => 'WGS84GEO',
@@ -278,6 +272,151 @@ export const generateCatalogLayerResponse = (): RasterLayerCatalog => {
   };
 };
 
+export const generateNewLayerRequest = (): IngestionNewLayer => {
+  return {
+    callbackUrls: faker.helpers.maybe(() => faker.helpers.multiple(() => generateCallbackUrl(), { count: { min: 1, max: 10 } })),
+    ingestionResolution: generateIngestionResolution(),
+    inputFiles: generateInputFiles(),
+    metadata: generateNewLayerMetadata(),
+  };
+};
+
+export const generateUpdateLayerRequest = (): IngestionUpdateLayer => {
+  return {
+    callbackUrls: faker.helpers.maybe(() => faker.helpers.multiple(() => generateCallbackUrl(), { count: { min: 1, max: 10 } })),
+    ingestionResolution: generateIngestionResolution(),
+    inputFiles: generateInputFiles(),
+    metadata: generateUpdateLayerMetadata(),
+  };
+};
+
+export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> => {
+  const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
+  const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
+  const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
+  const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
+  const productId = rasterLayerMetadataGenerators.productId();
+  const productName = rasterLayerMetadataGenerators.productName();
+  const productType = rasterLayerMetadataGenerators.productType();
+  const inputFiles = {
+    gpkgFilesPath: [relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.gpkgFilesPath()[0]))],
+    metadataShapefilePath: relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.metadataShapefilePath())),
+    productShapefilePath: relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.productShapefilePath())),
+  };
+  const checksums = [
+    ...inputFiles.gpkgFilesPath,
+    ...getShapefileFiles(inputFiles.metadataShapefilePath),
+    ...getShapefileFiles(inputFiles.productShapefilePath),
+  ].map((fileName) => {
+    return {
+      algorithm: 'XXH64' as const,
+      checksum: faker.string.hexadecimal({ length: 64, casing: 'lower', prefix: '' }),
+      fileName,
+    };
+  });
+
+  return {
+    resourceId: productId,
+    version: '1.0',
+    internalId: faker.string.uuid(),
+    type: ingestionNewJobType,
+    productName,
+    productType,
+    status: OperationStatus.PENDING,
+    parameters: {
+      ingestionResolution: generateIngestionResolution(),
+      metadata: {
+        productId,
+        productName,
+        classification: rasterLayerMetadataGenerators.classification(),
+        productType,
+        region: faker.helpers.multiple(() => rasterLayerMetadataGenerators.region(), { count: faker.number.int({ min: 1, max: 100 }) }),
+        srs: rasterLayerMetadataGenerators.srs(),
+        srsName: rasterLayerMetadataGenerators.srsName(),
+        transparency: rasterLayerMetadataGenerators.transparency(),
+        description: faker.helpers.maybe(() => rasterLayerMetadataGenerators.description()),
+        scale: faker.helpers.maybe(() => rasterLayerMetadataGenerators.scale()),
+        producerName: faker.helpers.maybe(() => rasterLayerMetadataGenerators.producerName()),
+        productSubType: faker.helpers.maybe(() => rasterLayerMetadataGenerators.productSubType()),
+      },
+      inputFiles,
+      additionalParams: {
+        jobTrackerServiceURL: jobTrackerServiceUrl,
+      },
+    },
+    domain: Domain.RASTER,
+    tasks: [
+      {
+        type: validationTaskType,
+        parameters: {
+          checksums,
+        },
+      },
+    ],
+  };
+};
+
+export const generateUpdateJobRequest = (
+  isSwapUpdate = false
+): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
+  const ingestionUpdateJobType = configMock.get<string>('jobManager.ingestionUpdateJobType');
+  const ingestionSwapUpdateJobType = configMock.get<string>('jobManager.ingestionSwapUpdateJobType');
+  const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
+  const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
+  const productId = rasterLayerMetadataGenerators.productId();
+  const productName = rasterLayerMetadataGenerators.productName();
+  const productType = rasterLayerMetadataGenerators.productType();
+  const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
+  const updateJobType = isSwapUpdate ? ingestionUpdateJobType : ingestionSwapUpdateJobType;
+  const inputFiles = {
+    gpkgFilesPath: [relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.gpkgFilesPath()[0]))],
+    metadataShapefilePath: relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.metadataShapefilePath())),
+    productShapefilePath: relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.productShapefilePath())),
+  };
+  const checksums = [
+    ...inputFiles.gpkgFilesPath,
+    ...getShapefileFiles(inputFiles.metadataShapefilePath),
+    ...getShapefileFiles(inputFiles.productShapefilePath),
+  ].map((fileName) => {
+    return {
+      algorithm: 'XXH64' as const,
+      checksum: faker.string.hexadecimal({ length: 64, casing: 'lower', prefix: '' }),
+      fileName,
+    };
+  });
+
+  return {
+    resourceId: productId,
+    version: rasterLayerMetadataGenerators.productVersion(),
+    internalId: faker.string.uuid(),
+    type: updateJobType,
+    productName,
+    productType,
+    status: OperationStatus.PENDING,
+    parameters: {
+      ingestionResolution: generateIngestionResolution(),
+      metadata: {
+        classification: rasterLayerMetadataGenerators.classification(),
+      },
+      inputFiles,
+      additionalParams: {
+        tileOutputFormat: rasterLayerMetadataGenerators.tileOutputFormat(),
+        displayPath: rasterLayerMetadataGenerators.displayPath(),
+        jobTrackerServiceURL: jobTrackerServiceUrl,
+      },
+    },
+    domain: Domain.RASTER,
+    tasks: [
+      {
+        type: validationTaskType,
+        parameters: {
+          checksums,
+        },
+      },
+    ],
+  };
+};
+
 export const createNewLayerRequest = (newLayerRequest: DeepPartial<IngestionNewLayer> & Pick<IngestionNewLayer, 'inputFiles'>): IngestionNewLayer => {
   const override = structuredClone(newLayerRequest);
   override.inputFiles = getTestFilePath(override.inputFiles);
@@ -300,10 +439,6 @@ export const createCatalogLayerResponse = (rasterLayerCatalog?: DeepPartial<Rast
   return mergedRasterLayerCatalog;
 };
 
-export const getTestFilesPath = (): string => {
-  return TEST_FILES_RELATIVE_PATH;
-};
-
 export const createFindJobsParams = (findJobsParams: IFindJobsByCriteriaBody): IFindJobsByCriteriaBody => {
   const defaultFindJobsParams = {
     isCleaned: false,
@@ -313,96 +448,6 @@ export const createFindJobsParams = (findJobsParams: IFindJobsByCriteriaBody): I
   } satisfies Required<Pick<IFindJobsByCriteriaBody, 'isCleaned' | 'shouldReturnTasks' | 'statuses' | 'types'>>;
 
   return merge({}, defaultFindJobsParams, findJobsParams);
-};
-
-export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> => {
-  const productId = randexp(INGESTION_VALIDATIONS.productId.pattern);
-  const productName = faker.string.alphanumeric();
-  const productType = RasterProductTypes.ORTHOPHOTO;
-  const transparency = Transparency.TRANSPARENT;
-  const domain = Domain.RASTER;
-  const jobType = 'Ingestion_New';
-  const taskType = 'validation';
-  const checksum = 'checksome_result';
-
-  return {
-    resourceId: productId,
-    version: '1.0',
-    internalId: faker.string.uuid(),
-    type: jobType,
-    productName,
-    productType,
-    status: OperationStatus.PENDING,
-    parameters: {
-      ingestionResolution: 0.000000335276126861572,
-      metadata: {
-        productId,
-        productName,
-        classification: '6',
-        productType,
-        region: ['test'],
-        srs: '4326',
-        srsName: 'WGS84GEO',
-        transparency: transparency,
-      },
-      inputFiles: mockInputFiles,
-      additionalParams: {
-        jobTrackerServiceURL: faker.internet.url(),
-      },
-    },
-    domain,
-    tasks: [
-      {
-        type: taskType,
-        parameters: {
-          checksums: [{ algorithm: 'XXH64', checksum, fileName: mockInputFiles.metadataShapefilePath }],
-        },
-      },
-    ],
-  };
-};
-
-export const generateUpdateJobRequest = (
-  isSwapUpdate = false
-): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
-  const productId = randexp(INGESTION_VALIDATIONS.productId.pattern);
-  const productName = faker.string.alphanumeric();
-  const productType = RasterProductTypes.ORTHOPHOTO;
-  const domain = Domain.RASTER;
-  const taskType = 'validation';
-  const checksum = 'checksome_result';
-  const updateJobType = isSwapUpdate ? 'Ingestion_Update' : 'Ingestion_Swap_Update';
-
-  return {
-    resourceId: productId,
-    version: '2.0',
-    internalId: faker.string.uuid(),
-    type: updateJobType,
-    productName,
-    productType,
-    status: OperationStatus.PENDING,
-    parameters: {
-      ingestionResolution: 0.000000335276126861572,
-      metadata: {
-        classification: '6',
-      },
-      inputFiles: mockInputFiles,
-      additionalParams: {
-        tileOutputFormat: TileOutputFormat.PNG,
-        displayPath: faker.string.uuid(),
-        jobTrackerServiceURL: faker.internet.url(),
-      },
-    },
-    domain,
-    tasks: [
-      {
-        type: taskType,
-        parameters: {
-          checksums: [{ algorithm: 'XXH64', checksum, fileName: mockInputFiles.metadataShapefilePath }],
-        },
-      },
-    ],
-  };
 };
 
 export const createUpdateJobRequest = (
@@ -443,9 +488,9 @@ export const createUpdateJobRequest = (
         classification,
       },
       inputFiles: {
-        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => join(sourceMount, gpkgFilePath)),
-        metadataShapefilePath: join(sourceMount, inputFiles.metadataShapefilePath),
-        productShapefilePath: join(sourceMount, inputFiles.productShapefilePath),
+        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => relative(sourceMount, join(sourceMount, gpkgFilePath))),
+        metadataShapefilePath: relative(sourceMount, join(sourceMount, inputFiles.metadataShapefilePath)),
+        productShapefilePath: relative(sourceMount, join(sourceMount, inputFiles.productShapefilePath)),
       },
       additionalParams: {
         tileOutputFormat,
@@ -490,9 +535,9 @@ export const createNewJobRequest = ({
     status: OperationStatus.PENDING,
     parameters: {
       inputFiles: {
-        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => join(sourceMount, gpkgFilePath)),
-        metadataShapefilePath: join(sourceMount, inputFiles.metadataShapefilePath),
-        productShapefilePath: join(sourceMount, inputFiles.productShapefilePath),
+        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => relative(sourceMount, join(sourceMount, gpkgFilePath))),
+        metadataShapefilePath: relative(sourceMount, join(sourceMount, inputFiles.metadataShapefilePath)),
+        productShapefilePath: relative(sourceMount, join(sourceMount, inputFiles.productShapefilePath)),
       },
       ingestionResolution,
       metadata,

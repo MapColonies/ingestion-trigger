@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { IFindJobsByCriteriaBody, OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
@@ -183,7 +183,7 @@ export class IngestionManager {
 
     const newLayerLocal = {
       ...newLayer,
-      ...this.getLocalPathInputFiles(newLayer),
+      ...this.getAbsolutePathInputFiles(newLayer),
     };
 
     await this.newLayerValidations(newLayerLocal);
@@ -213,7 +213,7 @@ export class IngestionManager {
 
     const updateLayerLocal = {
       ...updateLayer,
-      ...this.getLocalPathInputFiles(updateLayer),
+      ...this.getAbsolutePathInputFiles(updateLayer),
     };
 
     await this.updateLayerValidations(rasterLayerMetadata, updateLayerLocal);
@@ -376,7 +376,7 @@ export class IngestionManager {
     const isValidSources: SourcesValidationResponse = await this.validateSources(inputFiles);
     if (!isValidSources.isValid) {
       const errorMessage = isValidSources.message;
-      this.logger.error({ msg: errorMessage, logContext: logCtx, inputFiles: { inputFiles } });
+      this.logger.error({ msg: errorMessage, logContext: logCtx, inputFiles });
       const error = new UnsupportedEntityError(isValidSources.message);
       throw error;
     }
@@ -414,19 +414,24 @@ export class IngestionManager {
     const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath);
     const taskParameters = { checksums };
 
-    const ingestionNewJobParams = {
+    const newLayerRelative = {
       ...newLayer,
+      ...this.getRelativePathInputFiles(newLayer),
+    };
+
+    const ingestionNewJobParams = {
+      ...newLayerRelative,
       additionalParams: { jobTrackerServiceURL: this.jobTrackerServiceUrl },
     };
     const initialProductVersion = '1.0';
     const createJobRequest = {
-      resourceId: newLayer.metadata.productId,
+      resourceId: newLayerRelative.metadata.productId,
       version: initialProductVersion,
       type: this.ingestionNewJobType,
       status: OperationStatus.PENDING,
       parameters: ingestionNewJobParams,
-      productName: newLayer.metadata.productName,
-      productType: newLayer.metadata.productType,
+      productName: newLayerRelative.metadata.productName,
+      productType: newLayerRelative.metadata.productType,
       domain: this.jobDomain,
       tasks: [{ type: this.validationTaskType, parameters: taskParameters }],
     };
@@ -447,8 +452,13 @@ export class IngestionManager {
     const checksums = await this.getFilesChecksum(updateLayer.inputFiles.metadataShapefilePath);
     const taskParameters = { checksums };
 
-    const ingestionUpdateJobParams = {
+    const updateLayerRelative = {
       ...updateLayer,
+      ...this.getRelativePathInputFiles(updateLayer),
+    };
+
+    const ingestionUpdateJobParams = {
+      ...updateLayerRelative,
       additionalParams: {
         tileOutputFormat,
         jobTrackerServiceURL: this.jobTrackerServiceUrl,
@@ -495,12 +505,23 @@ export class IngestionManager {
   }
 
   @withSpanV4
-  private getLocalPathInputFiles({ inputFiles }: Pick<IngestionNewLayer, 'inputFiles'>): Pick<IngestionNewLayer, 'inputFiles'> {
+  private getAbsolutePathInputFiles({ inputFiles }: Pick<IngestionNewLayer, 'inputFiles'>): Pick<IngestionNewLayer, 'inputFiles'> {
     return {
       inputFiles: {
         gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => join(this.sourceMount, gpkgFilePath)),
         metadataShapefilePath: join(this.sourceMount, inputFiles.metadataShapefilePath),
         productShapefilePath: join(this.sourceMount, inputFiles.productShapefilePath),
+      },
+    };
+  }
+
+  @withSpanV4
+  private getRelativePathInputFiles({ inputFiles }: Pick<IngestionNewLayer, 'inputFiles'>): Pick<IngestionNewLayer, 'inputFiles'> {
+    return {
+      inputFiles: {
+        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => relative(this.sourceMount, gpkgFilePath)),
+        metadataShapefilePath: relative(this.sourceMount, inputFiles.metadataShapefilePath),
+        productShapefilePath: relative(this.sourceMount, inputFiles.productShapefilePath),
       },
     };
   }

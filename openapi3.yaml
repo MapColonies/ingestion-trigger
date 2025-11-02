@@ -222,7 +222,7 @@ components:
         type: string
         pattern: ^(\/?[\w-]+)(\/[\w-]+)*\/[\wא-ת\.-]+\.gpkg$
         description: gpkg source file paths
-      example: ['/path/to/example.gpkg']
+      example: ['path/to/example.gpkg']
     IngestionNewLayerMetadata:
       type: object
       required:
