@@ -25,9 +25,9 @@ import type { RasterLayersCatalog } from '../../src/ingestion/schemas/layerCatal
 import type { IngestionNewMetadata } from '../../src/ingestion/schemas/newMetadataSchema';
 import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
 import type { IngestionUpdateMetadata } from '../../src/ingestion/schemas/updateMetadataSchema';
+import { getShapefileFiles } from '../../src/utils/shapefile';
 import type { DeepPartial, FlatRecordValues, ReplaceValueWithFunctionResponse as ReplaceValueWithGenerator } from '../utils/types';
 import { configMock } from './configMock';
-import { mockInputFiles } from './sourcesRequestBody';
 
 type UnAggregateKeys<T extends object> = {
   [K in keyof T as K extends `max${infer P}` | `min${infer P}` ? Uncapitalize<P> : K]: T[K];
@@ -291,46 +291,65 @@ export const generateNewLayerRequest = (): IngestionNewLayer => {
 };
 
 export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> => {
-  const productId = randexp(INGESTION_VALIDATIONS.productId.pattern);
-  const productName = faker.string.alphanumeric();
-  const productType = RasterProductTypes.ORTHOPHOTO;
-  const transparency = Transparency.TRANSPARENT;
-  const domain = Domain.RASTER;
-  const jobType = 'Ingestion_New';
-  const taskType = 'validation';
-  const checksum = 'checksome_result';
+  const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
+  const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
+  const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
+  const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
+  const productId = rasterLayerMetadataGenerators.productId();
+  const productName = rasterLayerMetadataGenerators.productName();
+  const productType = rasterLayerMetadataGenerators.productType();
+  const inputFiles = {
+    gpkgFilesPath: [relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.gpkgFilesPath()[0]))],
+    metadataShapefilePath: relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.metadataShapefilePath())),
+    productShapefilePath: relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.productShapefilePath())),
+  };
+  const checksums = [
+    ...inputFiles.gpkgFilesPath,
+    ...getShapefileFiles(inputFiles.metadataShapefilePath),
+    ...getShapefileFiles(inputFiles.productShapefilePath),
+  ].map((fileName) => {
+    return {
+      algorithm: 'XXH64' as const,
+      checksum: faker.string.hexadecimal({ length: 64, casing: 'lower', prefix: '' }),
+      fileName,
+    };
+  });
 
   return {
     resourceId: productId,
     version: '1.0',
     internalId: faker.string.uuid(),
-    type: jobType,
+    type: ingestionNewJobType,
     productName,
     productType,
     status: OperationStatus.PENDING,
     parameters: {
-      ingestionResolution: 0.000000335276126861572,
+      ingestionResolution: generateIngestionResolution(),
       metadata: {
         productId,
         productName,
-        classification: '6',
+        classification: rasterLayerMetadataGenerators.classification(),
         productType,
-        region: ['test'],
-        srs: '4326',
-        srsName: 'WGS84GEO',
-        transparency: transparency,
+        region: faker.helpers.multiple(() => rasterLayerMetadataGenerators.region(), { count: faker.number.int({ min: 1, max: 100 }) }),
+        srs: rasterLayerMetadataGenerators.srs(),
+        srsName: rasterLayerMetadataGenerators.srsName(),
+        transparency: rasterLayerMetadataGenerators.transparency(),
+        description: faker.helpers.maybe(() => rasterLayerMetadataGenerators.description()),
+        scale: faker.helpers.maybe(() => rasterLayerMetadataGenerators.scale()),
+        producerName: faker.helpers.maybe(() => rasterLayerMetadataGenerators.producerName()),
+        productSubType: faker.helpers.maybe(() => rasterLayerMetadataGenerators.productSubType()),
       },
-      inputFiles: mockInputFiles,
+      inputFiles,
       additionalParams: {
-        jobTrackerServiceURL: faker.internet.url(),
+        jobTrackerServiceURL: jobTrackerServiceUrl,
       },
     },
-    domain,
+    domain: Domain.RASTER,
     tasks: [
       {
-        type: taskType,
+        type: validationTaskType,
         parameters: {
-          checksums: [{ algorithm: 'XXH64', checksum, fileName: mockInputFiles.metadataShapefilePath }],
+          checksums,
         },
       },
     ],
@@ -340,40 +359,58 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
 export const generateUpdateJobRequest = (
   isSwapUpdate = false
 ): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
-  const productId = randexp(INGESTION_VALIDATIONS.productId.pattern);
-  const productName = faker.string.alphanumeric();
-  const productType = RasterProductTypes.ORTHOPHOTO;
-  const domain = Domain.RASTER;
-  const taskType = 'validation';
-  const checksum = 'checksome_result';
-  const updateJobType = isSwapUpdate ? 'Ingestion_Update' : 'Ingestion_Swap_Update';
+  const ingestionUpdateJobType = configMock.get<string>('jobManager.ingestionUpdateJobType');
+  const ingestionSwapUpdateJobType = configMock.get<string>('jobManager.ingestionSwapUpdateJobType');
+  const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
+  const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
+  const productId = rasterLayerMetadataGenerators.productId();
+  const productName = rasterLayerMetadataGenerators.productName();
+  const productType = rasterLayerMetadataGenerators.productType();
+  const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
+  const updateJobType = isSwapUpdate ? ingestionUpdateJobType : ingestionSwapUpdateJobType;
+  const inputFiles = {
+    gpkgFilesPath: [relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.gpkgFilesPath()[0]))],
+    metadataShapefilePath: relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.metadataShapefilePath())),
+    productShapefilePath: relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.productShapefilePath())),
+  };
+  const checksums = [
+    ...inputFiles.gpkgFilesPath,
+    ...getShapefileFiles(inputFiles.metadataShapefilePath),
+    ...getShapefileFiles(inputFiles.productShapefilePath),
+  ].map((fileName) => {
+    return {
+      algorithm: 'XXH64' as const,
+      checksum: faker.string.hexadecimal({ length: 64, casing: 'lower', prefix: '' }),
+      fileName,
+    };
+  });
 
   return {
     resourceId: productId,
-    version: '2.0',
+    version: rasterLayerMetadataGenerators.productVersion(),
     internalId: faker.string.uuid(),
     type: updateJobType,
     productName,
     productType,
     status: OperationStatus.PENDING,
     parameters: {
-      ingestionResolution: 0.000000335276126861572,
+      ingestionResolution: generateIngestionResolution(),
       metadata: {
-        classification: '6',
+        classification: rasterLayerMetadataGenerators.classification(),
       },
-      inputFiles: mockInputFiles,
+      inputFiles,
       additionalParams: {
-        tileOutputFormat: TileOutputFormat.PNG,
-        displayPath: faker.string.uuid(),
-        jobTrackerServiceURL: faker.internet.url(),
+        tileOutputFormat: rasterLayerMetadataGenerators.tileOutputFormat(),
+        displayPath: rasterLayerMetadataGenerators.displayPath(),
+        jobTrackerServiceURL: jobTrackerServiceUrl,
       },
     },
-    domain,
+    domain: Domain.RASTER,
     tasks: [
       {
-        type: taskType,
+        type: validationTaskType,
         parameters: {
-          checksums: [{ algorithm: 'XXH64', checksum, fileName: mockInputFiles.metadataShapefilePath }],
+          checksums,
         },
       },
     ],
