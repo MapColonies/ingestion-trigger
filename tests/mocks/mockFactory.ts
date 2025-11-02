@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { join } from 'node:path';
-import { faker, fakerHE } from '@faker-js/faker';
+import { join, relative } from 'node:path';
+import { faker } from '@faker-js/faker';
 import { RecordType, TileOutputFormat } from '@map-colonies/mc-model-types';
 import { OperationStatus, type ICreateJobBody, type IFindJobsByCriteriaBody } from '@map-colonies/mc-priority-queue';
 import {
@@ -29,13 +29,9 @@ import type { DeepPartial, FlatRecordValues, ReplaceValueWithFunctionResponse as
 import { configMock } from './configMock';
 import { mockInputFiles } from './sourcesRequestBody';
 
-// adjust path to test files location relative to source mount
-const TEST_FILES_RELATIVE_PATH = '/testFiles';
-
 type UnAggregateKeys<T extends object> = {
   [K in keyof T as K extends `max${infer P}` | `min${infer P}` ? Uncapitalize<P> : K]: T[K];
 };
-
 type RasterLayerCatalog = RasterLayersCatalog[number];
 type Link = NonNullable<RasterLayerCatalog['links']>[number];
 type RasterLayerMetadata = RasterLayerCatalog['metadata'];
@@ -46,8 +42,22 @@ type SimpleRasterLayerMetadata = Omit<
 >;
 type SingleRasterLayerMetadata = FlatRecordValues<UnAggregateKeys<SimpleRasterLayerMetadata>>;
 type RasterLayerMetadataPropertiesGenerators = ReplaceValueWithGenerator<SingleRasterLayerMetadata>;
-
 type IngestionLayerInputFilesPropertiesGenerators = ReplaceValueWithGenerator<IngestionUpdateLayer['inputFiles']>;
+
+// adjust path to test files location relative to source mount
+const TEST_FILES_RELATIVE_PATH = '/testFiles';
+
+const LOWER_ALPHA_CHARS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+const UPPER_ALPHA_CHARS = [...'abcdefghijklmnopqrstuvwxyz'];
+const NUMERIC_CHARS = [...'0123456789'];
+const HEBREW_CHARS = [...'אבגדהוזחטיכלמנסעפצקרשתךםןףץ'];
+
+const generateHebrewCommonFileName = (extension: string, options: { min: number; max: number }): string =>
+  `${faker.string.fromCharacters([...LOWER_ALPHA_CHARS, ...UPPER_ALPHA_CHARS, ...NUMERIC_CHARS, ...HEBREW_CHARS, '-', '_'], options)}.${extension}`;
+
+const generateHebrewAlphanumeric = (options: { min: number; max: number }): string => {
+  return faker.helpers.multiple(() => faker.helpers.arrayElement(HEBREW_CHARS), { count: options }).join('');
+};
 
 const generateCatalogLayerLinks = ({ productId, productType }: { productId: string; productType: RasterProductTypes }): Link[] => {
   const templateLinks = [
@@ -201,14 +211,14 @@ const getTestFilePath = (inputFiles: InputFiles): InputFiles => {
  */
 const generateInputFiles = (): InputFiles => {
   return {
-    gpkgFilesPath: [join(faker.system.directoryPath(), fakerHE.system.commonFileName('gpkg'))],
+    gpkgFilesPath: [join(faker.system.directoryPath(), generateHebrewCommonFileName('gpkg', { min: 1, max: 100 }))],
     metadataShapefilePath: join(faker.system.directoryPath(), 'ShapeMetadata.shp'),
     productShapefilePath: join(faker.system.directoryPath(), 'Product.shp'),
   };
 };
 
 export const rasterLayerInputFilesGenerators: IngestionLayerInputFilesPropertiesGenerators = {
-  gpkgFilesPath: () => [join(getTestFilesPath(), 'gpkg', fakerHE.system.commonFileName('gpkg'))],
+  gpkgFilesPath: () => [join(getTestFilesPath(), 'gpkg', generateHebrewCommonFileName('gpkg', { min: 1, max: 100 }))],
   metadataShapefilePath: () => join(getTestFilesPath(), 'metadata', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'ShapeMetadata.shp'),
   productShapefilePath: () => join(getTestFilesPath(), 'product', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'Product.shp'),
 };
@@ -226,11 +236,11 @@ export const rasterLayerMetadataGenerators: RasterLayerMetadataPropertiesGenerat
   productName: (): string => faker.string.alphanumeric({ length: { min: 1, max: 100 } }),
   productId: (): string => randexp(INGESTION_VALIDATIONS.productId.pattern),
   productType: (): RasterProductTypes => faker.helpers.enumValue(RasterProductTypes),
-  region: (): string => fakerHE.string.alphanumeric({ length: { min: 1, max: 100 } }),
+  region: (): string => generateHebrewAlphanumeric({ min: 1, max: 100 }),
   transparency: (): Transparency => faker.helpers.enumValue(Transparency),
-  description: (): string => fakerHE.string.alphanumeric({ length: { min: 0, max: 100 } }),
-  producerName: (): string => fakerHE.string.alphanumeric({ length: { min: 0, max: 100 } }),
-  productSubType: (): string => fakerHE.string.alphanumeric({ length: { min: 0, max: 100 } }),
+  description: (): string => generateHebrewAlphanumeric({ min: 0, max: 100 }),
+  producerName: (): string => generateHebrewAlphanumeric({ min: 0, max: 100 }),
+  productSubType: (): string => generateHebrewAlphanumeric({ min: 0, max: 100 }),
   scale: (): number => faker.number.int({ min: INGESTION_VALIDATIONS.scale.min, max: INGESTION_VALIDATIONS.scale.max }),
   srs: (): '4326' => '4326',
   srsName: (): 'WGS84GEO' => 'WGS84GEO',
