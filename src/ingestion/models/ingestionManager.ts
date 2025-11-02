@@ -337,7 +337,7 @@ export class IngestionManager {
     const isValidSources: SourcesValidationResponse = await this.validateSources(inputFiles);
     if (!isValidSources.isValid) {
       const errorMessage = isValidSources.message;
-      this.logger.error({ msg: errorMessage, logContext: logCtx, inputFiles: { inputFiles } });
+      this.logger.error({ msg: errorMessage, logContext: logCtx, inputFiles });
       const error = new UnsupportedEntityError(isValidSources.message);
       throw error;
     }
