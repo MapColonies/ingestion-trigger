@@ -1,21 +1,21 @@
-import { basename, dirname, join, sep } from 'node:path';
+import { join, relative } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { IFindJobsByCriteriaBody, OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
 import {
   getMapServingLayerName,
-  ShapefileExtensions,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
   type InputFiles,
-  type RasterProductTypes
+  type RasterProductTypes,
 } from '@map-colonies/raster-shared';
-import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
-import { inject, injectable } from 'tsyringe';
+import { container, inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import { IConfig, ISupportedIngestionSwapTypes } from '../../common/interfaces';
+import { GdalInfoManager } from '../../info/models/gdalInfoManager';
 import { CatalogClient } from '../../serviceClients/catalogClient';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
@@ -25,17 +25,14 @@ import { Checksum as IChecksum } from '../../utils/hash/interface';
 import { LogContext } from '../../utils/logger/logContext';
 import { getShapefileFiles } from '../../utils/shapefile';
 import { ChecksumError, FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import type { GpkgInputFiles, ResponseId, SourcesValidationResponse, ValidationTaskParameters } from '../interfaces';
+import { gpkgFilesPathSchema, type GpkgInputFiles, type ResponseId, type SourcesValidationResponse, type ValidationTaskParameters } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
 import { GeoValidator } from '../validators/geoValidator';
 import { SourceValidator } from '../validators/sourceValidator';
-import { GdalInfoManager } from '../../info/models/gdalInfoManager';
 import { ProductManager } from './productManager';
-import { InputFiles as SourceValidationInput } from '@map-colonies/mc-model-types'
-import { InfoManager } from '../../info/models/infoManager';
 
 @injectable()
 export class IngestionManager {
@@ -60,9 +57,7 @@ export class IngestionManager {
     private readonly catalogClient: CatalogClient,
     private readonly jobManagerWrapper: JobManagerWrapper,
     private readonly mapProxyClient: MapProxyClient,
-    private readonly infoManager: InfoManager,
-    private readonly productManager: ProductManager,
-    private readonly checksum: Checksum
+    private readonly productManager: ProductManager
   ) {
     this.logContext = {
       fileName: __filename,
@@ -80,23 +75,38 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  public async validateSources(inputFiles: InputFiles): Promise<SourcesValidationResponse> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateSources.name };
-    const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = inputFiles;
-    const shapefilesPath = [metadataShapefilePath, productShapefilePath].flatMap(getShapefileFiles);
-    const inputFilesPaths = [...shapefilesPath, ...gpkgFilesPath];
+  public async getGpkgsInfo(gpkgInputFiles: GpkgInputFiles): Promise<InfoDataWithFile[]> {
+    const logCtx: LogContext = { ...this.logContext, function: this.getGpkgsInfo.name };
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('ingestionManager.validateSources');
+    activeSpan?.updateName('ingestionManager.getGpkgsInfo');
+    const { gpkgFilesPath } = gpkgInputFiles;
+    this.logger.info({ msg: 'getting gdal info for files', logContext: logCtx, metadata: { gpkgFilesPath } });
+
+    await this.sourceValidator.validateFilesExist(gpkgFilesPath);
+    this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
+
+    const filesGdalInfoData = await this.gdalInfoManager.getInfoData(gpkgFilesPath);
+    activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('getGpkgsInfo.get.ok');
+    return filesGdalInfoData;
+  }
+
+  @withSpanAsyncV4
+  public async validateGpkgs(gpkgInputFiles: GpkgInputFiles): Promise<SourcesValidationResponse> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateGpkgs.name };
+    const { gpkgFilesPath } = gpkgInputFiles;
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('ingestionManager.validateGpkgs');
     try {
-      this.logger.info({ msg: 'Starting source validation process', logContext: logCtx, metadata: { gpkgFilesPath } });
+      this.logger.info({ msg: 'Starting gpkgs validation process', logContext: logCtx, metadata: { gpkgFilesPath } });
+      await this.sourceValidator.validateFilesExist(gpkgFilesPath);
 
-      await this.sourceValidator.validateFilesExist(inputFilesPaths);
-      this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
+      await this.sourceValidator.validateGdalInfo(gpkgFilesPath);
+      this.logger.debug({ msg: 'GDAL info validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
 
-      await this.validateGpkgs({ gpkgFilesPath });
+      this.sourceValidator.validateGpkgFiles(gpkgFilesPath);
+      this.logger.debug({ msg: 'GPKG files validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
 
       const validationResult: SourcesValidationResponse = { isValid: true, message: 'Sources are valid' };
-
       this.logger.debug({
         msg: validationResult.message,
         logContext: logCtx,
@@ -115,7 +125,7 @@ export class IngestionManager {
         msg: `An unexpected error occurred during source validation`,
         logContext: logCtx,
         err,
-        metadata: { inputFiles },
+        metadata: { gpkgFilesPath },
       });
       throw err;
     }
@@ -127,11 +137,16 @@ export class IngestionManager {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.newLayer');
 
-    await this.newLayerValidations(newLayer);
+    const newLayerLocal = {
+      ...newLayer,
+      ...this.getAbsolutePathInputFiles(newLayer),
+    };
+
+    await this.newLayerValidations(newLayerLocal);
     this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
-    const createJobRequest = await this.newLayerJobPayload(newLayer);
+    const createJobRequest = await this.newLayerJobPayload(newLayerLocal);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
     const taskId = taskIds[0];
 
@@ -152,11 +167,16 @@ export class IngestionManager {
 
     const rasterLayerMetadata = await this.getLayerMetadata(catalogId);
 
-    await this.updateLayerValidations(rasterLayerMetadata, updateLayer);
+    const updateLayerLocal = {
+      ...updateLayer,
+      ...this.getAbsolutePathInputFiles(updateLayer),
+    };
+
+    await this.updateLayerValidations(rasterLayerMetadata, updateLayerLocal);
     this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
-    const createJobRequest = await this.updateLayerJobPayload(rasterLayerMetadata, updateLayer);
+    const createJobRequest = await this.updateLayerJobPayload(rasterLayerMetadata, updateLayerLocal);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
     const taskId = taskIds[0];
 
@@ -167,41 +187,6 @@ export class IngestionManager {
     activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId });
 
     return { jobId, taskId };
-  }
-
-  @withSpanAsyncV4
-  public async validateGpkgs(gpkgInputFiles: GpkgInputFiles): Promise<SourcesValidationResponse> {
-    const { gpkgFilesPath } = gpkgInputFiles;
-    const logCtx: LogContext = { ...this.logContext, function: this.validateGpkgs.name };
-    const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('ValidationManager.validateGpkgs');
-    try {
-      await this.sourceValidator.validateFilesExist(gpkgFilesPath);
-      this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
-
-      await this.sourceValidator.validateGdalInfo(gpkgFilesPath);
-      this.logger.debug({ msg: 'GDAL info validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
-
-      this.sourceValidator.validateGpkgFiles(gpkgFilesPath);
-      this.logger.debug({ msg: 'GPKG files validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
-
-      const validationResult: SourcesValidationResponse = { isValid: true, message: 'Sources are valid' };
-      return validationResult;
-    } catch (err) {
-      if (err instanceof FileNotFoundError || err instanceof GdalInfoError || err instanceof GpkgError) {
-        this.logger.info({ msg: `Sources are not valid:${err.message}`, logContext: logCtx, err: err, metadata: { gpkgFilesPath } });
-        activeSpan?.addEvent('ValidationManager.validateGpkgSources.invalid', { isValid: false, validationError: err.message });
-        return { isValid: false, message: err.message };
-      }
-
-      this.logger.error({
-        msg: `An unexpected error occurred during gpkg sources validation`,
-        logContext: logCtx,
-        err,
-        metadata: { gpkgInputFiles },
-      });
-      throw err;
-    }
   }
 
   @withSpanAsyncV4
@@ -344,17 +329,17 @@ export class IngestionManager {
     const { productShapefilePath } = inputFiles;
 
     // validate files exist, gdal info and GPKG data
-    const isValidSources: SourcesValidationResponse = await this.validateSources(inputFiles);
+    const isValidSources: SourcesValidationResponse = await this.validateGpkgs(inputFiles);
     if (!isValidSources.isValid) {
       const errorMessage = isValidSources.message;
-      this.logger.error({ msg: errorMessage, logContext: logCtx, inputFiles: { inputFiles } });
+      this.logger.error({ msg: errorMessage, logContext: logCtx, inputFiles });
       const error = new UnsupportedEntityError(isValidSources.message);
       throw error;
     }
     this.logger.debug({ msg: 'validated sources', logContext: logCtx });
 
     // validate new ingestion product.shp against gpkg data extent
-    const infoData = await this.infoManager.getInfoData(inputFiles);
+    const infoData = await this.getGpkgsInfo(inputFiles);
     const productGeometry = await this.productManager.read(productShapefilePath);
     this.geoValidator.validate(infoData, productGeometry);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
@@ -383,23 +368,28 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async newLayerJobPayload(newLayer: IngestionNewLayer): Promise<ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters>> {
     const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath);
-    const taskParams: ValidationTaskParameters = { checksums };
+    const taskParameters = { checksums };
+
+    const newLayerRelative = {
+      ...newLayer,
+      ...this.getRelativePathInputFiles(newLayer),
+    };
 
     const ingestionNewJobParams = {
-      ...newLayer,
+      ...newLayerRelative,
       additionalParams: { jobTrackerServiceURL: this.jobTrackerServiceUrl },
     };
     const initialProductVersion = '1.0';
     const createJobRequest = {
-      resourceId: newLayer.metadata.productId,
+      resourceId: newLayerRelative.metadata.productId,
       version: initialProductVersion,
       type: this.ingestionNewJobType,
       status: OperationStatus.PENDING,
       parameters: ingestionNewJobParams,
-      productName: newLayer.metadata.productName,
-      productType: newLayer.metadata.productType,
+      productName: newLayerRelative.metadata.productName,
+      productType: newLayerRelative.metadata.productType,
       domain: this.jobDomain,
-      tasks: [{ type: this.validationTaskType, parameters: taskParams }],
+      tasks: [{ type: this.validationTaskType, parameters: taskParameters }],
     };
     return createJobRequest;
   }
@@ -409,19 +399,23 @@ export class IngestionManager {
     rasterLayerMetadata: RasterLayerMetadata,
     updateLayer: IngestionUpdateLayer
   ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters>> {
-    const { displayPath, footprint, id, productId, productType, productVersion, tileOutputFormat, productName, productSubType } = rasterLayerMetadata;
+    const { displayPath, id, productId, productType, productVersion, tileOutputFormat, productName, productSubType } = rasterLayerMetadata;
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === productType && supportedSwapObj.productSubType === productSubType;
     });
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
 
     const checksums = await this.getFilesChecksum(updateLayer.inputFiles.metadataShapefilePath);
-    const taskParams: ValidationTaskParameters = { checksums };
+    const taskParameters = { checksums };
+
+    const updateLayerRelative = {
+      ...updateLayer,
+      ...this.getRelativePathInputFiles(updateLayer),
+    };
 
     const ingestionUpdateJobParams = {
-      ...updateLayer,
+      ...updateLayerRelative,
       additionalParams: {
-        footprint,
         tileOutputFormat,
         jobTrackerServiceURL: this.jobTrackerServiceUrl,
         ...(updateJobAction === this.updateJobType && { displayPath }),
@@ -437,7 +431,7 @@ export class IngestionManager {
       status: OperationStatus.PENDING,
       parameters: ingestionUpdateJobParams,
       domain: this.jobDomain,
-      tasks: [{ type: this.validationTaskType, parameters: taskParams }],
+      tasks: [{ type: this.validationTaskType, parameters: taskParameters }],
     };
     return createJobRequest;
   }
@@ -454,16 +448,37 @@ export class IngestionManager {
     activeSpan?.updateName('ingestionManager.getFileChecksum');
     const logCtx: LogContext = { ...this.logContext, function: this.getFileChecksum.name };
 
-    const fullFilePath = join(this.sourceMount, filePath);
-    this.logger.info({ msg: `calucalting checksum for: ${fullFilePath}`, logContext: logCtx });
+    this.logger.info({ msg: `calucalting checksum for: ${filePath}`, logContext: logCtx });
 
     try {
-      const { fileName, ...checksum } = await this.checksum.calculate(fullFilePath);
-      return { ...checksum, fileName: filePath };
+      const checksum = container.resolve<Checksum>(Checksum);
+      return await checksum.calculate(filePath);
     } catch (err) {
       const processingError = err instanceof ChecksumError ? err.message : 'Unknown error';
       activeSpan?.addEvent('ingestionManager.getFileChecksum.invalid', { processingError });
       throw err;
     }
+  }
+
+  @withSpanV4
+  private getAbsolutePathInputFiles({ inputFiles }: Pick<IngestionNewLayer, 'inputFiles'>): Pick<IngestionNewLayer, 'inputFiles'> {
+    return {
+      inputFiles: {
+        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => join(this.sourceMount, gpkgFilePath)),
+        metadataShapefilePath: join(this.sourceMount, inputFiles.metadataShapefilePath),
+        productShapefilePath: join(this.sourceMount, inputFiles.productShapefilePath),
+      },
+    };
+  }
+
+  @withSpanV4
+  private getRelativePathInputFiles({ inputFiles }: Pick<IngestionNewLayer, 'inputFiles'>): Pick<IngestionNewLayer, 'inputFiles'> {
+    return {
+      inputFiles: {
+        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => relative(this.sourceMount, gpkgFilePath)),
+        metadataShapefilePath: relative(this.sourceMount, inputFiles.metadataShapefilePath),
+        productShapefilePath: relative(this.sourceMount, inputFiles.productShapefilePath),
+      },
+    };
   }
 }

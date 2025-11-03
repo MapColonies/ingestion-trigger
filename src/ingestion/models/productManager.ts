@@ -1,26 +1,17 @@
-import { inject, injectable } from "tsyringe";
-import { LogContext } from "../../utils/logger/logContext";
-import type { IConfig } from '../../common/interfaces';
-import { Logger } from "@map-colonies/js-logger";
-import { Tracer } from "@opentelemetry/api";
-import { SERVICES } from "../../common/constants";
 import { BadRequestError } from '@map-colonies/error-types';
-import { ChunkProcessor, ReaderOptions, ShapefileChunk, ShapefileChunkReader } from "@map-colonies/mc-utils";
-import { Feature, Geometry, Polygon, MultiPolygon } from "geojson";
-import { multiPolygonSchema, polygonSchema } from "@map-colonies/raster-shared";
-import z from "zod";
+import { Logger } from '@map-colonies/js-logger';
+import { ChunkProcessor, ReaderOptions, ShapefileChunk, ShapefileChunkReader } from '@map-colonies/mc-utils';
+import { multiPolygonSchema, polygonSchema } from '@map-colonies/raster-shared';
+import { Tracer } from '@opentelemetry/api';
+import { Feature } from 'geojson';
+import { inject, injectable } from 'tsyringe';
+import z from 'zod';
+import { SERVICES } from '../../common/constants';
+import type { IConfig } from '../../common/interfaces';
+import { LogContext } from '../../utils/logger/logContext';
 
-export type AllowedProductGeometry = Polygon | MultiPolygon;
-const productGeometrySchema = z.union([
-  polygonSchema,
-  multiPolygonSchema
-]);
-
-//export type ProudctGeometry = Polygon | MultiPolygon;
-export const ProudctGeometry = {
-  POLYGON: 'Polygon',
-  MULTI_POLYGON: 'MultiPolygon',
-} as const;
+const productGeometrySchema = z.union([polygonSchema, multiPolygonSchema]);
+export type AllowedProductGeometry = z.infer<typeof productGeometrySchema>;
 
 @injectable()
 export class ProductManager {
@@ -28,8 +19,9 @@ export class ProductManager {
   private readonly options: ReaderOptions;
   private readonly reader: ShapefileChunkReader;
   private readonly processor: ChunkProcessor;
-  private features: Feature<Geometry>[] = [];
+  private features: Feature[] = [];
   private readonly maxVerticesPerChunk: number;
+
   public constructor(
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
@@ -44,20 +36,22 @@ export class ProductManager {
       // would be taken from config
       maxVerticesPerChunk: this.maxVerticesPerChunk,
       generateFeatureId: true,
-      logger: this.logger
+      logger: this.logger,
     };
     this.reader = new ShapefileChunkReader(this.options);
     this.processor = {
-      process: async (chunk) => await this.process(chunk)
-    }
+      process: async (chunk): Promise<void> => {
+        await this.process(chunk);
+      },
+    };
   }
 
   public async read(productShapefilePath: string): Promise<AllowedProductGeometry> {
     try {
       await this.reader.readAndProcess(productShapefilePath, this.processor);
       if (this.features.length > 1) {
-        const errorMessage = "product shapefile contains more than a single feature";
-        this.logger.error({ msg: errorMessage, productShapefilePath })
+        const errorMessage = 'product shapefile contains more than a single feature';
+        this.logger.error({ msg: errorMessage, productShapefilePath });
         throw new BadRequestError(errorMessage);
       }
 
@@ -67,11 +61,11 @@ export class ProductManager {
       return validProductGeometry;
     } catch (error) {
       this.logger.error({
-        msg: `an unexpected error occurred during product shape read, error: ${error}`
+        msg: `an unexpected error occurred during product shape read, error: ${error}`,
       });
       throw error;
     }
-  };
+  }
 
   private async process(chunk: ShapefileChunk): Promise<void> {
     this.logger.debug({ msg: 'start processing', features: chunk.features, count: chunk.features.length });
@@ -82,7 +76,7 @@ export class ProductManager {
     }
     for await (const feature of chunk.features) {
       this.features.push(feature);
-    };
+    }
     this.logger.debug(`processor done with ${chunk.features.length} features: ${chunk.features.length}`);
   }
 }

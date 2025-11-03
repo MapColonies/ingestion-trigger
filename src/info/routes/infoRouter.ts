@@ -1,13 +1,12 @@
 import { Router } from 'express';
 import { FactoryFunction } from 'tsyringe';
-import { InfoController } from '../controller/infoController';
-
+import { InfoController } from '../controllers/infoController';
 
 const infoRouterFactory: FactoryFunction<Router> = (dependencyContainer) => {
   const router = Router();
   const controller = dependencyContainer.resolve(InfoController);
 
-  router.post('/gpkgs', controller.getInfoData.bind(controller));
+  router.post('/gpkgs', controller.getGpkgsInfo.bind(controller));
 
   return router;
 };

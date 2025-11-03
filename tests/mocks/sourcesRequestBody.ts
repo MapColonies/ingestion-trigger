@@ -4,77 +4,10 @@ import { faker } from "@faker-js/faker";
 import { InputFiles } from "@map-colonies/raster-shared";
 
 const gpkgFileName = faker.system.commonFileName('gpkg');
-const sourceDirectory = 'testFiles';
-const fakeGpkgFilePath = `/${sourceDirectory}/${gpkgFileName}`;
-const fakeShapeMetadatafilePath = `/${sourceDirectory}/ShapeMetadata.shp`;
-const fakeProductShapaefilePath = `/${sourceDirectory}/Product.shp`;
-
-function getFakeIngestionSources() {
-  return {
-    validSources: {
-      validInputFiles: {
-        originDirectory: sourceDirectory,
-        fileNames: ['validBlueMarble.gpkg'],
-      },
-      anotherValidInputFiles: {
-        originDirectory: sourceDirectory,
-        fileNames: ['validBlueMarble.gpkg'],
-      },
-    },
-    invalidSources: {
-      filesNotExist: {
-        originDirectory: sourceDirectory,
-        fileNames: ['notExist.gpkg'],
-      },
-      directoryNotExist: {
-        originDirectory: 'notDirectory',
-        fileNames: ['validBlueMarble.gpkg'],
-      },
-      unsupportedCrs: {
-        originDirectory: sourceDirectory,
-        fileNames: ['invalidCrs-3857.gpkg'],
-      },
-      unsupportedPixelSize: {
-        originDirectory: sourceDirectory,
-        fileNames: ['invalidPixelSize-0.8.gpkg'],
-      },
-      withoutGpkgIndex: {
-        originDirectory: sourceDirectory,
-        fileNames: ['withoutGpkgIndex.gpkg'],
-      },
-      unsupportedGrid: {
-        originDirectory: sourceDirectory,
-        fileNames: ['unsupportedGridMatrix.gpkg'],
-      },
-      unsupportedTileWidthSize: {
-        originDirectory: sourceDirectory,
-        fileNames: ['unsupportedTileSize-width-512.gpkg'],
-      },
-      unsupportedTileHeightSize: {
-        originDirectory: sourceDirectory,
-        fileNames: ['unsupportedTileSize-height-512.gpkg'],
-      },
-    },
-    invalidValidation: {
-      tooManyFiles: {
-        originDirectory: sourceDirectory,
-        fileNames: ['blueMarble.gpkg', 'other.gpkg'],
-      },
-      noFiles: {
-        originDirectory: sourceDirectory,
-        fileNames: [],
-      },
-      noDirectory: {
-        originDirectory: '',
-        fileNames: ['blueMarble.gpkg'],
-      },
-      notGpkg: {
-        originDirectory: sourceDirectory,
-        fileNames: ['blueMarble.tif'],
-      },
-    },
-  };
-}
+const fakeDirPath = faker.system.directoryPath();
+export const fakeGpkgFilePath = `${fakeDirPath}/${gpkgFileName}`;
+export const fakeShapeMetadatafilePath = `${fakeDirPath}/ShapeMetadata.shp`;
+export const fakeProductShapaefilePath = `${fakeDirPath}/Product.shp`;
 
 export const mockInputFiles: InputFiles = {
     gpkgFilesPath: [fakeGpkgFilePath],
@@ -82,6 +15,3 @@ export const mockInputFiles: InputFiles = {
     productShapefilePath: fakeProductShapaefilePath
 };
 
-export const fakeIngestionSources = getFakeIngestionSources();
-
-export type FakeIngestionSources = ReturnType<typeof getFakeIngestionSources>;

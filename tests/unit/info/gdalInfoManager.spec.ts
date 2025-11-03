@@ -1,28 +1,24 @@
 import { BadRequestError } from '@map-colonies/error-types';
-import { IConfig } from 'config';
 import { container } from 'tsyringe';
-import { GDAL_INFO_MANAGER_SYMBOL, GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
-import { registerDefaultConfig } from '../../../mocks/configMock';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
-import { GdalUtilities } from '../../../../src/utils/gdal/gdalUtilities';
-import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
-import { mockGdalInfoDataWithFile } from '../../../mocks/gdalInfoMock';
-import { GdalInfoError } from '../../../../src/ingestion/errors/ingestionErrors';
-import { getApp } from '../../../../src/app';
-import { getTestContainerConfig } from '../../../integration/ingestion/helpers/containerConfig';
-import { SERVICES } from '../../../../src/common/constants';
+import { getApp } from '../../../src/app';
+import { GDAL_INFO_MANAGER_SYMBOL, GdalInfoManager } from '../../../src/info/models/gdalInfoManager';
+import { GdalInfoError } from '../../../src/ingestion/errors/ingestionErrors';
+import { GdalUtilities } from '../../../src/utils/gdal/gdalUtilities';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../src/utils/validation/schemasValidator';
+import { getTestContainerConfig } from '../../integration/ingestion/helpers/containerConfig';
+import { registerDefaultConfig } from '../../mocks/configMock';
+import { mockGdalInfoDataWithFile } from '../../mocks/gdalInfoMock';
+import { mockInputFiles } from '../../mocks/sourcesRequestBody';
 
 describe('GdalInfoManager', () => {
   let gdalInfoManager: GdalInfoManager;
   let schemaValidator: SchemasValidator;
-  let sourceMount: string;
 
   beforeEach(() => {
     const [, container] = getApp({
       override: [...getTestContainerConfig()],
       useChild: true,
     });
-    sourceMount = container.resolve<IConfig>(SERVICES.CONFIG).get<string>('storageExplorer.layerSourceDir');
     schemaValidator = container.resolve<SchemasValidator>(INGESTION_SCHEMAS_VALIDATOR_SYMBOL);
     gdalInfoManager = container.resolve<GdalInfoManager>(GDAL_INFO_MANAGER_SYMBOL);
     registerDefaultConfig();
@@ -45,7 +41,7 @@ describe('GdalInfoManager', () => {
       const { gpkgFilesPath } = mockInputFiles;
 
       const schemaValidatorSpy = jest.spyOn(schemaValidator, 'validateInfoData').mockResolvedValue(mockGdalInfoDataWithFile);
-      
+
       expect(await gdalInfoManager.validateInfoData([mockGdalInfoDataWithFile])).toBeUndefined();
       expect(schemaValidatorSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
     });
@@ -58,14 +54,14 @@ describe('GdalInfoManager', () => {
     });
 
     it('should throw gdal info error - Unsupported pixel size', async () => {
-      const invalidGdalInfo = { ...mockGdalInfoDataWithFile, pixelSize: 0.9};
+      const invalidGdalInfo = { ...mockGdalInfoDataWithFile, pixelSize: 0.9 };
 
       jest.spyOn(schemaValidator, 'validateInfoData').mockRejectedValue(new BadRequestError('Unsupported pixel size'));
       await expect(gdalInfoManager.validateInfoData([invalidGdalInfo])).rejects.toThrow(/Unsupported pixel size/);
     });
 
     it('should throw gdal info error - Unsupported file format', async () => {
-      const invalidGdalInfo = { ...mockGdalInfoDataWithFile, fileFormat: 'TIFF'};
+      const invalidGdalInfo = { ...mockGdalInfoDataWithFile, fileFormat: 'TIFF' };
 
       jest.spyOn(schemaValidator, 'validateInfoData').mockRejectedValue(new BadRequestError('Unsupported file format'));
       await expect(gdalInfoManager.validateInfoData([invalidGdalInfo])).rejects.toThrow(/Unsupported file format/);

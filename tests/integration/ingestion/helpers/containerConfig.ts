@@ -1,11 +1,11 @@
 import jsLogger from '@map-colonies/js-logger';
-import { container, instancePerContainerCachingFactory } from 'tsyringe';
 import { trace } from '@opentelemetry/api';
+import { container, instancePerContainerCachingFactory } from 'tsyringe';
 import { SERVICES } from '../../../../src/common/constants';
 import { InjectionObject } from '../../../../src/common/dependencyRegistration';
-import { configMock, getMock, hasMock, registerDefaultConfig } from '../../../mocks/configMock';
+import { GDAL_INFO_MANAGER_SYMBOL, GdalInfoManager } from '../../../../src/info/models/gdalInfoManager';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, schemasValidationsFactory } from '../../../../src/utils/validation/schemasValidator';
-import { GDAL_INFO_MANAGER_SYMBOL, GdalInfoManager } from '../../../../src/ingestion/models/gdalInfoManager';
+import { configMock, getMock, hasMock, registerDefaultConfig } from '../../../mocks/configMock';
 
 function getTestContainerConfig(): InjectionObject<unknown>[] {
   registerDefaultConfig();

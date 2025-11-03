@@ -1,8 +1,8 @@
 import { InputFiles } from '@map-colonies/raster-shared';
-import { InputFiles as SourceValidationInput, inputFilesSchema as sourceValidationInputSchema } from '@map-colonies/mc-model-types'
 import { DependencyContainer } from 'tsyringe';
+import { GpkgInputFiles } from '../../ingestion/interfaces';
 import { gdalInfoSchema, type GdalInfo } from '../../ingestion/schemas/gdalDataSchema';
-import { InfoData, createInfoDataSchema } from '../../ingestion/schemas/infoDataSchema';
+import { createInfoDataSchema, InfoData } from '../../ingestion/schemas/infoDataSchema';
 import { createNewIngestionLayerSchema, type IngestionNewLayer } from '../../ingestion/schemas/ingestionLayerSchema';
 import { createGpkgInputFilesSchema, createInputFilesSchema } from '../../ingestion/schemas/inputFilesSchema';
 import { createRasterLayersCatalogSchema, type RasterLayersCatalog } from '../../ingestion/schemas/layerCatalogSchema';
@@ -10,7 +10,6 @@ import { createNewMetadataSchema, type IngestionNewMetadata } from '../../ingest
 import { createUpdateLayerSchema, type IngestionUpdateLayerRequest } from '../../ingestion/schemas/updateLayerSchema';
 import { createUpdateMetadataSchema, type IngestionUpdateMetadata } from '../../ingestion/schemas/updateMetadataSchema';
 import { ZodValidator } from './zodValidator';
-import { GpkgInputFiles } from '../../ingestion/interfaces';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function schemasValidationsFactory(container: DependencyContainer) {
@@ -28,7 +27,7 @@ export function schemasValidationsFactory(container: DependencyContainer) {
 
   return {
     validateInputFilesRequestBody: async (value: unknown): Promise<InputFiles> => validator.validate(inputFilesSchema, value),
-    validateGpkgInputFilesBody: async (value: unknown): Promise<GpkgInputFiles> => validator.validate(gpkgInputFilesSchema, value),
+    validateGpkgsInputFilesRequestBody: async (value: unknown): Promise<GpkgInputFiles> => validator.validate(gpkgInputFilesSchema, value),
     validateInfoData: async (value: unknown): Promise<InfoData> => validator.validate(infoDataSchema, value),
     validateGdalInfo: async (value: unknown): Promise<GdalInfo> => validator.validate(gdalInfoSchema, value),
     validateNewLayerRequest: async (value: unknown): Promise<IngestionNewLayer> => validator.validate(newLayerSchema, value),

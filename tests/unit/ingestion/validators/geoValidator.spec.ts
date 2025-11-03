@@ -61,14 +61,14 @@ describe('GeoValidator', () => {
       expect(action).toThrow(ValidationError);
     });
 
-    it('should throw error when extent buffer of an gpkg is undefinied', () => {
+    it('should throw error when extent buffer of an gpkg is undefinied - case of multipolygon', () => {
       const mockInfoData: InfoDataWithFile[] = [mockGdalInfoDataWithFile];
-      booleanContainsMock.mockReturnValue(false);
+      bufferSpy.mockReturnValue(undefined);
       const action = () => geoValidator.validate(mockInfoData, { type: 'MultiPolygon', coordinates: [[], []] });
-      expect(action).toThrow(ValidationError);
+      expect(action).toThrow(/buffered gpkg extent is undefined/);
     });
 
-    it('should throw error when extent buffer of an gpkg is undefinied', () => {
+    it('should throw error when extent buffer of an gpkg is undefinied - case of polygon', () => {
       const mockInfoData: InfoDataWithFile[] = [mockGdalInfoDataWithFile];
       bufferSpy.mockReturnValue(undefined);
       const action = () => geoValidator.validate(mockInfoData, { type: 'Polygon', coordinates: [] });

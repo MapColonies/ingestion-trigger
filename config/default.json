@@ -38,7 +38,7 @@
     "layerSourceDir": "",
     "displayNameDir": "\\layerSources",
     "watchDirectory": "watch",
-    "validFileExtensions": ["gpkg"]
+    "validFileExtensions": ["gpkg", "shp", "shx", "dbf", "prj", "cpg"]
   },
   "validationValuesByInfo": {
     "crs": [4326],

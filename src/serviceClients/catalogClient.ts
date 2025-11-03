@@ -6,7 +6,7 @@ import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
 import type { IConfig } from '../common/interfaces';
 import type { RasterLayersCatalog } from '../ingestion/schemas/layerCatalogSchema';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, type SchemasValidator } from '../utils/validation/schemasValidator';
+// import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, type SchemasValidator } from '../utils/validation/schemasValidator';
 
 @injectable()
 export class CatalogClient extends HttpClient {
@@ -14,7 +14,7 @@ export class CatalogClient extends HttpClient {
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.LOGGER) protected readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
-    @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator
+    // @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator
   ) {
     super(
       logger,

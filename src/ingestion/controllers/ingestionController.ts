@@ -7,12 +7,11 @@ import { inject, injectable } from 'tsyringe';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { FileNotFoundError, GdalInfoError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
 import type { GpkgInputFiles, IRecordRequestParams, ResponseId, SourcesValidationResponse } from '../interfaces';
-import { InfoData } from '../schemas/infoDataSchema';
 import { IngestionManager } from '../models/ingestionManager';
 
+type ValidateGpkgsHandler = RequestHandler<undefined, SourcesValidationResponse, unknown>;
 type NewLayerHandler = RequestHandler<undefined, ResponseId, unknown>;
 type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseId, unknown>;
-type GpkgInputFilesHandler = RequestHandler<undefined, SourcesValidationResponse, unknown>;
 
 @injectable()
 export class IngestionController {
@@ -64,11 +63,11 @@ export class IngestionController {
     }
   };
 
-  public validateGpkgs: GpkgInputFilesHandler = async (req, res, next): Promise<void> => {
+  public validateGpkgs: ValidateGpkgsHandler = async (req, res, next): Promise<void> => {
     try {
-      const validGpkgsInputFilesRequestBody: GpkgInputFiles = await this.schemasValidator.validateGpkgInputFilesBody(req.body);
+      const validGpkgInputFilesRequestBody: GpkgInputFiles = await this.schemasValidator.validateGpkgsInputFilesRequestBody(req.body);
 
-      const validationResponse = await this.ingestionManager.validateGpkgs(validGpkgsInputFilesRequestBody);
+      const validationResponse = await this.ingestionManager.validateGpkgs(validGpkgInputFilesRequestBody);
 
       res.status(StatusCodes.OK).send(validationResponse);
     } catch (error) {

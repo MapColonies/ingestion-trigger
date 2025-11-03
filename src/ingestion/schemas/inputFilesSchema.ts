@@ -1,6 +1,6 @@
 import { inputFilesSchema } from '@map-colonies/raster-shared';
 import { z } from 'zod';
-import { gpkgInputFilesSchema } from '../interfaces';
+import { gpkgFilesPathSchema } from '../interfaces';
 
 export type InputFiles = z.infer<ReturnType<typeof createInputFilesSchema>>;
 
@@ -10,5 +10,5 @@ export const createInputFilesSchema = () => {
 };
 
 export const createGpkgInputFilesSchema = () => {
-  return gpkgInputFilesSchema;
-};
+  return gpkgFilesPathSchema;
+}
