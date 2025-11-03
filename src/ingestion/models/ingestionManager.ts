@@ -15,6 +15,7 @@ import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { container, inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import { IConfig, ISupportedIngestionSwapTypes } from '../../common/interfaces';
+import { GdalInfoManager } from '../../info/models/gdalInfoManager';
 import { CatalogClient } from '../../serviceClients/catalogClient';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
@@ -31,9 +32,7 @@ import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
 import { GeoValidator } from '../validators/geoValidator';
 import { SourceValidator } from '../validators/sourceValidator';
-import { GdalInfoManager } from '../../info/models/gdalInfoManager';
 import { ProductManager } from './productManager';
-import z from 'zod';
 
 @injectable()
 export class IngestionManager {
