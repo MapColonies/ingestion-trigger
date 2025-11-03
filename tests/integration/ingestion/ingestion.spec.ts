@@ -28,7 +28,6 @@ import {
   rasterLayerInputFilesGenerators,
   rasterLayerMetadataGenerators,
 } from '../../mocks/mockFactory';
-import { fakeIngestionSources } from '../../mocks/sourcesRequestBody';
 import type { DeepPartial, DeepRequired, FlattenKeyTupleUnion } from '../../utils/types';
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
 import { IngestionRequestSender } from './helpers/ingestionRequestSender';
@@ -73,7 +72,7 @@ describe('Ingestion', function () {
     nock.cleanAll();
   });
 
-  describe('POST /ingestion/validateSources', function () {
+  describe('POST /ingestion/validate/gpkgs', function () {
     describe('Happy Path', function () {
       let validateFilesExistSpy: jest.SpyInstance;
       let validateGdalInfoSpy: jest.SpyInstance;
@@ -92,7 +91,7 @@ describe('Ingestion', function () {
       });
 
       it('should return 200 status code and sources is valid response', async function () {
-        const validSources = fakeIngestionSources.validSources.validInputFiles;
+        const validSources = validInputFiles.inputFiles.gpkgFilesPath;
 
         const response = await requestSender.validateSources(validSources);
 
@@ -344,23 +343,24 @@ describe('Ingestion', function () {
     });
   });
 
-  describe('POST /ingestion/sourcesInfo', () => {
+  describe('POST /info/gpkgs', () => {
     describe('Happy Path', () => {
       it('should return 200 status code and sources info', async () => {
-        const sources = fakeIngestionSources.validSources.validInputFiles;
-        const response = await requestSender.getSourcesGdalInfo(sources);
+        const request = { gpkgFilesPath: validInputFiles.inputFiles.gpkgFilesPath };
+
+        const response = await requestSender.getInfoData(request);
 
         expect(response.status).toBe(httpStatusCodes.OK);
-        expect(response.body).toHaveLength(sources.fileNames.length);
+        expect(response.body).toHaveLength(request.gpkgFilesPath.length);
         expect(infoDataSchemaArray.safeParse(response.body).success).toBe(true);
       });
     });
 
     describe('Bad Path', () => {
-      it('should return 400 status code and sources info', async () => {
-        const sources = fakeIngestionSources.invalidValidation.tooManyFiles;
+      it('should return 400 status code and sources info - too many files', async () => {
+        const request = { gpkgFilesPath: [...validInputFiles.inputFiles.gpkgFilesPath, ...validInputFiles.inputFiles.gpkgFilesPath] };
 
-        const response = await requestSender.getSourcesGdalInfo(sources);
+        const response = await requestSender.getInfoData(request);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
@@ -369,7 +369,7 @@ describe('Ingestion', function () {
       it('should return 404 status code and sources info', async () => {
         const sources = fakeIngestionSources.invalidSources.filesNotExist;
 
-        const response = await requestSender.getSourcesGdalInfo(sources);
+        const response = await requestSender.getInfoData(sources);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
@@ -378,7 +378,7 @@ describe('Ingestion', function () {
       it('should return 200 status code and sources info', async () => {
         const sources = fakeIngestionSources.invalidSources.unsupportedCrs;
 
-        const response = await requestSender.getSourcesGdalInfo(sources);
+        const response = await requestSender.getInfoData(sources);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
