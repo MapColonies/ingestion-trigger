@@ -328,10 +328,15 @@ export class IngestionManager {
     const logCtx: LogContext = { ...this.logContext, function: this.validateInputFiles.name };
     const { productShapefilePath } = inputFiles;
 
+    const isValidShapefiles = await this.validateShapefiles([
+      ...getShapefileFiles(inputFiles.metadataShapefilePath),
+      ...getShapefileFiles(inputFiles.productShapefilePath),
+    ]);
+
     // validate files exist, gdal info and GPKG data
-    const isValidSources: SourcesValidationResponse = await this.validateGpkgs(inputFiles);
-    if (!isValidSources.isValid) {
-      const errorMessage = isValidSources.message;
+    const isValidSources = await this.validateGpkgs({ gpkgFilesPath: inputFiles.gpkgFilesPath });
+    if (!isValidSources.isValid || !isValidShapefiles.isValid) {
+      const errorMessage = !isValidSources.isValid ? isValidSources.message : isValidShapefiles.message;
       this.logger.error({ msg: errorMessage, logContext: logCtx, inputFiles });
       const error = new UnsupportedEntityError(isValidSources.message);
       throw error;
@@ -343,6 +348,38 @@ export class IngestionManager {
     const productGeometry = await this.productManager.read(productShapefilePath);
     this.geoValidator.validate(infoData, productGeometry);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
+  }
+
+  @withSpanAsyncV4
+  private async validateShapefiles(shapefilePath: string[]): Promise<SourcesValidationResponse> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateGpkgs.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('ingestionManager.validateShapefiles');
+
+    try {
+      await this.sourceValidator.validateFilesExist(shapefilePath);
+      return {
+        isValid: true,
+        message: 'Sources are valid',
+      };
+    } catch (err) {
+      if (err instanceof FileNotFoundError) {
+        this.logger.info({ msg: `Sources are not valid:${err.message}`, logContext: logCtx, err: err, metadata: { shapefilePath } });
+        activeSpan?.addEvent('ingestionManager.validateShapefiles.invalid', { isValid: false, validationError: err.message });
+        return {
+          isValid: false,
+          message: err.message,
+        };
+      }
+
+      this.logger.error({
+        msg: `An unexpected error occurred during source validation`,
+        logContext: logCtx,
+        err,
+        metadata: { shapefilePath },
+      });
+      throw err;
+    }
   }
 
   @withSpanAsyncV4
