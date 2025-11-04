@@ -9,6 +9,7 @@ export const createInputFilesSchema = () => {
   return inputFilesSchema;
 };
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const createGpkgInputFilesSchema = () => {
   return gpkgFilesPathSchema;
 }

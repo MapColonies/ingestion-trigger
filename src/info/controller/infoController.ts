@@ -1,12 +1,12 @@
+import { HttpError } from '@map-colonies/error-express-handler';
 import { RequestHandler } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
-import { GpkgInputFiles, SourcesValidationResponse } from '../../ingestion/interfaces';
+import { FileNotFoundError, GdalInfoError } from '../../ingestion/errors/ingestionErrors';
+import { GpkgInputFiles } from '../../ingestion/interfaces';
+import { InfoData } from '../../ingestion/schemas/infoDataSchema';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { InfoManager } from '../models/infoManager';
-import { InfoData } from '../../ingestion/schemas/infoDataSchema';
-import { FileNotFoundError, GdalInfoError } from '../../ingestion/errors/ingestionErrors';
-import { HttpError } from '@map-colonies/error-express-handler';
 
 type SourcesInfoHandler = RequestHandler<undefined, InfoData[], unknown>;
 
@@ -19,8 +19,8 @@ export class InfoController {
 
   public getInfoData: SourcesInfoHandler = async (req, res, next): Promise<void> => {
     try {
-      const validInputFilesRequestBody: GpkgInputFiles = await this.schemasValidator.validateGpkgInputFilesBody(req.body);
-      const filesGdalInfoData = await this.infoManager.getInfoData(validInputFilesRequestBody);
+      const validInputFilesRequestBody: GpkgInputFiles = await this.schemasValidator.validateInputFilesRequestBody(req.body);
+      const filesGdalInfoData = await this.infoManager.getGpkgsInfo(validInputFilesRequestBody);
 
       res.status(StatusCodes.OK).send(filesGdalInfoData);
     } catch (err) {

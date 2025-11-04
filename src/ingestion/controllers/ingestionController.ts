@@ -1,11 +1,10 @@
 import { ConflictError } from '@map-colonies/error-types';
-import { InputFiles } from '@map-colonies/raster-shared';
 import { RequestHandler } from 'express';
 import { HttpError } from 'express-openapi-validator/dist/framework/types';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
-import { FileNotFoundError, GdalInfoError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
+import { UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
 import type { GpkgInputFiles, IRecordRequestParams, ResponseId, SourcesValidationResponse } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 

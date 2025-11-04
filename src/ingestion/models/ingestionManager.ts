@@ -25,7 +25,7 @@ import { Checksum as IChecksum } from '../../utils/hash/interface';
 import { LogContext } from '../../utils/logger/logContext';
 import { getShapefileFiles } from '../../utils/shapefile';
 import { ChecksumError, FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import { gpkgFilesPathSchema, type GpkgInputFiles, type ResponseId, type SourcesValidationResponse, type ValidationTaskParameters } from '../interfaces';
+import { type GpkgInputFiles, type ResponseId, type SourcesValidationResponse, type ValidationTaskParameters } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';

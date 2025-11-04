@@ -3,12 +3,12 @@ import { basename, dirname } from 'node:path';
 import { Logger } from '@map-colonies/js-logger';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 import { trace, Tracer } from '@opentelemetry/api';
-import { IConfig } from '../../common/interfaces';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
+import { IConfig } from '../../common/interfaces';
+import { GdalInfoManager } from '../../info/models/gdalInfoManager';
 import { LogContext } from '../../utils/logger/logContext';
 import { FileNotFoundError } from '../errors/ingestionErrors';
-import { GdalInfoManager } from '../../info/models/gdalInfoManager';
 import { GpkgManager } from '../models/gpkgManager';
 
 @injectable()
