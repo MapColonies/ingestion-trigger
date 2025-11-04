@@ -311,7 +311,7 @@ export class IngestionManager {
 
   @withSpanAsyncV4
   private async validateGpkgsSources(gpkgInputFiles: GpkgInputFiles): Promise<SourcesValidationResponse> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateGpkgs.name };
+    const logCtx: LogContext = { ...this.logContext, function: this.validateGpkgsSources.name };
     const { gpkgFilesPath } = gpkgInputFiles;
 
     try {
@@ -376,7 +376,7 @@ export class IngestionManager {
 
   @withSpanAsyncV4
   private async validateShapefiles(shapefilePath: string[]): Promise<SourcesValidationResponse> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateGpkgs.name };
+    const logCtx: LogContext = { ...this.logContext, function: this.validateShapefiles.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.validateShapefiles');
 
