@@ -8,6 +8,7 @@ const ingestionRouterFactory: FactoryFunction<Router> = (dependencyContainer) =>
 
   router.post('/', controller.newLayer.bind(controller));
   router.put('/:id', controller.updateLayer.bind(controller));
+  router.put('/:jobId/retry', controller.retryLayer.bind(controller));
   router.post('/validate/gpkgs', controller.validateGpkgs.bind(controller));
 
   return router;

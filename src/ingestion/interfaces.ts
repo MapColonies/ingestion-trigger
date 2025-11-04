@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { ICreateJobResponse } from '@map-colonies/mc-priority-queue';
-import type { Checksum } from '../utils/hash/interface';
 import { inputFilesSchema } from '@map-colonies/raster-shared';
 import z from 'zod';
+import type { Checksum } from '../utils/hash/interface';
 
 export interface SourcesValidationResponse {
   isValid: boolean;
@@ -16,6 +16,13 @@ export interface ResponseId {
 
 export interface IRecordRequestParams {
   id: string;
+}
+
+export interface IJobRequestParams {
+  jobId: string;
+}
+export interface MockRertyTaskParameters {
+  noErrors: boolean; isErrors: boolean; checksums: Checksum[]
 }
 
 export interface PixelRange {
@@ -53,5 +60,5 @@ export interface ValidationTaskParameters {
   checksums: Checksum[];
 }
 
-export const gpkgFilesPathSchema = inputFilesSchema.pick({gpkgFilesPath: true});
+export const gpkgFilesPathSchema = inputFilesSchema.pick({ gpkgFilesPath: true });
 export type GpkgInputFiles = z.infer<typeof gpkgFilesPathSchema>;

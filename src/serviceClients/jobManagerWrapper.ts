@@ -41,4 +41,19 @@ export class JobManagerWrapper extends JobManagerClient {
       throw err;
     }
   }
+
+  @withSpanAsyncV4
+  public async resetJob(jobId: string): Promise<void> {
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('jobManagerWrapper.resetJob');
+
+    try {
+      await this.post(`${this.baseUrl}/jobs/${jobId}/reset`,{});
+      this.logger.info({ msg: 'successfully reset job', jobId });
+    } catch (err) {
+      const message = `failed to reset job with id: ${jobId}`;
+      this.logger.error({ msg: message, err, jobId });
+      throw err;
+    }
+  }
 }
