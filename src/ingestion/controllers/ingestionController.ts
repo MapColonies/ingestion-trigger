@@ -5,11 +5,12 @@ import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
-import { FileNotFoundError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
-import type { IRecordRequestParams, ResponseId } from '../interfaces';
+import { FileNotFoundError, GdalInfoError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
+import type { GpkgInputFiles, IJobRequestParams, IRecordRequestParams, ResponseId, SourcesValidationResponse } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 
 type NewLayerHandler = RequestHandler<undefined, ResponseId, unknown>;
+type RetryLayerHandler = RequestHandler<IJobRequestParams, ResponseId, unknown>;
 type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseId, unknown>;
 
 @injectable()
@@ -17,7 +18,7 @@ export class IngestionController {
   public constructor(
     @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator,
     private readonly ingestionManager: IngestionManager
-  ) {}
+  ) { }
 
   public newLayer: NewLayerHandler = async (req, res, next) => {
     try {
@@ -56,6 +57,25 @@ export class IngestionController {
       } else if (error instanceof ConflictError) {
         (error as HttpError).status = StatusCodes.CONFLICT; //409
       } else if (error instanceof UnsupportedEntityError || error instanceof GpkgError) {
+        (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
+      }
+      next(error);
+    }
+  };
+
+  public retryLayer: RetryLayerHandler = async (req, res, next) => {
+    try {
+      const response = await this.ingestionManager.retryLayer(req.params.jobId);
+
+      res.status(StatusCodes.OK).send(response);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
+      }
+      if (error instanceof ConflictError) {
+        (error as HttpError).status = StatusCodes.CONFLICT; //409
+      }
+      if (error instanceof UnsupportedEntityError) {
         (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
       }
       next(error);

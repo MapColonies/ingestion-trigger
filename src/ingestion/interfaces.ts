@@ -1,6 +1,14 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { ICreateJobResponse } from '@map-colonies/mc-priority-queue';
+import { inputFilesSchema } from '@map-colonies/raster-shared';
+import z from 'zod';
+import { type baseIngestionValidationTaskParamsSchema } from '@map-colonies/raster-shared';
 import type { Checksum } from '../utils/hash/interfaces';
+
+export interface SourcesValidationResponse {
+  isValid: boolean;
+  message: string;
+}
 
 export interface ResponseId {
   jobId: ICreateJobResponse['id'];
@@ -9,6 +17,10 @@ export interface ResponseId {
 
 export interface IRecordRequestParams {
   id: string;
+}
+
+export interface IJobRequestParams {
+  jobId: string;
 }
 
 export interface PixelRange {
@@ -42,6 +54,15 @@ export interface TileSize {
   height: number;
 }
 
-export interface ValidationTaskParameters {
+export type BaseValidationTaskParams = z.infer<typeof baseIngestionValidationTaskParamsSchema>;
+
+export interface ChecksumValidationParameters {
   checksums: Checksum[];
 }
+
+export interface ValidationTaskParameters extends Omit<BaseValidationTaskParams, 'isValid'>, ChecksumValidationParameters {
+  isValid?: boolean;
+}
+
+export const gpkgFilesPathSchema = inputFilesSchema.pick({ gpkgFilesPath: true });
+export type GpkgInputFiles = z.infer<typeof gpkgFilesPathSchema>;

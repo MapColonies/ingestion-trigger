@@ -1,6 +1,7 @@
-import { ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { join } from 'node:path';
+import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
-import { IFindJobsByCriteriaBody, OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
+import { IFindJobsByCriteriaBody, IUpdateTaskBody, OperationStatus, type ICreateJobBody, type ITaskResponse } from '@map-colonies/mc-priority-queue';
 import {
   getMapServingLayerName,
   type IngestionNewJobParams,
@@ -8,10 +9,12 @@ import {
   type IngestionUpdateJobParams,
   type InputFiles,
   type RasterProductTypes,
+  type ingestionBaseJobParamsSchema,
 } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { container, inject, injectable } from 'tsyringe';
+import z from 'zod';
 import { SERVICES } from '../../common/constants';
 import { IConfig, ISupportedIngestionSwapTypes, LogContext } from '../../common/interfaces';
 import { InfoManager } from '../../info/models/infoManager';
@@ -171,6 +174,129 @@ export class IngestionManager {
     activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId });
 
     return { jobId, taskId };
+  }
+
+  @withSpanAsyncV4
+  public async retryLayer(jobId: string): Promise<ResponseId> {
+    const logCtx: LogContext = { ...this.logContext, function: this.retryLayer.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('ingestionManager.retryLayer');
+
+    this.logger.info({ msg: 'starting retry layer process', logContext: logCtx, jobId });
+
+    const retryJob = await this.jobManagerWrapper.getJob<z.infer<typeof ingestionBaseJobParamsSchema>, unknown>(jobId);
+    this.validateRetryJobStatus(jobId, retryJob.status, logCtx);
+
+    const validationTask = await this.getValidationTask(jobId, logCtx);
+
+    switch (validationTask.parameters.isValid) {
+      case false:
+        return this.handleRetryWithErrors(jobId, retryJob, validationTask, logCtx);
+        case true:
+        return this.handleRetryWithoutErrors(jobId, validationTask.id, logCtx);
+      default: {
+        const msg = 'Cannot retry job because validation task status is unclear';
+        this.logger.error({ msg, logContext: logCtx, jobId, taskId: validationTask.id });
+        const error = new BadRequestError(msg);
+        trace.getActiveSpan()?.setAttribute('exception.type', error.status);
+        throw error;
+      }
+    }
+  }
+
+  @withSpanV4
+  private validateRetryJobStatus(jobId: string, status: OperationStatus, logCtx: LogContext): void {
+    const validStatuses = [OperationStatus.FAILED, OperationStatus.COMPLETED];
+    if (!validStatuses.includes(status)) {
+      const message = `Cannot retry job with id: ${jobId} because its status is: ${status}. Expected status: ${validStatuses.join(' or ')}`;
+      this.logger.error({ msg: message, logContext: logCtx, jobId, currentStatus: status, validStatuses });
+      const error = new BadRequestError(message);
+      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
+      throw error;
+    }
+  }
+
+  @withSpanAsyncV4
+  private async getValidationTask(jobId: string, logCtx: LogContext): Promise<ITaskResponse<ValidationTaskParameters>> {
+    const tasks = await this.jobManagerWrapper.getTasksForJob<ValidationTaskParameters>(jobId);
+
+    const validationTask = tasks.find((task) => task.type === this.validationTaskType);
+
+    if (!validationTask) {
+      const message = `Cannot retry job with id: ${jobId} because no validation task was found`;
+      this.logger.error({ msg: message, logContext: logCtx, jobId, taskTypes: tasks.map((t) => t.type) });
+      const error = new NotFoundError(message);
+      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
+      throw error;
+    }
+
+    return validationTask;
+  }
+
+  @withSpanAsyncV4
+  private async handleRetryWithoutErrors(jobId: string, taskId: string, logCtx: LogContext): Promise<ResponseId> {
+    this.logger.info({ msg: 'validation completed without errors, resetting job', logContext: logCtx, jobId, taskId });
+    await this.jobManagerWrapper.resetJob(jobId);
+    trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.retryLayer.success', { retryType: 'reset', jobId });
+    this.logger.info({ msg: 'job reset successfully', logContext: logCtx, jobId, taskId });
+    return { jobId, taskId };
+  }
+
+  @withSpanAsyncV4
+  private async handleRetryWithErrors(
+    jobId: string,
+    retryJob: { parameters: z.infer<typeof ingestionBaseJobParamsSchema> },
+    validationTask: ITaskResponse<ValidationTaskParameters>,
+    logCtx: LogContext
+  ): Promise<ResponseId> {
+    this.logger.info({ msg: 'validation has errors, checking for shapefile changes', logContext: logCtx, jobId, taskId: validationTask.id });
+
+    const metadataShapefilePath = retryJob.parameters.inputFiles.metadataShapefilePath;
+    if (!metadataShapefilePath) {
+      const message = `Cannot retry job with id: ${jobId} because metadata shapefile path is missing from job parameters`;
+      this.logger.error({ msg: message, logContext: logCtx, jobId });
+      const error = new BadRequestError(message);
+      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
+      throw error;
+    }
+
+    const absoluteMetadataPath = join(this.sourceMount, metadataShapefilePath);
+    const newChecksums = await this.getFilesChecksum(absoluteMetadataPath);
+
+    this.validateShapefileChanges(jobId, validationTask, newChecksums, logCtx);
+
+    const newTaskParameters: IUpdateTaskBody<ValidationTaskParameters> = { parameters: { ...validationTask.parameters, checksums: [...validationTask.parameters.checksums, ...newChecksums] } };
+
+    await this.jobManagerWrapper.updateTask<ValidationTaskParameters>(validationTask.jobId, validationTask.id, newTaskParameters);
+    trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.retryLayer.success', { retryType: 'withChanges', jobId });
+    this.logger.info({ msg: 'retry layer completed successfully', logContext: logCtx, jobId, taskId: validationTask.id });
+    return { jobId, taskId: validationTask.id };
+  }
+
+  @withSpanV4
+  private validateShapefileChanges(
+    jobId: string,
+    validationTask: ITaskResponse<ValidationTaskParameters>,
+    newChecksums: IChecksum[],
+    logCtx: LogContext
+  ): void {
+    const existingChecksums = validationTask.parameters.checksums;
+    const allChecksumsExist = newChecksums.every((newChecksum) =>
+      existingChecksums.some(
+        (existingChecksum: IChecksum) =>
+          existingChecksum.checksum === newChecksum.checksum && existingChecksum.fileName === newChecksum.fileName
+      )
+    );
+
+    if (allChecksumsExist) {
+      const message = `Cannot retry job with id: ${jobId} because the shapefile has not changed`;
+      this.logger.error({ msg: message, logContext: logCtx, jobId, taskId: validationTask.id });
+      const error = new ConflictError(message);
+      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
+      throw error;
+    }
+
+    this.logger.info({ msg: 'shapefile has changed, updating validation task parameters', logContext: logCtx, jobId, taskId: validationTask.id });
   }
 
   @withSpanAsyncV4
@@ -354,7 +480,7 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async newLayerJobPayload(newLayer: EnhancedIngestionNewLayer): Promise<ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters>> {
     const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath.absolute);
-    const taskParameters = { checksums };
+    const taskParameters: ValidationTaskParameters = { checksums };
 
     const newLayerRelative = {
       ...newLayer,
@@ -398,7 +524,7 @@ export class IngestionManager {
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
 
     const checksums = await this.getFilesChecksum(updateLayer.inputFiles.metadataShapefilePath.absolute);
-    const taskParameters = { checksums };
+    const taskParameters: ValidationTaskParameters = { checksums };
 
     const updateLayerRelative = {
       ...updateLayer,
