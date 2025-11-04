@@ -48,6 +48,7 @@ export class ServerBuilder {
   private buildRoutes(): void {
     this.serverInstance.use('/ingestion', this.ingestionRouter);
     this.serverInstance.use('/info', this.infoRouter);
+
     this.buildDocsRoutes();
   }
 

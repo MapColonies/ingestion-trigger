@@ -159,9 +159,9 @@ paths:
       operationId: getGpkgsInfo
       tags:
         - info
-      summary: returns the GDAL info for the provided gpkgs files
+      summary: returns the GDAL info for the provided gpkg files
       requestBody:
-        description: A json object containing array of gpkg files path
+        description: A json object containing array of gpkg file paths
         required: true
         content:
           application/json:
@@ -315,6 +315,13 @@ components:
           $ref: '#/components/schemas/MetadataShapefilePath'
         productShapefilePath:
           $ref: '#/components/schemas/ProductShapefilePath'
+    GpkgInputFiles:
+      type: object
+      required:
+        - gpkgFilesPath
+      properties:
+        gpkgFilesPath:
+          $ref: '#/components/schemas/GpkgFilesPath'
     MetadataShapefilePath:
       type: string
       pattern: ^(\/?[\w-]+)(\/[\w-]+)*\/ShapeMetadata\.shp$
@@ -325,13 +332,6 @@ components:
       pattern: ^(\/?[\w-]+)(\/[\w-]+)*\/Product\.shp$
       description: product shape file path
       example: 'path/to/Product.shp'
-    GpkgInputFiles:
-      type: object
-      required:
-        - gpkgFilesPath
-      properties:
-        gpkgFilesPath:
-          $ref: '#/components/schemas/GpkgFilesPath'
     SuccessfulIngestionResponse:
       type: object
       required:

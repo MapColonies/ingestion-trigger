@@ -18,7 +18,7 @@ export class IngestionRequestSender {
     return supertest.agent(this.app).post('/ingestion/validate/gpkgs').set('Content-Type', 'application/json').send(body);
   }
 
-  public async getInfoData(body: GpkgInputFiles): Promise<supertest.Response> {
+  public async getGpkgsInfo(body: GpkgInputFiles): Promise<supertest.Response> {
     return supertest.agent(this.app).post('/info/gpkgs').set('Content-Type', 'application/json').send(body);
   }
 }

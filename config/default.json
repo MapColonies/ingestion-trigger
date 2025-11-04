@@ -35,7 +35,7 @@
     }
   },
   "storageExplorer": {
-    "layerSourceDir": "/home/shlomiko/Repositories/ingestion/ingestion-trigger/tests/mocks/testFiles/gpkg/",
+    "layerSourceDir": "",
     "displayNameDir": "\\layerSources",
     "watchDirectory": "watch",
     "validFileExtensions": ["gpkg", "shp", "shx", "dbf", "prj", "cpg"]
