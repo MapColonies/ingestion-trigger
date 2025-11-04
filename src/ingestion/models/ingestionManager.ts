@@ -96,37 +96,23 @@ export class IngestionManager {
     const { gpkgFilesPath } = gpkgInputFiles;
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.validateGpkgs');
+
     try {
       this.logger.info({ msg: 'Starting gpkgs validation process', logContext: logCtx, metadata: { gpkgFilesPath } });
-      await this.sourceValidator.validateFilesExist(gpkgFilesPath);
-
-      await this.sourceValidator.validateGdalInfo(gpkgFilesPath);
-      this.logger.debug({ msg: 'GDAL info validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
-
-      this.sourceValidator.validateGpkgFiles(gpkgFilesPath);
-      this.logger.debug({ msg: 'GPKG files validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
-
-      const validationResult: SourcesValidationResponse = { isValid: true, message: 'Sources are valid' };
-      this.logger.debug({
-        msg: validationResult.message,
-        logContext: logCtx,
-        metadata: { gpkgFilesPath, isValid: validationResult.isValid },
-      });
-      activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.validateSources.valid', { isValid: true });
-      return validationResult;
-    } catch (err) {
-      if (err instanceof FileNotFoundError || err instanceof GdalInfoError || err instanceof GpkgError) {
-        this.logger.info({ msg: `Sources are not valid:${err.message}`, logContext: logCtx, err: err, metadata: { gpkgFilesPath } });
-        activeSpan?.addEvent('ingestionManager.validateSources.invalid', { isValid: false, validationError: err.message });
-        return { isValid: false, message: err.message };
+      const absoluteGpkgFilesPath = this.getAbsoluteGpkgFilesPath({ gpkgFilesPath });
+      const response = await this.validateGpkgsSources(absoluteGpkgFilesPath);
+      this.logger.info({ msg: 'Finished gpkgs validation process', logContext: logCtx });
+      activeSpan?.setStatus({ code: SpanStatusCode.OK });
+      if (response.isValid) {
+        activeSpan?.addEvent('ingestionManager.validateGpkgs.valid', { isValid: true });
+      } else {
+        activeSpan?.addEvent('ingestionManager.validateGpkgs.invalid', { isValid: false });
       }
-
-      this.logger.error({
-        msg: `An unexpected error occurred during source validation`,
-        logContext: logCtx,
-        err,
-        metadata: { gpkgFilesPath },
-      });
+      return response;
+    } catch (err) {
+      activeSpan
+        ?.setStatus({ code: SpanStatusCode.ERROR })
+        .addEvent('ingestionManager.validateGpkgs.invalid', { isValid: false, error: JSON.stringify(err) });
       throw err;
     }
   }
@@ -324,6 +310,44 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
+  private async validateGpkgsSources(gpkgInputFiles: GpkgInputFiles): Promise<SourcesValidationResponse> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateGpkgs.name };
+    const { gpkgFilesPath } = gpkgInputFiles;
+
+    try {
+      await this.sourceValidator.validateFilesExist(gpkgFilesPath);
+      this.logger.debug({ msg: 'GPKG file exist passed', logContext: logCtx, metadata: { gpkgFilesPath } });
+
+      await this.sourceValidator.validateGdalInfo(gpkgFilesPath);
+      this.logger.debug({ msg: 'GDAL info validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
+
+      this.sourceValidator.validateGpkgFiles(gpkgFilesPath);
+      this.logger.debug({ msg: 'GPKG files validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
+
+      const validationResult = { isValid: true, message: 'Sources are valid' };
+      this.logger.debug({
+        msg: validationResult.message,
+        logContext: logCtx,
+        metadata: { gpkgFilesPath, isValid: validationResult.isValid },
+      });
+      return validationResult;
+    } catch (err) {
+      if (err instanceof FileNotFoundError || err instanceof GdalInfoError || err instanceof GpkgError) {
+        this.logger.info({ msg: `Sources are not valid: ${err.message}`, logContext: logCtx, err, metadata: { gpkgFilesPath } });
+        return { isValid: false, message: err.message };
+      }
+
+      this.logger.error({
+        msg: `An unexpected error occurred during source validation`,
+        logContext: logCtx,
+        err,
+        metadata: { gpkgFilesPath },
+      });
+      throw err;
+    }
+  }
+
+  @withSpanAsyncV4
   private async validateInputFiles(inputFiles: InputFiles): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateInputFiles.name };
     const { productShapefilePath } = inputFiles;
@@ -334,7 +358,7 @@ export class IngestionManager {
     ]);
 
     // validate files exist, gdal info and GPKG data
-    const isValidSources = await this.validateGpkgs({ gpkgFilesPath: inputFiles.gpkgFilesPath });
+    const isValidSources = await this.validateGpkgsSources({ gpkgFilesPath: inputFiles.gpkgFilesPath });
     if (!isValidSources.isValid || !isValidShapefiles.isValid) {
       const errorMessage = !isValidSources.isValid ? isValidSources.message : isValidShapefiles.message;
       this.logger.error({ msg: errorMessage, logContext: logCtx, inputFiles });
@@ -364,7 +388,7 @@ export class IngestionManager {
       };
     } catch (err) {
       if (err instanceof FileNotFoundError) {
-        this.logger.info({ msg: `Sources are not valid:${err.message}`, logContext: logCtx, err: err, metadata: { shapefilePath } });
+        this.logger.info({ msg: `Sources are not valid: ${err.message}`, logContext: logCtx, err: err, metadata: { shapefilePath } });
         activeSpan?.addEvent('ingestionManager.validateShapefiles.invalid', { isValid: false, validationError: err.message });
         return {
           isValid: false,
@@ -501,7 +525,7 @@ export class IngestionManager {
   private getAbsolutePathInputFiles({ inputFiles }: Pick<IngestionNewLayer, 'inputFiles'>): Pick<IngestionNewLayer, 'inputFiles'> {
     return {
       inputFiles: {
-        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => join(this.sourceMount, gpkgFilePath)),
+        ...this.getAbsoluteGpkgFilesPath(inputFiles),
         metadataShapefilePath: join(this.sourceMount, inputFiles.metadataShapefilePath),
         productShapefilePath: join(this.sourceMount, inputFiles.productShapefilePath),
       },
@@ -517,5 +541,10 @@ export class IngestionManager {
         productShapefilePath: relative(this.sourceMount, inputFiles.productShapefilePath),
       },
     };
+  }
+
+  @withSpanV4
+  private getAbsoluteGpkgFilesPath({ gpkgFilesPath }: Pick<InputFiles, 'gpkgFilesPath'>): Pick<InputFiles, 'gpkgFilesPath'> {
+    return { gpkgFilesPath: gpkgFilesPath.map((gpkgFilePath) => join(this.sourceMount, gpkgFilePath)) };
   }
 }
