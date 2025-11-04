@@ -218,6 +218,8 @@ export const getTestFilesPath = (): string => {
   return TEST_FILES_RELATIVE_PATH;
 };
 
+export const generateChecksum = (): string => faker.string.hexadecimal({ length: 64, casing: 'lower', prefix: '' });
+
 export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] =>
   faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
 
@@ -310,7 +312,7 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
   ].map((fileName) => {
     return {
       algorithm: 'XXH64' as const,
-      checksum: faker.string.hexadecimal({ length: 64, casing: 'lower', prefix: '' }),
+      checksum: generateChecksum(),
       fileName,
     };
   });
@@ -380,7 +382,7 @@ export const generateUpdateJobRequest = (
   ].map((fileName) => {
     return {
       algorithm: 'XXH64' as const,
-      checksum: faker.string.hexadecimal({ length: 64, casing: 'lower', prefix: '' }),
+      checksum: generateChecksum(),
       fileName,
     };
   });
