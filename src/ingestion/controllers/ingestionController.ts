@@ -5,8 +5,9 @@ import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
-import type { GpkgInputFiles, IRecordRequestParams, ResponseId, SourcesValidationResponse } from '../interfaces';
+import type { IRecordRequestParams, ResponseId, SourcesValidationResponse } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
+import type { GpkgInputFiles } from '../schemas/inputFilesSchema';
 
 type ValidateGpkgsHandler = RequestHandler<undefined, SourcesValidationResponse, unknown>;
 type NewLayerHandler = RequestHandler<undefined, ResponseId, unknown>;
@@ -64,7 +65,7 @@ export class IngestionController {
 
   public validateGpkgs: ValidateGpkgsHandler = async (req, res, next): Promise<void> => {
     try {
-      const validGpkgInputFilesRequestBody: GpkgInputFiles = await this.schemasValidator.validateGpkgsInputFilesRequestBody(req.body);
+      const validGpkgInputFilesRequestBody = await this.schemasValidator.validateGpkgsInputFilesRequestBody(req.body);
 
       const validationResponse = await this.ingestionManager.validateGpkgs(validGpkgInputFilesRequestBody);
 

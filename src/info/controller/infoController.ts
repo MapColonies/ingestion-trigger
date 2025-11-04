@@ -3,8 +3,8 @@ import { RequestHandler } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
 import { FileNotFoundError, GdalInfoError } from '../../ingestion/errors/ingestionErrors';
-import { GpkgInputFiles } from '../../ingestion/interfaces';
 import { InfoData } from '../../ingestion/schemas/infoDataSchema';
+import { GpkgInputFiles } from '../../ingestion/schemas/inputFilesSchema';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { InfoManager } from '../models/infoManager';
 

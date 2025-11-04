@@ -1,6 +1,6 @@
 import { InputFiles } from '@map-colonies/raster-shared';
 import { DependencyContainer } from 'tsyringe';
-import { GpkgInputFiles } from '../../ingestion/interfaces';
+import { GpkgInputFiles } from '../../ingestion/schemas/inputFilesSchema';
 import { gdalInfoSchema, type GdalInfo } from '../../ingestion/schemas/gdalDataSchema';
 import { createInfoDataSchema, InfoData } from '../../ingestion/schemas/infoDataSchema';
 import { createNewIngestionLayerSchema, type IngestionNewLayer } from '../../ingestion/schemas/ingestionLayerSchema';
