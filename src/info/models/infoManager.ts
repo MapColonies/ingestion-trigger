@@ -29,9 +29,9 @@ export class InfoManager {
   public async getGpkgsInfo(gpkgInputFiles: GpkgInputFiles): Promise<InfoDataWithFile[]> {
     const logCtx: LogContext = { ...this.logContext, function: this.getGpkgsInfo.name };
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('infoManager.getInfoData');
+    activeSpan?.updateName('infoManager.getGpkgsInfo');
     const { gpkgFilesPath } = gpkgInputFiles;
-    this.logger.info({ msg: 'getting gdal info for files', logContext: logCtx, metadata: { gpkgFilesPath } });
+    this.logger.info({ msg: 'Getting gdal info for files', logContext: logCtx, metadata: { gpkgFilesPath } });
 
     await this.sourceValidator.validateFilesExist(gpkgFilesPath);
     this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
