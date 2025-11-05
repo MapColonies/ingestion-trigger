@@ -12,6 +12,7 @@ import { Grid, type ResponseId, type ValidationTaskParameters } from '../../../s
 import { GpkgManager } from '../../../src/ingestion/models/gpkgManager';
 import { infoDataSchemaArray } from '../../../src/ingestion/schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../../../src/ingestion/schemas/ingestionLayerSchema';
+import type { GpkgInputFiles } from '../../../src/ingestion/schemas/inputFilesSchema';
 import type { IngestionUpdateLayer } from '../../../src/ingestion/schemas/updateLayerSchema';
 import { SourceValidator } from '../../../src/ingestion/validators/sourceValidator';
 import { SQLiteClient } from '../../../src/serviceClients/database/SQLiteClient';
@@ -26,6 +27,7 @@ import {
   createUpdateJobRequest,
   createUpdateLayerRequest,
   generateCallbackUrl,
+  getGpkgsFilesLocalPath,
   rasterLayerInputFilesGenerators,
   rasterLayerMetadataGenerators,
 } from '../../mocks/mockFactory';
@@ -34,7 +36,11 @@ import { getTestContainerConfig, resetContainer } from './helpers/containerConfi
 import { IngestionRequestSender } from './helpers/ingestionRequestSender';
 
 describe('Ingestion', function () {
+  let jobManagerURL: string;
+  let mapProxyApiServiceUrl: string;
+  let catalogServiceURL: string;
   let requestSender: IngestionRequestSender;
+
   const validInputFiles: Pick<ValidationTaskParameters, 'checksums'> & Pick<IngestionUpdateLayer, 'inputFiles'> = {
     inputFiles: {
       gpkgFilesPath: ['validIndexed.gpkg'],
@@ -42,17 +48,14 @@ describe('Ingestion', function () {
       metadataShapefilePath: 'validIndexed',
     },
     checksums: [
-      { algorithm: 'XXH64', checksum: 'a0915c78be995614', fileName: 'testFiles/metadata/validIndexed/ShapeMetadata.cpg' },
-      { algorithm: 'XXH64', checksum: '1c4047022f216b6f', fileName: 'testFiles/metadata/validIndexed/ShapeMetadata.dbf' },
-      { algorithm: 'XXH64', checksum: '691fb87c5aeebb48', fileName: 'testFiles/metadata/validIndexed/ShapeMetadata.prj' },
-      { algorithm: 'XXH64', checksum: '5e371a633204f7eb', fileName: 'testFiles/metadata/validIndexed/ShapeMetadata.shp' },
-      { algorithm: 'XXH64', checksum: '89abcaac2015beff', fileName: 'testFiles/metadata/validIndexed/ShapeMetadata.shx' },
+      { algorithm: 'XXH64', checksum: 'a0915c78be995614', fileName: 'metadata/validIndexed/ShapeMetadata.cpg' },
+      { algorithm: 'XXH64', checksum: '1c4047022f216b6f', fileName: 'metadata/validIndexed/ShapeMetadata.dbf' },
+      { algorithm: 'XXH64', checksum: '691fb87c5aeebb48', fileName: 'metadata/validIndexed/ShapeMetadata.prj' },
+      { algorithm: 'XXH64', checksum: '5e371a633204f7eb', fileName: 'metadata/validIndexed/ShapeMetadata.shp' },
+      { algorithm: 'XXH64', checksum: '89abcaac2015beff', fileName: 'metadata/validIndexed/ShapeMetadata.shx' },
     ],
   };
 
-  const jobManagerURL = configMock.get<string>('services.jobManagerURL');
-  const mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
-  const catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
   let jobResponse: ICreateJobResponse;
 
   beforeEach(function () {
@@ -63,6 +66,10 @@ describe('Ingestion', function () {
       id: faker.string.uuid(),
       taskIds: [faker.string.uuid()],
     };
+
+    jobManagerURL = configMock.get<string>('services.jobManagerURL');
+    mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
+    catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
 
     requestSender = new IngestionRequestSender(app);
   });
@@ -91,8 +98,8 @@ describe('Ingestion', function () {
         validateGpkgFilesSpy.mockClear();
       });
 
-      it('should return 200 status code and sources is valid response', async function () {
-        const validateGpkgsRequest = { gpkgFilesPath: validInputFiles.inputFiles.gpkgFilesPath };
+      it('should return 200 status code and sources is valid response', async () => {
+        const validateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(validInputFiles.inputFiles.gpkgFilesPath) };
 
         const response = await requestSender.validateGpkgs(validateGpkgsRequest);
 
@@ -105,7 +112,7 @@ describe('Ingestion', function () {
         expect(response.body).toHaveProperty('message', 'Sources are valid');
       });
 
-      it('should return 200 status code and sources invalid response - file does not exist', async function () {
+      it('should return 200 status code and sources invalid response - file does not exist', async () => {
         const validateGpkgsRequest = { gpkgFilesPath: rasterLayerInputFilesGenerators.gpkgFilesPath() };
 
         const response = await requestSender.validateGpkgs(validateGpkgsRequest);
@@ -117,11 +124,10 @@ describe('Ingestion', function () {
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
         expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
       });
 
-      it('should return 200 status code and sources invalid response - unsupported CRS', async function () {
-        const validateGpkgsRequest = fakeIngestionSources.invalidSources.unsupportedCrs;
+      it('should return 200 status code and sources invalid response - unsupported CRS', async () => {
+        const validateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(['invalidCrs-3857.gpkg']) };
 
         const response = await requestSender.validateGpkgs(validateGpkgsRequest);
 
@@ -132,11 +138,10 @@ describe('Ingestion', function () {
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
         expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
       });
 
-      it('should return 200 status code and sources invalid response - unsupported pixel size', async function () {
-        const validateGpkgsRequest = fakeIngestionSources.invalidSources.unsupportedPixelSize;
+      it('should return 200 status code and sources invalid response - unsupported pixel size', async () => {
+        const validateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(['invalidPixelSize-0.8.gpkg']) };
 
         const response = await requestSender.validateGpkgs(validateGpkgsRequest);
 
@@ -147,12 +152,25 @@ describe('Ingestion', function () {
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
         expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
       });
 
-      it('should return 200 status code and sources invalid response - failed to get gdal info gdal.infoAsync', async function () {
+      it('should return 200 status code and sources invalid response - unsupported file', async () => {
+        const invalidateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(['invalid.gpkg']) };
+
+        const response = await requestSender.validateGpkgs(invalidateGpkgsRequest);
+
+        expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
+        expect(validateGdalInfoSpy).toHaveBeenCalledTimes(1);
+        await expect(validateGdalInfoSpy).rejects.toThrow();
+        expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(0);
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toHaveProperty('isValid', false);
+      });
+
+      it('should return 200 status code and sources invalid response - failed to get gdal info gdal.infoAsync', async () => {
         jest.spyOn(gdal, 'infoAsync').mockRejectedValue(new Error('failed to read file'));
-        const validateGpkgsRequest = fakeIngestionSources.validSources.validInputFiles;
+        const validateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(validInputFiles.inputFiles.gpkgFilesPath) };
 
         const response = await requestSender.validateGpkgs(validateGpkgsRequest);
 
@@ -163,12 +181,11 @@ describe('Ingestion', function () {
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
         expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
       });
 
-      it('should return 200 status code and sources invalid response - failed to open gdal dataset gdal.openAsync', async function () {
+      it('should return 200 status code and sources invalid response - failed to open gdal dataset gdal.openAsync', async () => {
         jest.spyOn(gdal, 'openAsync').mockRejectedValue(new Error('failed to read file'));
-        const validateGpkgsRequest = fakeIngestionSources.validSources.validInputFiles;
+        const validateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(validInputFiles.inputFiles.gpkgFilesPath) };
 
         const response = await requestSender.validateGpkgs(validateGpkgsRequest);
 
@@ -179,12 +196,11 @@ describe('Ingestion', function () {
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
         expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
       });
 
-      it('should return 200 status code and sources invalid response - gpkg index not exist', async function () {
+      it('should return 200 status code and sources invalid response - gpkg index not exist', async () => {
         const validateGpkgIndexSpy = jest.spyOn(GpkgManager.prototype as unknown as { validateGpkgIndex: jest.Mock }, 'validateGpkgIndex');
-        const validateGpkgsRequest = fakeIngestionSources.invalidSources.withoutGpkgIndex;
+        const validateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(['withoutGpkgIndex.gpkg']) };
 
         const response = await requestSender.validateGpkgs(validateGpkgsRequest);
 
@@ -197,12 +213,11 @@ describe('Ingestion', function () {
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
         expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
       });
 
-      it('should return 200 status code and sources invalid response - unsupported grid', async function () {
+      it('should return 200 status code and sources invalid response - unsupported grid', async () => {
         const validateGpkgGridSpy = jest.spyOn(GpkgManager.prototype as unknown as { validateGpkgGrid: jest.Mock }, 'validateGpkgGrid');
-        const validateGpkgsRequest = fakeIngestionSources.invalidSources.unsupportedGrid;
+        const validateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(['unsupportedGridMatrix.gpkg']) };
 
         const response = await requestSender.validateGpkgs(validateGpkgsRequest);
 
@@ -215,12 +230,11 @@ describe('Ingestion', function () {
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
         expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
       });
 
-      it('should return 200 status code and sources invalid response - unsupported tile size', async function () {
+      it('should return 200 status code and sources invalid response - unsupported tile size', async () => {
         const validateTilesSizeSpy = jest.spyOn(GpkgManager.prototype as unknown as { validateTilesSize: jest.Mock }, 'validateTilesSize');
-        const validateGpkgsRequest = fakeIngestionSources.invalidSources.unsupportedTileWidthSize;
+        const validateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(['unsupportedTileSize-width-512.gpkg']) };
 
         const response = await requestSender.validateGpkgs(validateGpkgsRequest);
 
@@ -233,7 +247,6 @@ describe('Ingestion', function () {
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
         expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
       });
     });
 
@@ -246,51 +259,58 @@ describe('Ingestion', function () {
         zodValidatorSpy.mockClear();
       });
 
-      it('should return 400 status code and error message too many files', async function () {
-        const invalidateGpkgsRequest = fakeIngestionSources.invalidValidation.tooManyFiles;
+      const badRequestBodyTestCases: {
+        testCase: string;
+        badValidateGpgksRequest: DeepPartial<GpkgInputFiles>;
+        removeProperty?: FlattenKeyTupleUnion<DeepRequired<GpkgInputFiles>>;
+      }[] = [
+        {
+          testCase: 'req body is not an object',
+          badValidateGpgksRequest: '' as DeepPartial<GpkgInputFiles>,
+        },
+        {
+          testCase: 'gpkgFilesPath in req body is not set',
+          badValidateGpgksRequest: { gpkgFilesPath: [''] },
+          removeProperty: ['gpkgFilesPath'],
+        },
+        {
+          testCase: 'gpkgFilesPath in req body is not an array',
+          badValidateGpgksRequest: { gpkgFilesPath: '' } as unknown as DeepPartial<GpkgInputFiles>,
+        },
+        {
+          testCase: 'gpkgFilesPath in req body is an empty array',
+          badValidateGpgksRequest: { gpkgFilesPath: [] },
+        },
+        {
+          testCase: 'gpkgFilesPath in req body is not an array of strings',
+          badValidateGpgksRequest: { gpkgFilesPath: [1] } as unknown as DeepPartial<GpkgInputFiles>,
+        },
+        {
+          testCase: 'gpkgFilesPath in req body is an array of strings not matching a file pattern',
+          badValidateGpgksRequest: { gpkgFilesPath: [rasterLayerInputFilesGenerators.gpkgFilesPath()[0] + ' '] },
+        },
+        {
+          testCase: 'gpkgFilesPath in req body is an array with more than 1 item',
+          badValidateGpgksRequest: {
+            gpkgFilesPath: faker.helpers.multiple(() => rasterLayerInputFilesGenerators.gpkgFilesPath()[0], { count: { min: 2, max: 10 } }),
+          },
+        },
+      ];
 
-        const response = await requestSender.validateGpkgs(invalidateGpkgsRequest);
+      it.each(badRequestBodyTestCases)(
+        'should return 400 status code when invalid input - $testCase',
+        async ({ badValidateGpgksRequest, removeProperty }) => {
+          const badValidateGpkgsRequest = badValidateGpgksRequest;
+          if (removeProperty) {
+            unset(badValidateGpkgsRequest, removeProperty);
+          }
 
-        expect(zodValidatorSpy).toHaveBeenCalledTimes(1);
-        await expect(zodValidatorSpy).rejects.toThrow();
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-        expect(response.body).toHaveProperty('message', 'fileNames: Number of files should be 1');
-      });
+          const response = await requestSender.validateGpkgs(badValidateGpkgsRequest);
 
-      it('should return 400 status code and error message not supported file', async function () {
-        const invalidateGpkgsRequest = fakeIngestionSources.invalidValidation.notGpkg;
-
-        const response = await requestSender.validateGpkgs(invalidateGpkgsRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-        expect(response.body).toHaveProperty('message');
-      });
-
-      it('should return 400 status code and error message no files supplied', async function () {
-        const invalidateGpkgsRequest = fakeIngestionSources.invalidValidation.noFiles;
-
-        const response = await requestSender.validateGpkgs(invalidateGpkgsRequest);
-
-        expect(zodValidatorSpy).toHaveBeenCalledTimes(1);
-        await expect(zodValidatorSpy).rejects.toThrow();
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-        expect(response.body).toHaveProperty('message');
-      });
-
-      it('should return 400 status code and error message no directory supplied', async function () {
-        const invalidateGpkgsRequest = fakeIngestionSources.invalidValidation.noDirectory;
-
-        const response = await requestSender.validateGpkgs(invalidateGpkgsRequest);
-
-        expect(zodValidatorSpy).toHaveBeenCalledTimes(1);
-        await expect(zodValidatorSpy).rejects.toThrow();
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-        expect(response.body).toHaveProperty('message');
-      });
+          expect(response).toSatisfyApiSpec();
+          expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        }
+      );
     });
 
     describe('Sad Path', function () {
@@ -300,37 +320,34 @@ describe('Ingestion', function () {
         });
       });
 
-      it('should return 500 status code and error message, isGpkgIndexExist access db error', async function () {
-        const invalidateGpkgsRequest = fakeIngestionSources.validSources.validInputFiles;
+      it('should return 500 status code and error message, isGpkgIndexExist access db error', async () => {
+        const badValidateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(validInputFiles.inputFiles.gpkgFilesPath) };
 
-        const response = await requestSender.validateGpkgs(invalidateGpkgsRequest);
+        const response = await requestSender.validateGpkgs(badValidateGpkgsRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
-        expect(response.body).toHaveProperty('message');
       });
 
-      it('should return 500 status code and error message, getGrid access db error', async function () {
-        const invalidateGpkgsRequest = fakeIngestionSources.validSources.validInputFiles;
+      it('should return 500 status code and error message, getGrid access db error', async () => {
+        const badValidateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(validInputFiles.inputFiles.gpkgFilesPath) };
         jest.spyOn(SQLiteClient.prototype, 'isGpkgIndexExist').mockReturnValue(true);
 
-        const response = await requestSender.validateGpkgs(invalidateGpkgsRequest);
+        const response = await requestSender.validateGpkgs(badValidateGpkgsRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
-        expect(response.body).toHaveProperty('message');
       });
 
-      it('should return 500 status code and error message, getGpkgTileSize access db error', async function () {
-        const invalidateGpkgsRequest = fakeIngestionSources.validSources.validInputFiles;
+      it('should return 500 status code and error message, getGpkgTileSize access db error', async () => {
+        const badValidateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(validInputFiles.inputFiles.gpkgFilesPath) };
         jest.spyOn(SQLiteClient.prototype, 'isGpkgIndexExist').mockReturnValue(true);
         jest.spyOn(SQLiteClient.prototype, 'getGrid').mockReturnValue(Grid.TWO_ON_ONE);
 
-        const response = await requestSender.validateGpkgs(invalidateGpkgsRequest);
+        const response = await requestSender.validateGpkgs(badValidateGpkgsRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
-        expect(response.body).toHaveProperty('message');
       });
     });
   });

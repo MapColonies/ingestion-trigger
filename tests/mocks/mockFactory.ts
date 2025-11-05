@@ -44,9 +44,6 @@ type SingleRasterLayerMetadata = FlatRecordValues<UnAggregateKeys<SimpleRasterLa
 type RasterLayerMetadataPropertiesGenerators = ReplaceValueWithGenerator<SingleRasterLayerMetadata>;
 type IngestionLayerInputFilesPropertiesGenerators = ReplaceValueWithGenerator<IngestionUpdateLayer['inputFiles']>;
 
-// adjust path to test files location relative to source mount
-const TEST_FILES_RELATIVE_PATH = '/testFiles';
-
 const LOWER_ALPHA_CHARS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
 const UPPER_ALPHA_CHARS = [...'abcdefghijklmnopqrstuvwxyz'];
 const NUMERIC_CHARS = [...'0123456789'];
@@ -188,12 +185,12 @@ const generateUpdateLayerMetadata = (): IngestionUpdateMetadata => {
   };
 };
 
-const getTestFilePath = (inputFiles: InputFiles): InputFiles => {
+const getInputFilesLocalPath = (inputFiles: InputFiles): InputFiles => {
   const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = inputFiles;
   return {
-    gpkgFilesPath: [join(getTestFilesPath(), 'gpkg', gpkgFilesPath[0])],
-    metadataShapefilePath: join(getTestFilesPath(), 'metadata', metadataShapefilePath, 'ShapeMetadata.shp'),
-    productShapefilePath: join(getTestFilesPath(), 'product', productShapefilePath, 'Product.shp'),
+    gpkgFilesPath: getGpkgsFilesLocalPath([gpkgFilesPath[0]]),
+    metadataShapefilePath: join('metadata', metadataShapefilePath, 'ShapeMetadata.shp'),
+    productShapefilePath: join('product', productShapefilePath, 'Product.shp'),
   };
 };
 
@@ -208,14 +205,13 @@ const generateInputFiles = (): InputFiles => {
   };
 };
 
-export const rasterLayerInputFilesGenerators: IngestionLayerInputFilesPropertiesGenerators = {
-  gpkgFilesPath: () => [join(getTestFilesPath(), 'gpkg', generateHebrewCommonFileName('gpkg', { min: 1, max: 100 }))],
-  metadataShapefilePath: () => join(getTestFilesPath(), 'metadata', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'ShapeMetadata.shp'),
-  productShapefilePath: () => join(getTestFilesPath(), 'product', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'Product.shp'),
-};
+export const getGpkgsFilesLocalPath = (gpkgFilesPath: string[]): string[] =>
+  gpkgFilesPath.map((gpkgFilePath) => join('gpkg', gpkgFilePath));
 
-export const getTestFilesPath = (): string => {
-  return TEST_FILES_RELATIVE_PATH;
+export const rasterLayerInputFilesGenerators: IngestionLayerInputFilesPropertiesGenerators = {
+  gpkgFilesPath: () => getGpkgsFilesLocalPath([generateHebrewCommonFileName('gpkg', { min: 1, max: 100 })]),
+  metadataShapefilePath: () => join('metadata', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'ShapeMetadata.shp'),
+  productShapefilePath: () => join('product', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'Product.shp'),
 };
 
 export const generateChecksum = (): string => faker.string.hexadecimal({ length: 64, casing: 'lower', prefix: '' });
@@ -421,7 +417,7 @@ export const generateUpdateJobRequest = (
 
 export const createNewLayerRequest = (newLayerRequest: DeepPartial<IngestionNewLayer> & Pick<IngestionNewLayer, 'inputFiles'>): IngestionNewLayer => {
   const override = structuredClone(newLayerRequest);
-  override.inputFiles = getTestFilePath(override.inputFiles);
+  override.inputFiles = getInputFilesLocalPath(override.inputFiles);
   const mergedNewLayerRequest = merge(generateNewLayerRequest(), override);
   return mergedNewLayerRequest;
 };
@@ -430,7 +426,7 @@ export const createUpdateLayerRequest = (
   newLayerRequest: DeepPartial<IngestionUpdateLayer> & Pick<IngestionUpdateLayer, 'inputFiles'>
 ): IngestionUpdateLayer => {
   const override = structuredClone(newLayerRequest);
-  override.inputFiles = getTestFilePath(override.inputFiles);
+  override.inputFiles = getInputFilesLocalPath(override.inputFiles);
   const mergedUpdateLayerRequest = merge(generateUpdateLayerRequest(), override);
   return mergedUpdateLayerRequest;
 };
