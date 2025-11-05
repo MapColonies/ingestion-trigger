@@ -1,7 +1,7 @@
 import supertest from 'supertest';
-import { GpkgInputFiles } from '../../../../src/ingestion/interfaces';
 import type { IngestionNewLayer } from '../../../../src/ingestion/schemas/ingestionLayerSchema';
 import type { IngestionUpdateLayer } from '../../../../src/ingestion/schemas/updateLayerSchema';
+import type { GpkgInputFiles } from '../../../../src/ingestion/schemas/inputFilesSchema';
 
 export class IngestionRequestSender {
   public constructor(private readonly app: Express.Application) {}
@@ -16,9 +16,5 @@ export class IngestionRequestSender {
 
   public async validateGpkgs(body: GpkgInputFiles): Promise<supertest.Response> {
     return supertest.agent(this.app).post('/ingestion/validate/gpkgs').set('Content-Type', 'application/json').send(body);
-  }
-
-  public async getGpkgsInfo(body: GpkgInputFiles): Promise<supertest.Response> {
-    return supertest.agent(this.app).post('/info/gpkgs').set('Content-Type', 'application/json').send(body);
   }
 }
