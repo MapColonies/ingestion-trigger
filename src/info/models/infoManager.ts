@@ -41,7 +41,7 @@ export class InfoManager {
 
     const absoluteGpkgFilesPath = getAbsoluteGpkgFilesPath({ sourceMount: this.sourceMount, gpkgFilesPath }).gpkgFilesPath;
 
-    await this.sourceValidator.validateFilesExist(gpkgFilesPath);
+    await this.sourceValidator.validateFilesExist(absoluteGpkgFilesPath);
     this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
 
     const filesGdalInfoData = await this.getGpkgsInformation({ gpkgFilesPath: absoluteGpkgFilesPath });
