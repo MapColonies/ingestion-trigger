@@ -9,7 +9,7 @@ import {
   type IngestionUpdateJobParams,
   type InputFiles,
   type RasterProductTypes,
-  type ingestionBaseJobParamsSchema
+  type ingestionBaseJobParamsSchema,
 } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
@@ -27,7 +27,7 @@ import { Checksum as IChecksum } from '../../utils/hash/interface';
 import { LogContext } from '../../utils/logger/logContext';
 import { getShapefileFiles } from '../../utils/shapefile';
 import { ChecksumError, FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import { gpkgFilesPathSchema, MockRertyTaskParameters, type GpkgInputFiles, type ResponseId, type SourcesValidationResponse, type ValidationTaskParameters } from '../interfaces';
+import { gpkgFilesPathSchema, type GpkgInputFiles, type ResponseId, type SourcesValidationResponse, type ValidationTaskParameters } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
@@ -247,19 +247,19 @@ export class IngestionManager {
 
     const validationTask = await this.getValidationTask(jobId, logCtx);
 
-    if (validationTask.parameters.noErrors) {
-      return this.handleRetryWithoutErrors(jobId, validationTask.id, logCtx);
+    switch (validationTask.parameters.isValid) {
+      case false:
+        return this.handleRetryWithoutErrors(jobId, validationTask.id, logCtx);
+      case true:
+        return this.handleRetryWithErrors(jobId, retryJob, validationTask, logCtx);
+      default: {
+        const msg = 'Cannot retry job because validation task status is unclear';
+        this.logger.error({ msg, logContext: logCtx, jobId, taskId: validationTask.id });
+        const error =  new BadRequestError(msg);
+        trace.getActiveSpan()?.setAttribute('exception.type', error.status);
+        throw error;
+      }
     }
-
-    if (validationTask.parameters.isErrors) {
-      return this.handleRetryWithErrors(jobId, retryJob, validationTask, logCtx);
-    }
-
-    const message = `Cannot retry job with id: ${jobId} because validation task status is unclear (neither errors nor no-errors)`;
-    this.logger.error({ msg: message, logContext: logCtx, jobId, taskId: validationTask.id });
-    const error = new BadRequestError(message);
-    trace.getActiveSpan()?.setAttribute('exception.type', error.status);
-    throw error;
   }
 
   @withSpanV4
@@ -275,8 +275,8 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async getValidationTask(jobId: string, logCtx: LogContext): Promise<ITaskResponse<MockRertyTaskParameters>> {
-    const tasks = await this.jobManagerWrapper.getTasksForJob<MockRertyTaskParameters>(jobId);
+  private async getValidationTask(jobId: string, logCtx: LogContext): Promise<ITaskResponse<ValidationTaskParameters>> {
+    const tasks = await this.jobManagerWrapper.getTasksForJob<ValidationTaskParameters>(jobId);
 
     const validationTask = tasks.find((task) => task.type === this.validationTaskType);
 
@@ -304,7 +304,7 @@ export class IngestionManager {
   private async handleRetryWithErrors(
     jobId: string,
     retryJob: { parameters: z.infer<typeof ingestionBaseJobParamsSchema> },
-    validationTask: ITaskResponse<MockRertyTaskParameters>,
+    validationTask: ITaskResponse<ValidationTaskParameters>,
     logCtx: LogContext
   ): Promise<ResponseId> {
     this.logger.info({ msg: 'validation has errors, checking for shapefile changes', logContext: logCtx, jobId, taskId: validationTask.id });
@@ -323,7 +323,6 @@ export class IngestionManager {
 
     this.validateShapefileChanges(jobId, validationTask, newChecksums, logCtx);
 
-    // Update task parameters with new checksums
     validationTask.parameters.checksums = [...validationTask.parameters.checksums, ...newChecksums];
 
     trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.retryLayer.success', { retryType: 'withChanges', jobId });
@@ -334,7 +333,7 @@ export class IngestionManager {
   @withSpanV4
   private validateShapefileChanges(
     jobId: string,
-    validationTask: ITaskResponse<MockRertyTaskParameters>,
+    validationTask: ITaskResponse<ValidationTaskParameters>,
     newChecksums: IChecksum[],
     logCtx: LogContext
   ): void {
