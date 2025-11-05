@@ -1,7 +1,7 @@
 import { join, relative } from 'node:path';
 import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
-import { IFindJobsByCriteriaBody, OperationStatus, type ICreateJobBody, type ITaskResponse } from '@map-colonies/mc-priority-queue';
+import { IFindJobsByCriteriaBody, IUpdateTaskBody, OperationStatus, type ICreateJobBody, type ITaskResponse } from '@map-colonies/mc-priority-queue';
 import {
   getMapServingLayerName,
   type IngestionNewJobParams,
@@ -249,9 +249,9 @@ export class IngestionManager {
 
     switch (validationTask.parameters.isValid) {
       case false:
-        return this.handleRetryWithoutErrors(jobId, validationTask.id, logCtx);
-      case true:
         return this.handleRetryWithErrors(jobId, retryJob, validationTask, logCtx);
+        case true:
+        return this.handleRetryWithoutErrors(jobId, validationTask.id, logCtx);
       default: {
         const msg = 'Cannot retry job because validation task status is unclear';
         this.logger.error({ msg, logContext: logCtx, jobId, taskId: validationTask.id });
@@ -323,8 +323,9 @@ export class IngestionManager {
 
     this.validateShapefileChanges(jobId, validationTask, newChecksums, logCtx);
 
-    validationTask.parameters.checksums = [...validationTask.parameters.checksums, ...newChecksums];
+    const newTaskParameters: IUpdateTaskBody<ValidationTaskParameters> = { parameters: { ...validationTask.parameters, checksums: [...validationTask.parameters.checksums, ...newChecksums] } };
 
+    await this.jobManagerWrapper.updateTask<ValidationTaskParameters>(validationTask.jobId, validationTask.id, newTaskParameters);
     trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.retryLayer.success', { retryType: 'withChanges', jobId });
     this.logger.info({ msg: 'retry layer completed successfully', logContext: logCtx, jobId, taskId: validationTask.id });
     return { jobId, taskId: validationTask.id };
