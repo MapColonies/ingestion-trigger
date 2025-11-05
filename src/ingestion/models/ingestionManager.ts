@@ -27,7 +27,7 @@ import { Checksum as IChecksum } from '../../utils/hash/interface';
 import { LogContext } from '../../utils/logger/logContext';
 import { getShapefileFiles } from '../../utils/shapefile';
 import { ChecksumError, FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import { gpkgFilesPathSchema, type GpkgInputFiles, type ResponseId, type SourcesValidationResponse, type ValidationTaskParameters } from '../interfaces';
+import { gpkgFilesPathSchema, type GpkgInputFiles, type ResponseId, type SourcesValidationResponse, type ChecksumValidationParameters, ValidationTaskParameters } from '../interfaces';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
@@ -255,7 +255,7 @@ export class IngestionManager {
       default: {
         const msg = 'Cannot retry job because validation task status is unclear';
         this.logger.error({ msg, logContext: logCtx, jobId, taskId: validationTask.id });
-        const error =  new BadRequestError(msg);
+        const error = new BadRequestError(msg);
         trace.getActiveSpan()?.setAttribute('exception.type', error.status);
         throw error;
       }
@@ -333,7 +333,7 @@ export class IngestionManager {
   @withSpanV4
   private validateShapefileChanges(
     jobId: string,
-    validationTask: ITaskResponse<ValidationTaskParameters>,
+    validationTask: ITaskResponse<ChecksumValidationParameters>,
     newChecksums: IChecksum[],
     logCtx: LogContext
   ): void {
@@ -533,7 +533,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async newLayerJobPayload(newLayer: IngestionNewLayer): Promise<ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters>> {
+  private async newLayerJobPayload(newLayer: IngestionNewLayer): Promise<ICreateJobBody<IngestionNewJobParams, ChecksumValidationParameters>> {
     const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath);
     const taskParameters = { checksums };
 
@@ -565,7 +565,7 @@ export class IngestionManager {
   private async updateLayerJobPayload(
     rasterLayerMetadata: RasterLayerMetadata,
     updateLayer: IngestionUpdateLayer
-  ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters>> {
+  ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ChecksumValidationParameters>> {
     const { displayPath, id, productId, productType, productVersion, tileOutputFormat, productName, productSubType } = rasterLayerMetadata;
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === productType && supportedSwapObj.productSubType === productSubType;
