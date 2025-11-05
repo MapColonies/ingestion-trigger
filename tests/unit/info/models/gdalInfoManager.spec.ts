@@ -1,14 +1,14 @@
 import { BadRequestError } from '@map-colonies/error-types';
 import { container } from 'tsyringe';
-import { getApp } from '../../../src/app';
-import { GDAL_INFO_MANAGER_SYMBOL, GdalInfoManager } from '../../../src/info/models/gdalInfoManager';
-import { GdalInfoError } from '../../../src/ingestion/errors/ingestionErrors';
-import { GdalUtilities } from '../../../src/utils/gdal/gdalUtilities';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../src/utils/validation/schemasValidator';
-import { getTestContainerConfig } from '../../integration/ingestion/helpers/containerConfig';
-import { registerDefaultConfig } from '../../mocks/configMock';
-import { mockGdalInfoDataWithFile } from '../../mocks/gdalInfoMock';
-import { mockInputFiles } from '../../mocks/sourcesRequestBody';
+import { getApp } from '../../../../src/app';
+import { GDAL_INFO_MANAGER_SYMBOL, GdalInfoManager } from '../../../../src/info/models/gdalInfoManager';
+import { GdalInfoError } from '../../../../src/ingestion/errors/ingestionErrors';
+import { GdalUtilities } from '../../../../src/utils/gdal/gdalUtilities';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
+import { getTestContainerConfig } from '../../../integration/ingestion/helpers/containerConfig';
+import { registerDefaultConfig } from '../../../mocks/configMock';
+import { mockGdalInfoDataWithFile } from '../../../mocks/gdalInfoMock';
+import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
 
 describe('GdalInfoManager', () => {
   let gdalInfoManager: GdalInfoManager;
@@ -70,7 +70,7 @@ describe('GdalInfoManager', () => {
 
   describe('getInfoData', () => {
     it('should return gdal info data array', async () => {
-      const gpkgFilesPath: string[] = [mockGdalInfoDataWithFile.gpkgFilePath];
+      const gpkgFilesPath: string[] = [mockGdalInfoDataWithFile.fileName];
       const managerGdalInfoSpy = jest.spyOn(GdalInfoManager.prototype, 'getInfoData');
       const utilityGdalInfoSpy = jest.spyOn(GdalUtilities.prototype, 'getInfoData');
       utilityGdalInfoSpy.mockResolvedValue(mockGdalInfoDataWithFile);
@@ -84,7 +84,7 @@ describe('GdalInfoManager', () => {
     });
 
     it('should throw an GdalError when error occur', async () => {
-      const gpkgFilesPath: string[] = [mockGdalInfoDataWithFile.gpkgFilePath];
+      const gpkgFilesPath: string[] = [mockGdalInfoDataWithFile.fileName];
 
       jest.spyOn(GdalUtilities.prototype, 'getInfoData').mockRejectedValue(new Error('Unknown Error'));
       await expect(gdalInfoManager.getInfoData(gpkgFilesPath)).rejects.toThrow(GdalInfoError);

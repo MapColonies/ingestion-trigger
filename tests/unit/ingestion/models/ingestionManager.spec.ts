@@ -7,7 +7,7 @@ import { Xxh64 } from '@node-rs/xxhash';
 import { trace } from '@opentelemetry/api';
 import { container } from 'tsyringe';
 import { CHECKSUM_PROCESSOR, SERVICES } from '../../../../src/common/constants';
-import { GdalInfoManager } from '../../../../src/info/models/gdalInfoManager';
+import { InfoManager } from '../../../../src/info/models/infoManager';
 import { ChecksumError, FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
 import { ProductManager } from '../../../../src/ingestion/models/productManager';
@@ -20,7 +20,6 @@ import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 import { Checksum } from '../../../../src/utils/hash/checksum';
 import { HashAlgorithm, HashProcessor } from '../../../../src/utils/hash/interface';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
-import { mockGdalInfoData } from '../../../mocks/gdalInfoMock';
 import { generateCatalogLayerResponse, generateChecksum, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
 import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
 
@@ -84,14 +83,14 @@ describe('IngestionManager', () => {
     readSpy = jest.spyOn(ProductManager.prototype, 'read');
     calcualteChecksumSpy = jest.spyOn(Checksum.prototype, 'calculate');
     validateGpkgsSpy = jest.spyOn(IngestionManager.prototype, 'validateGpkgs');
-    getGpkgsInfoSpy = jest.spyOn(IngestionManager.prototype, 'getGpkgsInfo');
+    getGpkgsInfoSpy = jest.spyOn(InfoManager.prototype, 'getGpkgsInfo');
 
     ingestionManager = new IngestionManager(
       testLogger,
       configMock,
       testTracer,
       sourceValidator as unknown as SourceValidator,
-      gdalInfoManagerMock as unknown as GdalInfoManager,
+      gdalInfoManagerMock as unknown as InfoManager,
       geoValidatorMock as unknown as GeoValidator,
       catalogClient,
       jobManagerWrapper,
@@ -556,31 +555,6 @@ describe('IngestionManager', () => {
       const response = await ingestionManager.validateGpkgs({ gpkgFilesPath: mockInputFiles.gpkgFilesPath });
 
       expect(response).toStrictEqual({ isValid: false, message: 'Error while validating gpkg files' });
-    });
-  });
-
-  describe('getGpkgsInfo', () => {
-    it('should return gdal info data when files exist and are valid', async () => {
-      const mockGdalInfoDataArr = [mockGdalInfoData];
-      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
-      gdalInfoManagerMock.getInfoData.mockResolvedValue(mockGdalInfoDataArr);
-
-      const result = await ingestionManager.getGpkgsInfo({ gpkgFilesPath: mockInputFiles.gpkgFilesPath });
-
-      expect(result).toStrictEqual(mockGdalInfoDataArr);
-    });
-
-    it('should throw an error when file exists throws an error due to file not found', async () => {
-      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.reject(new FileNotFoundError(mockInputFiles.gpkgFilesPath[0])));
-
-      await expect(ingestionManager.getGpkgsInfo({ gpkgFilesPath: mockInputFiles.gpkgFilesPath })).rejects.toThrow(FileNotFoundError);
-    });
-
-    it('should throw an error when getInfoData throws GdalInfoError', async () => {
-      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
-      gdalInfoManagerMock.getInfoData.mockImplementation(async () => Promise.reject(new GdalInfoError('Error while getting gdal info')));
-
-      await expect(ingestionManager.getGpkgsInfo({ gpkgFilesPath: mockInputFiles.gpkgFilesPath })).rejects.toThrow(GdalInfoError);
     });
   });
 });

@@ -1,48 +1,37 @@
-import { IConfig } from "config";
-import { GDAL_INFO_MANAGER_SYMBOL, GdalInfoManager } from "../../../src/info/models/gdalInfoManager";
-import { registerDefaultConfig } from "../../mocks/configMock";
-import { mockGdalInfoData } from "../../mocks/gdalInfoMock";
-import { SERVICES } from "../../../src/common/constants";
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from "../../../src/utils/validation/schemasValidator";
-import { container } from "tsyringe";
-import { getApp } from "../../../src/app";
-import { getTestContainerConfig } from "../../integration/ingestion/helpers/containerConfig";
-import { SourceValidator } from "../../../src/ingestion/validators/sourceValidator";
-import { FileNotFoundError, GdalInfoError } from "../../../src/ingestion/errors/ingestionErrors";
-import { mockInputFiles } from "../../mocks/sourcesRequestBody";
-import { InfoManager } from "../../../src/info/models/infoManager";
-import { trace } from "@opentelemetry/api";
-import jsLogger from "@map-colonies/js-logger";
+import jsLogger from '@map-colonies/js-logger';
+import { trace } from '@opentelemetry/api';
+import { container } from 'tsyringe';
+import { GdalInfoManager } from '../../../../src/info/models/gdalInfoManager';
+import { InfoManager } from '../../../../src/info/models/infoManager';
+import { FileNotFoundError, GdalInfoError } from '../../../../src/ingestion/errors/ingestionErrors';
+import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
+import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
+import { mockGdalInfoData } from '../../../mocks/gdalInfoMock';
+import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
 
 const sourceValidator = {
   validateFilesExist: jest.fn(),
-};
+} satisfies Partial<SourceValidator>;
+
 const gdalInfoManagerMock = {
   getInfoData: jest.fn(),
   validateInfoData: jest.fn(),
-};
-
+} satisfies Partial<GdalInfoManager>;
 
 describe('InfoManager', () => {
   let infoManager: InfoManager;
-  let gdalInfoManager: GdalInfoManager;
-  let schemaValidator: SchemasValidator;
-  let sourceMount: string;
-
   const testTracer = trace.getTracer('testTracer');
   const testLogger = jsLogger({ enabled: false });
 
   beforeEach(() => {
-    const [, container] = getApp({
-      override: [...getTestContainerConfig()],
-      useChild: true,
-    });
-    sourceMount = container.resolve<IConfig>(SERVICES.CONFIG).get<string>('storageExplorer.layerSourceDir');
-    schemaValidator = container.resolve<SchemasValidator>(INGESTION_SCHEMAS_VALIDATOR_SYMBOL);
-    gdalInfoManager = container.resolve<GdalInfoManager>(GDAL_INFO_MANAGER_SYMBOL);
-    infoManager = new InfoManager(testLogger, testTracer, sourceValidator as unknown as SourceValidator, gdalInfoManagerMock as unknown as GdalInfoManager,)
-
     registerDefaultConfig();
+    infoManager = new InfoManager(
+      testLogger,
+      configMock,
+      testTracer,
+      sourceValidator as unknown as SourceValidator,
+      gdalInfoManagerMock as unknown as GdalInfoManager
+    );
   });
 
   afterEach(() => {
