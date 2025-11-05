@@ -40,6 +40,10 @@ export class InfoManager {
     this.logger.info({ msg: 'Starting gpkgs info process', logContext: logCtx, metadata: { gpkgFilesPath } });
 
     const absoluteGpkgFilesPath = getAbsoluteGpkgFilesPath({ sourceMount: this.sourceMount, gpkgFilesPath }).gpkgFilesPath;
+
+    await this.sourceValidator.validateFilesExist(gpkgFilesPath);
+    this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
+
     const filesGdalInfoData = await this.getGpkgsInformation({ gpkgFilesPath: absoluteGpkgFilesPath });
 
     this.logger.info({ msg: 'Finished gpkgs info process', logContext: logCtx });
@@ -57,9 +61,6 @@ export class InfoManager {
 
     const { gpkgFilesPath } = gpkgInputFiles;
     this.logger.info({ msg: 'Getting gdal info for files', logContext: logCtx, metadata: { gpkgFilesPath } });
-
-    await this.sourceValidator.validateFilesExist(gpkgFilesPath);
-    this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
 
     const filesGdalInfoData = await this.gdalInfoManager.getInfoData(gpkgFilesPath);
     return filesGdalInfoData;
