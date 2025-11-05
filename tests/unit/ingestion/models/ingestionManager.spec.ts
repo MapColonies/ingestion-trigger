@@ -1,9 +1,13 @@
 import { faker } from '@faker-js/faker';
-import { ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
 import jsLogger from '@map-colonies/js-logger';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
+import { RasterProductTypes } from '@map-colonies/raster-shared';
+import { Xxh64 } from '@node-rs/xxhash';
 import { trace } from '@opentelemetry/api';
 import nock from 'nock';
+import { container } from 'tsyringe';
+import { CHECKSUM_PROCESSOR, SERVICES } from '../../../../src/common/constants';
 import { ChecksumError, FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { GdalInfoManager } from '../../../../src/info/models/gdalInfoManager';
 import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
@@ -13,17 +17,13 @@ import { GpkgError } from '../../../../src/serviceClients/database/errors';
 import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
-import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
-import { ProductManager } from '../../../../src/ingestion/models/productManager';
-import { GeoValidator } from '../../../../src/ingestion/validators/geoValidator';
-import { Checksum } from '../../../../src/utils/hash/checksum';
-import { mockGdalInfoData } from '../../../mocks/gdalInfoMock';
-import { generateCatalogLayerResponse, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
-import { container } from 'tsyringe';
-import { Xxh64 } from '@node-rs/xxhash';
 import { HashAlgorithm, HashProcessor } from '../../../../src/utils/hash/interface';
-import { CHECKSUM_PROCESSOR, SERVICES } from '../../../../src/common/constants';
-import { RasterProductTypes } from '@map-colonies/raster-shared';
+import { Checksum } from '../../../../src/utils/hash/checksum';
+import { GeoValidator } from '../../../../src/ingestion/validators/geoValidator';
+import { ProductManager } from '../../../../src/ingestion/models/productManager';
+import { mockGdalInfoData } from '../../../mocks/gdalInfoMock';
+import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
+import { generateCatalogLayerResponse, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
 
 describe('IngestionManager', () => {
   let ingestionManager: IngestionManager;
@@ -53,7 +53,6 @@ describe('IngestionManager', () => {
   let mapProxyClient: MapProxyClient;
   let jobManagerWrapper: JobManagerWrapper;
   let productManager: ProductManager;
-  let jobResponse: ICreateJobResponse;
 
   const testTracer = trace.getTracer('testTracer');
   const testLogger = jsLogger({ enabled: false });
@@ -69,11 +68,6 @@ describe('IngestionManager', () => {
         return Object.assign(new Xxh64(), { algorithm: 'XXH64' as const satisfies HashAlgorithm });
       },
     });
-
-    jobResponse = {
-      id: faker.string.uuid(),
-      taskIds: [faker.string.uuid()],
-    };
 
     mapProxyClient = new MapProxyClient(configMock, testLogger, testTracer);
     catalogClient = new CatalogClient(configMock, testLogger, testTracer);
@@ -399,6 +393,322 @@ describe('IngestionManager', () => {
       gdalInfoManagerMock.getInfoData.mockImplementation(async () => Promise.reject(new GdalInfoError('Error while getting gdal info')));
 
       await expect(ingestionManager.getInfoData(mockInputFiles)).rejects.toThrow(GdalInfoError);
+    });
+  });
+
+  describe('retryLayer', () => {
+    let getJobSpy: jest.SpyInstance;
+    let getTasksForJobSpy: jest.SpyInstance;
+    let resetJobSpy: jest.SpyInstance;
+    let updateTaskSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      getJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'getJob');
+      getTasksForJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'getTasksForJob');
+      resetJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'resetJob');
+      updateTaskSpy = jest.spyOn(JobManagerWrapper.prototype, 'updateTask');
+    });
+
+    describe('validation without errors (isValid: true)', () => {
+      it('should reset job when validation task has no errors and job is Failed', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const mockJob = {
+          id: jobId,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: {
+              gpkgFilesPath: ['/path/to/file.gpkg'],
+              metadataShapefilePath: '/path/to/metadata.shp',
+              productShapefilePath: '/path/to/product.shp',
+            },
+          },
+        };
+        const mockValidationTask = {
+          id: taskId,
+          jobId,
+          type: 'validation',
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: true,
+            checksums: [],
+          },
+        };
+
+        getJobSpy.mockResolvedValue(mockJob);
+        getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
+        resetJobSpy.mockResolvedValue(undefined);
+
+        const result = await ingestionManager.retryLayer(jobId);
+
+        expect(result).toEqual({ jobId, taskId });
+        expect(resetJobSpy).toHaveBeenCalledWith(jobId);
+        expect(updateTaskSpy).not.toHaveBeenCalled();
+      });
+
+      it('should not reset job when job status is COMPLETED and validation passed', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const mockJob = {
+          id: jobId,
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            inputFiles: {
+              gpkgFilesPath: ['/path/to/file.gpkg'],
+              metadataShapefilePath: '/path/to/metadata.shp',
+              productShapefilePath: '/path/to/product.shp',
+            },
+          },
+        };
+        const mockValidationTask = {
+          id: taskId,
+          jobId,
+          type: 'validation',
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: true,
+            checksums: [],
+          },
+        };
+
+        getJobSpy.mockResolvedValue(mockJob);
+        getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
+        resetJobSpy.mockResolvedValue(undefined);
+
+        const result = await ingestionManager.retryLayer(jobId);
+
+        expect(result).toEqual({ jobId, taskId });
+        expect(resetJobSpy).not.toHaveBeenCalledWith(jobId);
+      });
+    });
+
+    describe('validation with errors (isValid: false)', () => {
+      it('should update task with new checksums when shapefile has changed', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const existingChecksum = { fileName: 'metadata.shp', checksum: 'oldChecksum123' };
+        const newChecksum = { fileName: 'metadata.shp', checksum: 'newChecksum456' };
+
+        const mockJob = {
+          id: jobId,
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            inputFiles: {
+              gpkgFilesPath: ['/path/to/file.gpkg'],
+              metadataShapefilePath: 'metadata.shp',
+              productShapefilePath: '/path/to/product.shp',
+            },
+          },
+        };
+        const mockValidationTask = {
+          id: taskId,
+          jobId,
+          type: 'validation',
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: false,
+            checksums: [existingChecksum],
+          },
+        };
+
+        //add same check when job is Failed and make sure it does not reset
+
+        getJobSpy.mockResolvedValue(mockJob);
+        getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
+        calcualteChecksumSpy.mockResolvedValue(newChecksum);
+        updateTaskSpy.mockResolvedValue(undefined);
+
+        const result = await ingestionManager.retryLayer(jobId);
+
+        expect(result).toEqual({ jobId, taskId });
+        expect(updateTaskSpy).toHaveBeenCalledWith(
+          jobId,
+          taskId,
+          {
+            parameters: {
+              isValid: false,
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+              checksums: expect.arrayContaining([existingChecksum, newChecksum]),
+            },
+          }
+        );
+        expect(resetJobSpy).not.toHaveBeenCalled();
+      });
+
+      it('should throw ConflictError when shapefile has not changed', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const existingChecksum = { fileName: 'metadata.shp', checksum: 'sameChecksum123' };
+
+        const mockJob = {
+          id: jobId,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: {
+              gpkgFilesPath: ['/path/to/file.gpkg'],
+              metadataShapefilePath: 'metadata.shp',
+              productShapefilePath: '/path/to/product.shp',
+            },
+          },
+        };
+        const mockValidationTask = {
+          id: taskId,
+          jobId,
+          type: 'validation',
+          status: OperationStatus.FAILED,
+          parameters: {
+            isValid: false,
+            checksums: [existingChecksum],
+          },
+        };
+
+        getJobSpy.mockResolvedValue(mockJob);
+        getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
+        calcualteChecksumSpy.mockResolvedValue(existingChecksum);
+
+        await expect(ingestionManager.retryLayer(jobId)).rejects.toThrow(ConflictError);
+        expect(updateTaskSpy).not.toHaveBeenCalled();
+        expect(resetJobSpy).not.toHaveBeenCalled();
+      });
+
+      it('should throw BadRequestError when metadataShapefilePath is missing', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+
+        const mockJob = {
+          id: jobId,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: {
+              gpkgFilesPath: ['/path/to/file.gpkg'],
+              metadataShapefilePath: undefined,
+              productShapefilePath: '/path/to/product.shp',
+            },
+          },
+        };
+        const mockValidationTask = {
+          id: taskId,
+          jobId,
+          type: 'validation',
+          status: OperationStatus.FAILED,
+          parameters: {
+            isValid: false,
+            checksums: [{ fileName: 'metadata.shp', checksum: 'checksum123' }],
+          },
+        };
+
+        getJobSpy.mockResolvedValue(mockJob);
+        getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
+
+        await expect(ingestionManager.retryLayer(jobId)).rejects.toThrow(BadRequestError);
+      });
+    });
+
+    describe('job status validation', () => {
+      it('should throw BadRequestError when job status is PENDING', async () => {
+        const jobId = faker.string.uuid();
+        const mockJob = {
+          id: jobId,
+          status: OperationStatus.PENDING,
+          parameters: {
+            inputFiles: {
+              gpkgFilesPath: ['/path/to/file.gpkg'],
+              metadataShapefilePath: '/path/to/metadata.shp',
+              productShapefilePath: '/path/to/product.shp',
+            },
+          },
+        };
+
+        getJobSpy.mockResolvedValue(mockJob);
+
+        await expect(ingestionManager.retryLayer(jobId)).rejects.toThrow(BadRequestError);
+        expect(getTasksForJobSpy).not.toHaveBeenCalled();
+      });
+
+      it('should throw BadRequestError when job status is IN_PROGRESS', async () => {
+        const jobId = faker.string.uuid();
+        const mockJob = {
+          id: jobId,
+          status: OperationStatus.IN_PROGRESS,
+          parameters: {
+            inputFiles: {
+              gpkgFilesPath: ['/path/to/file.gpkg'],
+              metadataShapefilePath: '/path/to/metadata.shp',
+              productShapefilePath: '/path/to/product.shp',
+            },
+          },
+        };
+
+        getJobSpy.mockResolvedValue(mockJob);
+
+        await expect(ingestionManager.retryLayer(jobId)).rejects.toThrow(BadRequestError);
+      });
+    });
+
+    describe('validation task retrieval', () => {
+      it('should throw NotFoundError when validation task is not found', async () => {
+        const jobId = faker.string.uuid();
+        const mockJob = {
+          id: jobId,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: {
+              gpkgFilesPath: ['/path/to/file.gpkg'],
+              metadataShapefilePath: '/path/to/metadata.shp',
+              productShapefilePath: '/path/to/product.shp',
+            },
+          },
+        };
+
+        getJobSpy.mockResolvedValue(mockJob);
+        getTasksForJobSpy.mockResolvedValue([]);
+
+        await expect(ingestionManager.retryLayer(jobId)).rejects.toThrow(NotFoundError);
+      });
+
+      it('should find validation task among multiple tasks', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const mockJob = {
+          id: jobId,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: {
+              gpkgFilesPath: ['/path/to/file.gpkg'],
+              metadataShapefilePath: '/path/to/metadata.shp',
+              productShapefilePath: '/path/to/product.shp',
+            },
+          },
+        };
+        const mockTasks = [
+          {
+            id: faker.string.uuid(),
+            jobId,
+            type: 'other-task',
+            status: OperationStatus.COMPLETED,
+            parameters: {},
+          },
+          {
+            id: taskId,
+            jobId,
+            type: 'validation',
+            status: OperationStatus.COMPLETED,
+            parameters: {
+              isValid: true,
+              checksums: [],
+            },
+          },
+        ];
+
+        getJobSpy.mockResolvedValue(mockJob);
+        getTasksForJobSpy.mockResolvedValue(mockTasks);
+        resetJobSpy.mockResolvedValue(undefined);
+
+        const result = await ingestionManager.retryLayer(jobId);
+
+        expect(result).toEqual({ jobId, taskId });
+        expect(resetJobSpy).toHaveBeenCalledWith(jobId);
+      });
     });
   });
 });
