@@ -7,7 +7,6 @@ import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../util
 import { UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
 import type { IRecordRequestParams, ResponseId, SourcesValidationResponse } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
-import type { GpkgInputFiles } from '../schemas/inputFilesSchema';
 
 type ValidateGpkgsHandler = RequestHandler<undefined, SourcesValidationResponse, unknown>;
 type NewLayerHandler = RequestHandler<undefined, ResponseId, unknown>;
