@@ -61,7 +61,7 @@ export class ProductManager {
       return validProductGeometry;
     } catch (error) {
       this.logger.error({
-        msg: `an unexpected error occurred during product shape read, error: ${error}`,
+        msg: `an unexpected error occurred during product shape read, error: ${error instanceof Error ? error.message : JSON.stringify(error)}`,
       });
       throw error;
     }
