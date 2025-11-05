@@ -113,7 +113,7 @@ export class IngestionManager {
     };
 
     await this.newLayerValidations(newLayerLocal);
-    this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
+    this.logger.info({ msg: `finished validation of new layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
     const createJobRequest = await this.newLayerJobPayload(newLayerLocal);
@@ -143,7 +143,7 @@ export class IngestionManager {
     };
 
     await this.updateLayerValidations(rasterLayerMetadata, updateLayerLocal);
-    this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
+    this.logger.info({ msg: `finished validation of update layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
     const createJobRequest = await this.updateLayerJobPayload(rasterLayerMetadata, updateLayerLocal);
@@ -337,17 +337,15 @@ export class IngestionManager {
     const logCtx: LogContext = { ...this.logContext, function: this.validateInputFiles.name };
     const { productShapefilePath } = inputFiles;
 
-    const isValidShapefiles = await this.validateShapefiles([
-      ...getShapefileFiles(inputFiles.metadataShapefilePath),
-      ...getShapefileFiles(inputFiles.productShapefilePath),
-    ]);
+    const shapefiles = [...getShapefileFiles(inputFiles.metadataShapefilePath), ...getShapefileFiles(inputFiles.productShapefilePath)];
+    const isValidShapefiles = await this.validateShapefiles(shapefiles);
 
     // validate files exist, gdal info and GPKG data
     const isValidSources = await this.validateGpkgsSources({ gpkgFilesPath: inputFiles.gpkgFilesPath });
     if (!isValidSources.isValid || !isValidShapefiles.isValid) {
       const errorMessage = !isValidSources.isValid ? isValidSources.message : isValidShapefiles.message;
       this.logger.error({ msg: errorMessage, logContext: logCtx, inputFiles });
-      const error = new UnsupportedEntityError(isValidSources.message);
+      const error = new UnsupportedEntityError(errorMessage);
       throw error;
     }
     this.logger.debug({ msg: 'validated sources', logContext: logCtx });
