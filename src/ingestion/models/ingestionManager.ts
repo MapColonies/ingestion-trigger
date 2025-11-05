@@ -1,4 +1,3 @@
-import { join, relative } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { IFindJobsByCriteriaBody, OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
@@ -10,12 +9,12 @@ import {
   type InputFiles,
   type RasterProductTypes,
 } from '@map-colonies/raster-shared';
-import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
+import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { container, inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import { IConfig, ISupportedIngestionSwapTypes } from '../../common/interfaces';
-import { GdalInfoManager } from '../../info/models/gdalInfoManager';
+import { InfoManager } from '../../info/models/infoManager';
 import { CatalogClient } from '../../serviceClients/catalogClient';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
@@ -23,10 +22,10 @@ import { MapProxyClient } from '../../serviceClients/mapProxyClient';
 import { Checksum } from '../../utils/hash/checksum';
 import { Checksum as IChecksum } from '../../utils/hash/interface';
 import { LogContext } from '../../utils/logger/logContext';
+import { getAbsoluteGpkgFilesPath, getAbsolutePathInputFiles, getRelativePathInputFiles } from '../../utils/paths';
 import { getShapefileFiles } from '../../utils/shapefile';
 import { ChecksumError, FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
 import { type ResponseId, type SourcesValidationResponse, type ValidationTaskParameters } from '../interfaces';
-import { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { IngestionNewLayer } from '../schemas/ingestionLayerSchema';
 import { type GpkgInputFiles } from '../schemas/inputFilesSchema';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
@@ -53,7 +52,7 @@ export class IngestionManager {
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     private readonly sourceValidator: SourceValidator,
-    private readonly gdalInfoManager: GdalInfoManager,
+    private readonly infoManager: InfoManager,
     private readonly geoValidator: GeoValidator,
     private readonly catalogClient: CatalogClient,
     private readonly jobManagerWrapper: JobManagerWrapper,
@@ -76,22 +75,6 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  public async getGpkgsInfo(gpkgInputFiles: GpkgInputFiles): Promise<InfoDataWithFile[]> {
-    const logCtx: LogContext = { ...this.logContext, function: this.getGpkgsInfo.name };
-    const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('ingestionManager.getGpkgsInfo');
-    const { gpkgFilesPath } = gpkgInputFiles;
-    this.logger.info({ msg: 'getting gdal info for files', logContext: logCtx, metadata: { gpkgFilesPath } });
-
-    await this.sourceValidator.validateFilesExist(gpkgFilesPath);
-    this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
-
-    const filesGdalInfoData = await this.gdalInfoManager.getInfoData(gpkgFilesPath);
-    activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('getGpkgsInfo.get.ok');
-    return filesGdalInfoData;
-  }
-
-  @withSpanAsyncV4
   public async validateGpkgs(gpkgInputFiles: GpkgInputFiles): Promise<SourcesValidationResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateGpkgs.name };
     const { gpkgFilesPath } = gpkgInputFiles;
@@ -100,7 +83,7 @@ export class IngestionManager {
 
     try {
       this.logger.info({ msg: 'Starting gpkgs validation process', logContext: logCtx, metadata: { gpkgFilesPath } });
-      const absoluteGpkgFilesPath = this.getAbsoluteGpkgFilesPath({ gpkgFilesPath });
+      const absoluteGpkgFilesPath = getAbsoluteGpkgFilesPath({ gpkgFilesPath, sourceMount: this.sourceMount });
       const response = await this.validateGpkgsSources(absoluteGpkgFilesPath);
       this.logger.info({ msg: 'Finished gpkgs validation process', logContext: logCtx });
       activeSpan?.setStatus({ code: SpanStatusCode.OK });
@@ -126,7 +109,7 @@ export class IngestionManager {
 
     const newLayerLocal = {
       ...newLayer,
-      ...this.getAbsolutePathInputFiles(newLayer),
+      ...getAbsolutePathInputFiles({ inputFiles: newLayer.inputFiles, sourceMount: this.sourceMount }),
     };
 
     await this.newLayerValidations(newLayerLocal);
@@ -156,7 +139,7 @@ export class IngestionManager {
 
     const updateLayerLocal = {
       ...updateLayer,
-      ...this.getAbsolutePathInputFiles(updateLayer),
+      ...getAbsolutePathInputFiles({ inputFiles: updateLayer.inputFiles, sourceMount: this.sourceMount }),
     };
 
     await this.updateLayerValidations(rasterLayerMetadata, updateLayerLocal);
@@ -312,6 +295,7 @@ export class IngestionManager {
 
   @withSpanAsyncV4
   private async validateGpkgsSources(gpkgInputFiles: GpkgInputFiles): Promise<SourcesValidationResponse> {
+    // this function handles absolute paths of input files
     const logCtx: LogContext = { ...this.logContext, function: this.validateGpkgsSources.name };
     const { gpkgFilesPath } = gpkgInputFiles;
 
@@ -369,7 +353,7 @@ export class IngestionManager {
     this.logger.debug({ msg: 'validated sources', logContext: logCtx });
 
     // validate new ingestion product.shp against gpkg data extent
-    const infoData = await this.getGpkgsInfo(inputFiles);
+    const infoData = await this.infoManager.getGpkgsInformation(inputFiles);
     const productGeometry = await this.productManager.read(productShapefilePath);
     this.geoValidator.validate(infoData, productGeometry);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
@@ -434,7 +418,7 @@ export class IngestionManager {
 
     const newLayerRelative = {
       ...newLayer,
-      ...this.getRelativePathInputFiles(newLayer),
+      ...getRelativePathInputFiles({ inputFiles: newLayer.inputFiles, sourceMount: this.sourceMount }),
     };
 
     const ingestionNewJobParams = {
@@ -472,7 +456,7 @@ export class IngestionManager {
 
     const updateLayerRelative = {
       ...updateLayer,
-      ...this.getRelativePathInputFiles(updateLayer),
+      ...getRelativePathInputFiles({ inputFiles: updateLayer.inputFiles, sourceMount: this.sourceMount }),
     };
 
     const ingestionUpdateJobParams = {
@@ -520,32 +504,5 @@ export class IngestionManager {
       activeSpan?.addEvent('ingestionManager.getFileChecksum.invalid', { processingError });
       throw err;
     }
-  }
-
-  @withSpanV4
-  private getAbsolutePathInputFiles({ inputFiles }: Pick<IngestionNewLayer, 'inputFiles'>): Pick<IngestionNewLayer, 'inputFiles'> {
-    return {
-      inputFiles: {
-        ...this.getAbsoluteGpkgFilesPath(inputFiles),
-        metadataShapefilePath: join(this.sourceMount, inputFiles.metadataShapefilePath),
-        productShapefilePath: join(this.sourceMount, inputFiles.productShapefilePath),
-      },
-    };
-  }
-
-  @withSpanV4
-  private getRelativePathInputFiles({ inputFiles }: Pick<IngestionNewLayer, 'inputFiles'>): Pick<IngestionNewLayer, 'inputFiles'> {
-    return {
-      inputFiles: {
-        gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => relative(this.sourceMount, gpkgFilePath)),
-        metadataShapefilePath: relative(this.sourceMount, inputFiles.metadataShapefilePath),
-        productShapefilePath: relative(this.sourceMount, inputFiles.productShapefilePath),
-      },
-    };
-  }
-
-  @withSpanV4
-  private getAbsoluteGpkgFilesPath({ gpkgFilesPath }: Pick<InputFiles, 'gpkgFilesPath'>): Pick<InputFiles, 'gpkgFilesPath'> {
-    return { gpkgFilesPath: gpkgFilesPath.map((gpkgFilePath) => join(this.sourceMount, gpkgFilePath)) };
   }
 }
