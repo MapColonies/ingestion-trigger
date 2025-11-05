@@ -1,5 +1,5 @@
-import { combine, feature, featureCollection, buffer } from '@turf/turf';
-import { GeoJSON, Feature, Polygon, MultiPolygon } from 'geojson';
+import { buffer, combine, feature, featureCollection } from '@turf/turf';
+import { Feature, MultiPolygon, Polygon } from 'geojson';
 import { InfoData } from '../ingestion/schemas/infoDataSchema';
 
 export const combineExtentPolygons = (features: Feature<Polygon>[]): Feature<MultiPolygon> => {

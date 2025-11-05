@@ -1,12 +1,12 @@
 import jsLogger from '@map-colonies/js-logger';
 import { IConfig } from 'config';
 import { trace } from '@opentelemetry/api';
-import { CatalogClient } from '../../../src/serviceClients/catalogClient';
-import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
 import { HttpClient } from '@map-colonies/mc-utils';
 import { faker } from '@faker-js/faker';
 import { randexp } from 'randexp';
 import { INGESTION_VALIDATIONS, RasterProductTypes } from '@map-colonies/raster-shared';
+import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
+import { CatalogClient } from '../../../src/serviceClients/catalogClient';
 
 describe('CatalogClient', () => {
   let catalogClient: CatalogClient;

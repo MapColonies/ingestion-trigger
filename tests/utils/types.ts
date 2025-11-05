@@ -15,7 +15,7 @@ export type FlattenLeafKeyTupleUnion<T> = {
 }[keyof T & string];
 
 export type FlattenKeyTupleUnion<T> = {
-  [K in keyof T & string]: [K,] | (T[K] extends Record<string, unknown> ? [K, ...FlattenKeyTupleUnion<T[K]>] : [K]);
+  [K in keyof T & string]: [K] | (T[K] extends Record<string, unknown> ? [K, ...FlattenKeyTupleUnion<T[K]>] : [K]);
 }[keyof T & string];
 
 export type FlatRecordValues<T> = {
@@ -23,5 +23,6 @@ export type FlatRecordValues<T> = {
 };
 
 export type ReplaceValueWithFunctionResponse<T extends object> = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [K in keyof T]: (...args: any[]) => T[K];
 };

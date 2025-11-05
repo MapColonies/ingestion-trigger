@@ -10,10 +10,10 @@ import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { mockGdalInfoDataWithFile } from '../../../mocks/gdalInfoMock';
 
 jest.mock('@turf/boolean-contains', () => ({
+  // eslint-disable-next-line @typescript-eslint/naming-convention
   __esModule: true,
   default: jest.fn(),
 }));
-
 
 describe('GeoValidator', () => {
   let geoValidator: GeoValidator;
@@ -29,7 +29,7 @@ describe('GeoValidator', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
-    jest.resetAllMocks()
+    jest.resetAllMocks();
   });
 
   describe('validate', () => {

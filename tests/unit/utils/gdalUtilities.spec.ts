@@ -1,13 +1,10 @@
 import jsLogger from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
-import { GdalUtilities } from '../../../src/utils/gdal/gdalUtilities';
 import { getApp } from '../../../src/app';
+import { InfoData } from '../../../src/ingestion/schemas/infoDataSchema';
+import { GdalUtilities } from '../../../src/utils/gdal/gdalUtilities';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../src/utils/validation/schemasValidator';
 import { registerDefaultConfig } from '../../mocks/configMock';
-import { mockGdalInfoData } from '../../mocks/gdalInfoMock';
-import { expectedGdalUtilitiesValues } from '../../mocks/gdalUtilitiesMockData';
-import { InfoData } from '../../../src/ingestion/schemas/infoDataSchema';
-
 
 let gdalUtilities: GdalUtilities;
 
@@ -34,7 +31,7 @@ describe('gdalUtilities', () => {
           coordinates: [
             [
               [34.61517, 34.10156],
-              [ 34.61517,32.242124],
+              [34.61517, 32.242124],
               [36.4361539, 32.242124],
               [36.4361539, 34.10156],
               [34.61517, 34.10156],
@@ -42,10 +39,10 @@ describe('gdalUtilities', () => {
           ],
           type: 'Polygon',
         },
-        fileFormat: "GPKG",
+        fileFormat: 'GPKG',
         pixelSize: 0.001373291015625,
-      }
-      
+      };
+
       expect(result).toStrictEqual(expected);
     });
 

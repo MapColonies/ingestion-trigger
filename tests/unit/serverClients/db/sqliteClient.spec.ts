@@ -1,12 +1,11 @@
 /* eslint-disable jest/no-conditional-expect */
 import jsLogger from '@map-colonies/js-logger';
-import Database, { Database as SQLiteDB, Statement, SqliteError } from 'better-sqlite3';
 import { trace } from '@opentelemetry/api';
-import { init as initMockConfig, configMock, clear as clearMockConfig } from '../../../mocks/configMock';
+import Database, { Database as SQLiteDB, SqliteError, Statement } from 'better-sqlite3';
 import { Grid, IMatrixValues } from '../../../../src/ingestion/interfaces';
 import { SQLiteClient } from '../../../../src/serviceClients/database/SQLiteClient';
-import { describe } from 'node:test';
-import { fakeGpkgFilePath, mockInputFiles } from '../../../mocks/sourcesRequestBody';
+import { clear as clearMockConfig, init as initMockConfig } from '../../../mocks/configMock';
+import { fakeGpkgFilePath } from '../../../mocks/sourcesRequestBody';
 
 jest.mock('better-sqlite3');
 let sqlClient: SQLiteClient;
@@ -16,7 +15,7 @@ let getDbSpy: jest.SpyInstance;
 const sqlLiteError = new SqliteError('Database connection failed', 'SQLITE_ERROR');
 
 describe('SQLClient', () => {
-  beforeEach(function () {
+  beforeEach(() => {
     jest.resetAllMocks();
     jest.clearAllMocks();
     jest.restoreAllMocks();
@@ -30,7 +29,7 @@ describe('SQLClient', () => {
   });
 
   describe('getGrid', () => {
-    it('should return 2x1 grid', function () {
+    it('should return 2x1 grid', () => {
       const mockMatrixValues: IMatrixValues = { matrixWidth: 400, matrixHeight: 200 };
       prepareSpy.mockImplementation(() => {
         return { get: () => mockMatrixValues } as Statement;
@@ -41,7 +40,7 @@ describe('SQLClient', () => {
       expect(result).toBe(Grid.TWO_ON_ONE);
     });
 
-    it('should return 1x1 grid', function () {
+    it('should return 1x1 grid', () => {
       const mockMatrixValues: IMatrixValues = { matrixWidth: 200, matrixHeight: 200 };
       prepareSpy.mockImplementation(() => {
         return { get: () => mockMatrixValues } as Statement;
@@ -52,7 +51,7 @@ describe('SQLClient', () => {
       expect(result).toBe(Grid.ONE_ON_ONE);
     });
 
-    it('should return unsupported grid', function () {
+    it('should return unsupported grid', () => {
       const mockMatrixValues: IMatrixValues = { matrixWidth: 400, matrixHeight: 1 };
       prepareSpy.mockImplementation(() => {
         return { get: () => mockMatrixValues } as Statement;
@@ -63,7 +62,7 @@ describe('SQLClient', () => {
       expect(result).toBe(Grid.NOT_SUPPORTED);
     });
 
-    it('should throw SqliteError error - getGrid', function () {
+    it('should throw SqliteError error - getGrid', () => {
       getDbSpy.mockImplementation(() => {
         throw sqlLiteError;
       });
@@ -74,7 +73,7 @@ describe('SQLClient', () => {
   });
 
   describe('getGpkgTileSize', () => {
-    it('should throw SqliteError error - getGpkgTileSize', function () {
+    it('should throw SqliteError error - getGpkgTileSize', () => {
       getDbSpy.mockImplementation(() => {
         throw sqlLiteError;
       });
@@ -154,4 +153,3 @@ describe('SQLClient', () => {
     });
   });
 });
-

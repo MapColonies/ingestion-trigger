@@ -6,15 +6,13 @@ import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
 import type { IConfig } from '../common/interfaces';
 import type { RasterLayersCatalog } from '../ingestion/schemas/layerCatalogSchema';
-// import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, type SchemasValidator } from '../utils/validation/schemasValidator';
 
 @injectable()
 export class CatalogClient extends HttpClient {
   public constructor(
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.LOGGER) protected readonly logger: Logger,
-    @inject(SERVICES.TRACER) public readonly tracer: Tracer,
-    // @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator
+    @inject(SERVICES.TRACER) public readonly tracer: Tracer
   ) {
     super(
       logger,
@@ -60,8 +58,6 @@ export class CatalogClient extends HttpClient {
     const res = await this.post('/records/find', req);
     activeSpan?.addEvent('catalogClient.findByProductIdAndType.response', { findByProductIdAndTypeResponse: JSON.stringify(res) });
 
-    // TODO: resolve correct type
-    // const rasterLayersCatalog = this.schemasValidator.validateRasterLayersCatalog(res);
     return res as RasterLayersCatalog;
   }
 }

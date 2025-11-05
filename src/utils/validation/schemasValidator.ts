@@ -24,7 +24,6 @@ export function schemasValidationsFactory(container: DependencyContainer) {
   const updateMetadataSchema = createUpdateMetadataSchema();
   const rasterLayersCatalog = createRasterLayersCatalogSchema();
 
-
   return {
     validateInputFilesRequestBody: async (value: unknown): Promise<InputFiles> => validator.validate(inputFilesSchema, value),
     validateGpkgsInputFilesRequestBody: async (value: unknown): Promise<GpkgInputFiles> => validator.validate(gpkgInputFilesSchema, value),

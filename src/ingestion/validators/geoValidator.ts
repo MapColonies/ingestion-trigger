@@ -62,12 +62,12 @@ export class GeoValidator {
     if (productGeometry.type === 'MultiPolygon') {
       const polygons: Polygon[] = productGeometry.coordinates.map((coordinate) => {
         return { type: 'Polygon', coordinates: coordinate };
-      })
+      });
       // check for each of the single polygons if its contains within the gpkg geometry
       return !polygons.some((polygon) => {
-        const isContains = booleanContains(gpkgGeometry, polygon) === false;
+        const isContains = !booleanContains(gpkgGeometry, polygon);
 
-        if(!isContains){
+        if (!isContains) {
           activeSpan?.addEvent('GeoValidator.hasFootprintCorrelation.false', {
             gpkgGeometry: JSON.stringify(gpkgGeometry),
             productFootprint: JSON.stringify(productGeometry),

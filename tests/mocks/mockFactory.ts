@@ -205,8 +205,7 @@ const generateInputFiles = (): InputFiles => {
   };
 };
 
-export const getGpkgsFilesLocalPath = (gpkgFilesPath: string[]): string[] =>
-  gpkgFilesPath.map((gpkgFilePath) => join('gpkg', gpkgFilePath));
+export const getGpkgsFilesLocalPath = (gpkgFilesPath: string[]): string[] => gpkgFilesPath.map((gpkgFilePath) => join('gpkg', gpkgFilePath));
 
 export const rasterLayerInputFilesGenerators: IngestionLayerInputFilesPropertiesGenerators = {
   gpkgFilesPath: () => getGpkgsFilesLocalPath([generateHebrewCommonFileName('gpkg', { min: 1, max: 100 })]),

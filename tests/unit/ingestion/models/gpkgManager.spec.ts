@@ -1,7 +1,7 @@
 import jsLogger from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
-import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
 import config from 'config';
+import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
 import { registerDefaultConfig } from '../../../mocks/configMock';
 import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
 import { InvalidIndexError, UnsupportedGridError, UnsupportedTileSizeError } from '../../../../src/serviceClients/database/errors';

@@ -15,7 +15,7 @@ export class InfoController {
   public constructor(
     @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator,
     private readonly infoManager: InfoManager
-  ) { }
+  ) {}
 
   public getInfoData: SourcesInfoHandler = async (req, res, next): Promise<void> => {
     try {

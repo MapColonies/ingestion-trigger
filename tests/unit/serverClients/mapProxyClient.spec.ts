@@ -2,25 +2,23 @@ import jsLogger from '@map-colonies/js-logger';
 import { getMapServingLayerName, INGESTION_VALIDATIONS, RasterProductTypes } from '@map-colonies/raster-shared';
 import { trace } from '@opentelemetry/api';
 import nock from 'nock';
-import { MapProxyClient } from '../../../src/serviceClients/mapProxyClient';
-import { clear as clearConfig, configMock, registerDefaultConfig } from '../../mocks/configMock';
 import { faker } from '@faker-js/faker';
 import { randexp } from 'randexp';
 import { HttpClient } from '@map-colonies/mc-utils';
 import { InternalServerError, NotFoundError } from '@map-colonies/error-types';
+import { clear as clearConfig, configMock, registerDefaultConfig } from '../../mocks/configMock';
+import { MapProxyClient } from '../../../src/serviceClients/mapProxyClient';
 
 describe('mapProxyClient', () => {
   let mapProxyClient: MapProxyClient;
-  let mapProxyApiServiceUrl = '';
   let getSpy: jest.SpyInstance;
-  
+
   const fakeProductId = faker.helpers.fromRegExp(randexp(INGESTION_VALIDATIONS.productId.pattern));
   const fakeProductType = faker.helpers.enumValue(RasterProductTypes);
   const layerName = getMapServingLayerName(fakeProductId, fakeProductType);
 
   beforeEach(() => {
     registerDefaultConfig();
-    mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
 
     mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
     getSpy = jest.spyOn(HttpClient.prototype as unknown as { get: jest.Mock }, 'get');
@@ -30,7 +28,7 @@ describe('mapProxyClient', () => {
     nock.cleanAll();
     clearConfig();
     jest.resetAllMocks();
-    jest.restoreAllMocks()
+    jest.restoreAllMocks();
   });
 
   describe('exists', () => {
