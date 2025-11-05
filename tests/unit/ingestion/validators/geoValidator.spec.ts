@@ -1,13 +1,13 @@
 import jsLogger from '@map-colonies/js-logger';
-import { IConfig } from 'config';
 import { trace } from '@opentelemetry/api';
-import { GeoValidator } from '../../../../src/ingestion/validators/geoValidator';
-import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
-import { InfoDataWithFile } from '../../../../src/ingestion/schemas/infoDataSchema';
-import { mockGdalInfoDataWithFile } from '../../../mocks/gdalInfoMock';
-import { ValidationError } from '../../../../src/ingestion/errors/ingestionErrors';
 import booleanContains from '@turf/boolean-contains';
 import * as turf from '@turf/turf';
+import { IConfig } from 'config';
+import { ValidationError } from '../../../../src/ingestion/errors/ingestionErrors';
+import { InfoDataWithFile } from '../../../../src/ingestion/schemas/infoDataSchema';
+import { GeoValidator } from '../../../../src/ingestion/validators/geoValidator';
+import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
+import { mockGdalInfoDataWithFile } from '../../../mocks/gdalInfoMock';
 
 jest.mock('@turf/boolean-contains', () => ({
   __esModule: true,

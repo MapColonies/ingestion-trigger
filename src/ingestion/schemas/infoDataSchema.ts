@@ -14,9 +14,12 @@ const basicInfoDataSchema = z
     extentPolygon: z.custom<Geometry>(),
   })
   .describe('InfoDataSchema');
+const infoDataWitFile = basicInfoDataSchema.extend({
+  fileName: z.string(),
+});
 
 export const infoDataSchemaArray = z.array(basicInfoDataSchema);
-export type InfoDataWithFile = z.infer<typeof basicInfoDataSchema> & { gpkgFilePath: string };
+export type InfoDataWithFile = z.infer<typeof infoDataWitFile>;
 export type InfoData = z.infer<typeof basicInfoDataSchema>;
 
 // eslint-disable-next-line @typescript-eslint/no-magic-numbers

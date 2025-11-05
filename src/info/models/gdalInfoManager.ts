@@ -37,7 +37,7 @@ export class GdalInfoManager {
           gpkgFilesPath.map(async (gpkgFilePath) => {
             const infoData = await this.gdalUtilities.getInfoData(gpkgFilePath);
             getInfoSpan.addEvent('gdalInfoManager.get_info.data', { gpkgFilePath, fileInfo: JSON.stringify(infoData) });
-            return { ...infoData, gpkgFilePath };
+            return { ...infoData, fileName: gpkgFilePath };
           })
         );
         return filesGdalInfoData;
@@ -65,7 +65,7 @@ export class GdalInfoManager {
     let currentFile = '';
     try {
       for (const infoData of infoDataArray) {
-        currentFile = infoData.gpkgFilePath;
+        currentFile = infoData.fileName;
         this.logger.debug({ msg: 'validating gdal info data', logContext: logCtx, metadata: { infoData } });
         await this.schemasValidator.validateInfoData(infoData);
         validateInfoSpan.addEvent('gdalInfoManager.validateInfoData.pass');

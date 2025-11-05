@@ -15,8 +15,8 @@ export const mockGdalInfoData: InfoData = {
     ],
     type: 'Polygon',
   },
-  fileFormat: "gpkg",
+  fileFormat: 'gpkg',
   pixelSize: 0.0439453125,
 }
 
-export const mockGdalInfoDataWithFile: InfoDataWithFile = { ...mockGdalInfoData, gpkgFilePath: '/path/to/blue_marble.gpkg' };
+export const mockGdalInfoDataWithFile: InfoDataWithFile = { ...mockGdalInfoData, fileName: '/path/to/blue_marble.gpkg' };
