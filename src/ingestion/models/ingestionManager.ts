@@ -22,7 +22,7 @@ import { MapProxyClient } from '../../serviceClients/mapProxyClient';
 import { Checksum } from '../../utils/hash/checksum';
 import { Checksum as IChecksum } from '../../utils/hash/interface';
 import { LogContext } from '../../utils/logger/logContext';
-import { getAbsoluteGpkgFilesPath, getAbsolutePathInputFiles, getRelativePathInputFiles } from '../../utils/paths';
+import { getAbsoluteGpkgFilesPath, getAbsolutePathInputFiles } from '../../utils/paths';
 import { getShapefileFiles } from '../../utils/shapefile';
 import { ChecksumError, FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
 import { type ResponseId, type SourcesValidationResponse, type ValidationTaskParameters } from '../interfaces';
@@ -33,6 +33,16 @@ import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
 import { GeoValidator } from '../validators/geoValidator';
 import { SourceValidator } from '../validators/sourceValidator';
 import { ProductManager } from './productManager';
+
+type ReplaceValuesOfKey<T extends Record<PropertyKey, unknown>, Key extends keyof T, Value> = {
+  [K in keyof T]: K extends Key ? Value : T[K];
+};
+type MapToRelativeAndAbsolute<T extends Record<PropertyKey, unknown>> = {
+  [K in keyof T]: T[K] extends unknown[] ? { relative: T[K][number]; absolute: T[K][number] }[] : { relative: T[K]; absolute: T[K] };
+};
+type InputFilesPaths = MapToRelativeAndAbsolute<InputFiles>;
+type EnhancedIngestionNewLayer = ReplaceValuesOfKey<IngestionNewLayer, 'inputFiles', InputFilesPaths>;
+type EnhancedIngestionUpdateLayer = ReplaceValuesOfKey<IngestionUpdateLayer, 'inputFiles', InputFilesPaths>;
 
 @injectable()
 export class IngestionManager {
@@ -107,9 +117,25 @@ export class IngestionManager {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.newLayer');
 
-    const newLayerLocal = {
+    const absoluteInputFilesPath = getAbsolutePathInputFiles({ inputFiles: newLayer.inputFiles, sourceMount: this.sourceMount });
+    const newLayerLocal: EnhancedIngestionNewLayer = {
       ...newLayer,
-      ...getAbsolutePathInputFiles({ inputFiles: newLayer.inputFiles, sourceMount: this.sourceMount }),
+      inputFiles: {
+        gpkgFilesPath: newLayer.inputFiles.gpkgFilesPath.map((gpkgFilePath, index) => {
+          return {
+            absolute: absoluteInputFilesPath.inputFiles.gpkgFilesPath[index],
+            relative: gpkgFilePath,
+          };
+        }),
+        metadataShapefilePath: {
+          absolute: absoluteInputFilesPath.inputFiles.metadataShapefilePath,
+          relative: newLayer.inputFiles.metadataShapefilePath,
+        },
+        productShapefilePath: {
+          absolute: absoluteInputFilesPath.inputFiles.productShapefilePath,
+          relative: newLayer.inputFiles.productShapefilePath,
+        },
+      },
     };
 
     await this.newLayerValidations(newLayerLocal);
@@ -137,9 +163,25 @@ export class IngestionManager {
 
     const rasterLayerMetadata = await this.getLayerMetadata(catalogId);
 
+    const absoluteInputFilesPath = getAbsolutePathInputFiles({ inputFiles: updateLayer.inputFiles, sourceMount: this.sourceMount });
     const updateLayerLocal = {
       ...updateLayer,
-      ...getAbsolutePathInputFiles({ inputFiles: updateLayer.inputFiles, sourceMount: this.sourceMount }),
+      inputFiles: {
+        gpkgFilesPath: updateLayer.inputFiles.gpkgFilesPath.map((gpkgFilePath, index) => {
+          return {
+            absolute: absoluteInputFilesPath.inputFiles.gpkgFilesPath[index],
+            relative: gpkgFilePath,
+          };
+        }),
+        metadataShapefilePath: {
+          absolute: absoluteInputFilesPath.inputFiles.metadataShapefilePath,
+          relative: updateLayer.inputFiles.metadataShapefilePath,
+        },
+        productShapefilePath: {
+          absolute: absoluteInputFilesPath.inputFiles.productShapefilePath,
+          relative: updateLayer.inputFiles.productShapefilePath,
+        },
+      },
     };
 
     await this.updateLayerValidations(rasterLayerMetadata, updateLayerLocal);
@@ -160,13 +202,18 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async updateLayerValidations(rasterLayerMetadata: RasterLayerMetadata, updateLayer: IngestionUpdateLayer): Promise<void> {
+  private async updateLayerValidations(rasterLayerMetadata: RasterLayerMetadata, updateLayer: EnhancedIngestionUpdateLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.updateLayerValidations.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.updateLayerValidations');
 
     const { id, productId, productType } = rasterLayerMetadata;
     const { metadata, inputFiles } = updateLayer;
+    const absoluteInputFilesPaths = {
+      gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => gpkgFilePath.absolute),
+      metadataShapefilePath: inputFiles.metadataShapefilePath.absolute,
+      productShapefilePath: inputFiles.productShapefilePath.absolute,
+    };
     this.logger.debug({
       msg: 'started update layer validation',
       catalogId: id,
@@ -179,7 +226,7 @@ export class IngestionManager {
       logCtx: logCtx,
     });
     // validate input files (gpkgs, metadata shp, product shp files)
-    await this.validateInputFiles(inputFiles);
+    await this.validateInputFiles(absoluteInputFilesPaths);
 
     // validate against catalog, mapproxy, job-manager
     const layerName = getMapServingLayerName(productId, productType);
@@ -189,12 +236,17 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async newLayerValidations(newLayer: IngestionNewLayer): Promise<void> {
+  private async newLayerValidations(newLayer: EnhancedIngestionNewLayer): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.newLayerValidations.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.newLayerValidations');
 
     const { metadata, inputFiles } = newLayer;
+    const absoluteInputFilesPaths = {
+      gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => gpkgFilePath.absolute),
+      metadataShapefilePath: inputFiles.metadataShapefilePath.absolute,
+      productShapefilePath: inputFiles.productShapefilePath.absolute,
+    };
     this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, inputFiles }, logCtx: logCtx });
     this.logger.info({
       productId: metadata.productId,
@@ -204,7 +256,7 @@ export class IngestionManager {
       logCtx: logCtx,
     });
     // validate input files (gpkgs, metadata shp, product shp files)
-    await this.validateInputFiles(inputFiles);
+    await this.validateInputFiles(absoluteInputFilesPaths);
 
     // validate against catalog, mapproxy, job-manager
     const layerName = getMapServingLayerName(metadata.productId, metadata.productType);
@@ -410,13 +462,19 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async newLayerJobPayload(newLayer: IngestionNewLayer): Promise<ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters>> {
-    const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath);
+  private async newLayerJobPayload(newLayer: EnhancedIngestionNewLayer): Promise<ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters>> {
+    const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath.absolute);
     const taskParameters = { checksums };
 
     const newLayerRelative = {
       ...newLayer,
-      ...getRelativePathInputFiles({ inputFiles: newLayer.inputFiles, sourceMount: this.sourceMount }),
+      ...{
+        inputFiles: {
+          metadataShapefilePath: newLayer.inputFiles.metadataShapefilePath.relative,
+          productShapefilePath: newLayer.inputFiles.productShapefilePath.relative,
+          gpkgFilesPath: newLayer.inputFiles.gpkgFilesPath.map((gpkgFilePath) => gpkgFilePath.relative),
+        },
+      },
     };
 
     const ingestionNewJobParams = {
@@ -441,7 +499,7 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async updateLayerJobPayload(
     rasterLayerMetadata: RasterLayerMetadata,
-    updateLayer: IngestionUpdateLayer
+    updateLayer: EnhancedIngestionUpdateLayer
   ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters>> {
     const { displayPath, id, productId, productType, productVersion, tileOutputFormat, productName, productSubType } = rasterLayerMetadata;
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
@@ -449,12 +507,18 @@ export class IngestionManager {
     });
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
 
-    const checksums = await this.getFilesChecksum(updateLayer.inputFiles.metadataShapefilePath);
+    const checksums = await this.getFilesChecksum(updateLayer.inputFiles.metadataShapefilePath.absolute);
     const taskParameters = { checksums };
 
     const updateLayerRelative = {
       ...updateLayer,
-      ...getRelativePathInputFiles({ inputFiles: updateLayer.inputFiles, sourceMount: this.sourceMount }),
+      ...{
+        inputFiles: {
+          metadataShapefilePath: updateLayer.inputFiles.metadataShapefilePath.relative,
+          productShapefilePath: updateLayer.inputFiles.productShapefilePath.relative,
+          gpkgFilesPath: updateLayer.inputFiles.gpkgFilesPath.map((gpkgFilePath) => gpkgFilePath.relative),
+        },
+      },
     };
 
     const ingestionUpdateJobParams = {
