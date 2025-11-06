@@ -7,7 +7,7 @@ import { SourceValidator } from '../../../../src/ingestion/validators/sourceVali
 import { GpkgError } from '../../../../src/serviceClients/database/errors';
 import { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
-import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
+import { generateInputFiles } from '../../../mocks/mockFactory';
 
 describe('ValidateManager', () => {
   let validateManager: ValidateManager;
@@ -42,24 +42,26 @@ describe('ValidateManager', () => {
       sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
       sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
 
-      const response = await validateManager.validateGpkgs({ gpkgFilesPath: mockInputFiles.gpkgFilesPath });
+      const response = await validateManager.validateGpkgs({ gpkgFilesPath: generateInputFiles().gpkgFilesPath });
 
       expect(response).toStrictEqual({ isValid: true, message: 'Sources are valid' });
     });
 
     it('should return failed validation response due to file is not exists', async () => {
-      sourceValidator.validateFilesExist.mockRejectedValue(new FileNotFoundError(mockInputFiles.gpkgFilesPath[0]));
+      const validateGpkgRequest = { gpkgFilesPath: generateInputFiles().gpkgFilesPath };
+      const expectedError = validateGpkgRequest.gpkgFilesPath[0];
+      sourceValidator.validateFilesExist.mockRejectedValue(new FileNotFoundError(expectedError));
 
-      const response = await validateManager.validateGpkgs({ gpkgFilesPath: mockInputFiles.gpkgFilesPath });
+      const response = await validateManager.validateGpkgs(validateGpkgRequest);
 
-      expect(response).toStrictEqual({ isValid: false, message: `File ${mockInputFiles.gpkgFilesPath[0]} does not exist` });
+      expect(response).toStrictEqual({ isValid: false, message: `File ${expectedError} does not exist` });
     });
 
     it('should return failed validation response when gdal info validation throws an error', async () => {
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
       sourceValidator.validateGdalInfo.mockRejectedValue(new GdalInfoError('Error while validating gdal info'));
 
-      const response = await validateManager.validateGpkgs({ gpkgFilesPath: mockInputFiles.gpkgFilesPath });
+      const response = await validateManager.validateGpkgs({ gpkgFilesPath: generateInputFiles().gpkgFilesPath });
 
       expect(response).toStrictEqual({ isValid: false, message: 'Error while validating gdal info' });
     });
@@ -71,7 +73,7 @@ describe('ValidateManager', () => {
         throw new GpkgError('Error while validating gpkg files');
       });
 
-      const response = await validateManager.validateGpkgs({ gpkgFilesPath: mockInputFiles.gpkgFilesPath });
+      const response = await validateManager.validateGpkgs({ gpkgFilesPath: generateInputFiles().gpkgFilesPath });
 
       expect(response).toStrictEqual({ isValid: false, message: 'Error while validating gpkg files' });
     });

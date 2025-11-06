@@ -1,15 +1,15 @@
-import { promises as fsp, constants as fsConstants } from 'node:fs';
+import { constants as fsConstants, promises as fsp } from 'node:fs';
 import jsLogger from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
-import { configMock } from '../../../mocks/configMock';
-import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
-import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
-import { GdalInfoManager } from '../../../../src/info/models/gdalInfoManager';
-import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
-import { FileNotFoundError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { getApp } from '../../../../src/app';
+import { GdalInfoManager } from '../../../../src/info/models/gdalInfoManager';
+import { FileNotFoundError } from '../../../../src/ingestion/errors/ingestionErrors';
+import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
+import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { getTestContainerConfig } from '../../../integration/ingestion/helpers/containerConfig';
+import { configMock } from '../../../mocks/configMock';
 import { mockGdalInfoDataWithFile } from '../../../mocks/gdalInfoMock';
+import { generateInputFiles } from '../../../mocks/mockFactory';
 
 describe('SourceValidator', () => {
   let sourceValidator: SourceValidator;
@@ -39,7 +39,7 @@ describe('SourceValidator', () => {
 
   describe('validateFilesExist', () => {
     it('should validate that all files exist', async () => {
-      const { gpkgFilesPath } = mockInputFiles;
+      const { gpkgFilesPath } = generateInputFiles();
       fspAccessSpy.mockResolvedValue(undefined);
 
       await sourceValidator.validateFilesExist(gpkgFilesPath);
@@ -52,7 +52,7 @@ describe('SourceValidator', () => {
 
     it('should throw FileNotFoundError when a file does not exist', async () => {
       fspAccessSpy.mockImplementation(async () => Promise.reject());
-      const { gpkgFilesPath } = mockInputFiles;
+      const { gpkgFilesPath } = generateInputFiles();
 
       const promise = sourceValidator.validateFilesExist(gpkgFilesPath);
 
@@ -66,7 +66,7 @@ describe('SourceValidator', () => {
 
   describe('validateGdalInfo', () => {
     it('should succesfully validate gdal info with no errors', async () => {
-      const { gpkgFilesPath } = mockInputFiles;
+      const { gpkgFilesPath } = generateInputFiles();
       jest.spyOn(mockGdalInfoManager, 'getInfoData').mockResolvedValue([mockGdalInfoDataWithFile]);
       const gdalInfoValidatorSpy = jest.spyOn(mockGdalInfoManager, 'validateInfoData');
 

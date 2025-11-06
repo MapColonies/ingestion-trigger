@@ -197,7 +197,7 @@ const getInputFilesLocalPath = (inputFiles: InputFiles): InputFiles => {
 /**
  * CAUTION generated paths can be existing files on file system
  */
-const generateInputFiles = (): InputFiles => {
+export const generateInputFiles = (): InputFiles => {
   return {
     gpkgFilesPath: [join(faker.system.directoryPath(), generateHebrewCommonFileName('gpkg', { min: 1, max: 100 }))],
     metadataShapefilePath: join(faker.system.directoryPath(), 'ShapeMetadata.shp'),

@@ -7,7 +7,7 @@ import { FileNotFoundError, GdalInfoError } from '../../../../src/ingestion/erro
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { mockGdalInfoData } from '../../../mocks/gdalInfoMock';
-import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
+import { generateInputFiles } from '../../../mocks/mockFactory';
 
 const sourceValidator = {
   validateFilesExist: jest.fn(),
@@ -52,23 +52,23 @@ describe('InfoManager', () => {
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       gdalInfoManagerMock.getInfoData.mockResolvedValue(mockGdalInfoDataArr);
 
-      const result = await infoManager.getGpkgsInfo(mockInputFiles);
+      const result = await infoManager.getGpkgsInfo(generateInputFiles());
 
       expect(result).toEqual(mockGdalInfoDataArr);
     });
 
     it('should throw an file not found error if file is not exist', async () => {
       //validateFilesExistSpy.mockRejectedValue(new FileNotFoundError(mockInputFiles.gpkgFilesPath[0]));
-      sourceValidator.validateFilesExist.mockRejectedValue(new FileNotFoundError(mockInputFiles.gpkgFilesPath[0]));
+      sourceValidator.validateFilesExist.mockRejectedValue(new FileNotFoundError(generateInputFiles().gpkgFilesPath[0]));
 
-      await expect(infoManager.getGpkgsInfo(mockInputFiles)).rejects.toThrow(FileNotFoundError);
+      await expect(infoManager.getGpkgsInfo(generateInputFiles())).rejects.toThrow(FileNotFoundError);
     });
 
     it('should throw an error when getInfoData throws GdalInfoError', async () => {
       sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
       gdalInfoManagerMock.getInfoData.mockImplementation(async () => Promise.reject(new GdalInfoError('Error while getting gdal info')));
 
-      await expect(infoManager.getGpkgsInfo(mockInputFiles)).rejects.toThrow(GdalInfoError);
+      await expect(infoManager.getGpkgsInfo(generateInputFiles())).rejects.toThrow(GdalInfoError);
     });
   });
 });

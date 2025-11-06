@@ -1,12 +1,12 @@
 import jsLogger from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import config from 'config';
+import { Grid, TileSize } from '../../../../src/ingestion/interfaces';
 import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
-import { registerDefaultConfig } from '../../../mocks/configMock';
-import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
 import { InvalidIndexError, UnsupportedGridError, UnsupportedTileSizeError } from '../../../../src/serviceClients/database/errors';
 import { SQLiteClient } from '../../../../src/serviceClients/database/SQLiteClient';
-import { Grid, TileSize } from '../../../../src/ingestion/interfaces';
+import { registerDefaultConfig } from '../../../mocks/configMock';
+import { generateInputFiles } from '../../../mocks/mockFactory';
 
 describe('GpkgManager', () => {
   let gpkgManager: GpkgManager;
@@ -29,7 +29,7 @@ describe('GpkgManager', () => {
 
   describe('validateGpkgFiles', () => {
     it('should validate GPKG files and not throw errors', () => {
-      const { gpkgFilesPath } = mockInputFiles;
+      const { gpkgFilesPath } = generateInputFiles();
 
       isGpkgIndexExistsSpy.mockReturnValue(true);
       getGridSpy.mockReturnValue(Grid.TWO_ON_ONE);
@@ -46,7 +46,7 @@ describe('GpkgManager', () => {
     });
 
     it('should throw InvalidIndexError if GPKG index does not exists', () => {
-      const { gpkgFilesPath } = mockInputFiles;
+      const { gpkgFilesPath } = generateInputFiles();
 
       isGpkgIndexExistsSpy.mockReturnValue(false);
 
@@ -58,7 +58,7 @@ describe('GpkgManager', () => {
     });
 
     it('should throw UnsupportedGridError if grid type is not supported', () => {
-      const { gpkgFilesPath } = mockInputFiles;
+      const { gpkgFilesPath } = generateInputFiles();
 
       isGpkgIndexExistsSpy.mockReturnValue(true);
       getGridSpy.mockReturnValue(Grid.ONE_ON_ONE);
@@ -71,7 +71,7 @@ describe('GpkgManager', () => {
     });
 
     it('should throw UnsupportedTileSizeError if tile width is not supported', () => {
-      const { gpkgFilesPath } = mockInputFiles;
+      const { gpkgFilesPath } = generateInputFiles();
 
       isGpkgIndexExistsSpy.mockReturnValue(true);
       getGridSpy.mockReturnValue(Grid.TWO_ON_ONE);
@@ -85,7 +85,7 @@ describe('GpkgManager', () => {
     });
 
     it('should throw UnsupportedTileSizeError if tile height is not supported', () => {
-      const { gpkgFilesPath } = mockInputFiles;
+      const { gpkgFilesPath } = generateInputFiles();
 
       isGpkgIndexExistsSpy.mockReturnValue(true);
       getGridSpy.mockReturnValue(Grid.TWO_ON_ONE);

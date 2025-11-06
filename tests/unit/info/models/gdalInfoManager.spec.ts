@@ -8,7 +8,7 @@ import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../.
 import { getTestContainerConfig } from '../../../integration/ingestion/helpers/containerConfig';
 import { registerDefaultConfig } from '../../../mocks/configMock';
 import { mockGdalInfoDataWithFile } from '../../../mocks/gdalInfoMock';
-import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
+import { generateInputFiles } from '../../../mocks/mockFactory';
 
 describe('GdalInfoManager', () => {
   let gdalInfoManager: GdalInfoManager;
@@ -38,7 +38,7 @@ describe('GdalInfoManager', () => {
 
   describe('validateInfoData', () => {
     it('should succesfuly validate gdal info data according to number of gpkg source files', async () => {
-      const { gpkgFilesPath } = mockInputFiles;
+      const { gpkgFilesPath } = generateInputFiles();
 
       const schemaValidatorSpy = jest.spyOn(schemaValidator, 'validateInfoData').mockResolvedValue(mockGdalInfoDataWithFile);
 
