@@ -34,15 +34,15 @@ export class CatalogClient extends HttpClient {
   @withSpanAsyncV4
   public async findById(catalogId: string): Promise<RasterLayersCatalog> {
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('catalogClient.findByCatalogId');
+    activeSpan?.updateName('catalogClient.findById');
     const req = {
       id: catalogId,
     };
-    const res = await this.post('/records/find', req);
-    activeSpan?.addEvent('catalogClient.findByCatalogId.response', { findByCatalogIdResponse: JSON.stringify(res) });
+    const res = await this.post<RasterLayersCatalog>('/records/find', req);
+    activeSpan?.addEvent('catalogClient.findById.response', { findByCatalogIdResponse: JSON.stringify(res) });
 
-    // TODO: resolve correct type
-    return res as RasterLayersCatalog;
+    // TODO: validate correct type of response
+    return res;
   }
 
   @withSpanAsyncV4
@@ -55,9 +55,10 @@ export class CatalogClient extends HttpClient {
         productType,
       },
     };
-    const res = await this.post('/records/find', req);
+    const res = await this.post<RasterLayersCatalog>('/records/find', req);
     activeSpan?.addEvent('catalogClient.findByProductIdAndType.response', { findByProductIdAndTypeResponse: JSON.stringify(res) });
 
-    return res as RasterLayersCatalog;
+    // TODO: validate correct type of response
+    return res;
   }
 }
