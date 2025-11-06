@@ -4,9 +4,9 @@
   "description": "Service that designed to validate and trigger ingestion of new layers from raw data and update existing layers",
   "main": "./src/index.ts",
   "scripts": {
-    "pretest": "npm run bundleOpenApi",
-    "test:unit": "npm run pretest && jest --config=./tests/configurations/unit/jest.config.js",
-    "test:integration": "npm run pretest && jest --config=./tests/configurations/integration/jest.config.js",
+    "pretest:integration": "npm run bundleOpenApi",
+    "test:unit": "jest --config=./tests/configurations/unit/jest.config.js",
+    "test:integration": "jest --config=./tests/configurations/integration/jest.config.js",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "prelint:fix": "npm run format:fix",
