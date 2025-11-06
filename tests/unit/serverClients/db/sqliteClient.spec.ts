@@ -5,7 +5,7 @@ import Database, { Database as SQLiteDB, SqliteError, Statement } from 'better-s
 import { Grid, IMatrixValues } from '../../../../src/ingestion/interfaces';
 import { SQLiteClient } from '../../../../src/serviceClients/database/SQLiteClient';
 import { clear as clearMockConfig, init as initMockConfig } from '../../../mocks/configMock';
-import { fakeGpkgFilePath } from '../../../mocks/sourcesRequestBody';
+import { rasterLayerInputFilesGenerators } from '../../../mocks/mockFactory';
 
 jest.mock('better-sqlite3');
 let sqlClient: SQLiteClient;
@@ -25,7 +25,7 @@ describe('SQLClient', () => {
     getDbSpy = jest.spyOn(SQLiteClient.prototype, 'getDB');
     mockDB = { close: jest.fn } as unknown as SQLiteDB;
 
-    sqlClient = new SQLiteClient(jsLogger({ enabled: false }), trace.getTracer('testTracer'), fakeGpkgFilePath);
+    sqlClient = new SQLiteClient(jsLogger({ enabled: false }), trace.getTracer('testTracer'), rasterLayerInputFilesGenerators.gpkgFilesPath()[0]);
   });
 
   describe('getGrid', () => {
