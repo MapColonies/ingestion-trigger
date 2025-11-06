@@ -5,35 +5,20 @@ import httpStatusCodes from 'http-status-codes';
 import { unset } from 'lodash';
 import nock from 'nock';
 import { getApp } from '../../../src/app';
-import { Grid, type ValidationTaskParameters } from '../../../src/ingestion/interfaces';
+import { Grid } from '../../../src/ingestion/interfaces';
 import { GpkgManager } from '../../../src/ingestion/models/gpkgManager';
 import type { GpkgInputFiles } from '../../../src/ingestion/schemas/inputFilesSchema';
-import type { IngestionUpdateLayer } from '../../../src/ingestion/schemas/updateLayerSchema';
 import { SourceValidator } from '../../../src/ingestion/validators/sourceValidator';
 import { SQLiteClient } from '../../../src/serviceClients/database/SQLiteClient';
 import { ZodValidator } from '../../../src/utils/validation/zodValidator';
 import { getGpkgsFilesLocalPath, rasterLayerInputFilesGenerators } from '../../mocks/mockFactory';
+import { validInputFiles } from '../../mocks/static/exampleData';
 import type { DeepPartial, DeepRequired, FlattenKeyTupleUnion } from '../../utils/types';
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
 import { ValidateRequestSender } from './helpers/validateRequestSender';
 
 describe('Validate', function () {
   let requestSender: ValidateRequestSender;
-
-  const validInputFiles: Pick<ValidationTaskParameters, 'checksums'> & Pick<IngestionUpdateLayer, 'inputFiles'> = {
-    inputFiles: {
-      gpkgFilesPath: ['validIndexed.gpkg'],
-      productShapefilePath: 'validIndexed',
-      metadataShapefilePath: 'validIndexed',
-    },
-    checksums: [
-      { algorithm: 'XXH64', checksum: 'a0915c78be995614', fileName: 'metadata/validIndexed/ShapeMetadata.cpg' },
-      { algorithm: 'XXH64', checksum: '1c4047022f216b6f', fileName: 'metadata/validIndexed/ShapeMetadata.dbf' },
-      { algorithm: 'XXH64', checksum: '691fb87c5aeebb48', fileName: 'metadata/validIndexed/ShapeMetadata.prj' },
-      { algorithm: 'XXH64', checksum: '5e371a633204f7eb', fileName: 'metadata/validIndexed/ShapeMetadata.shp' },
-      { algorithm: 'XXH64', checksum: '89abcaac2015beff', fileName: 'metadata/validIndexed/ShapeMetadata.shx' },
-    ],
-  };
 
   beforeEach(function () {
     const [app] = getApp({

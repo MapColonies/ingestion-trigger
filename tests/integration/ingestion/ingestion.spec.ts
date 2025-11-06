@@ -7,7 +7,7 @@ import { matches, merge, set, unset } from 'lodash';
 import nock from 'nock';
 import { randexp } from 'randexp';
 import { getApp } from '../../../src/app';
-import { type ResponseId, type ValidationTaskParameters } from '../../../src/ingestion/interfaces';
+import { type ResponseId } from '../../../src/ingestion/interfaces';
 import type { IngestionNewLayer } from '../../../src/ingestion/schemas/ingestionLayerSchema';
 import type { IngestionUpdateLayer } from '../../../src/ingestion/schemas/updateLayerSchema';
 import { SQLiteClient } from '../../../src/serviceClients/database/SQLiteClient';
@@ -24,6 +24,7 @@ import {
   rasterLayerInputFilesGenerators,
   rasterLayerMetadataGenerators,
 } from '../../mocks/mockFactory';
+import { validInputFiles } from '../../mocks/static/exampleData';
 import type { DeepPartial, DeepRequired, FlattenKeyTupleUnion } from '../../utils/types';
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
 import { IngestionRequestSender } from './helpers/ingestionRequestSender';
@@ -32,24 +33,8 @@ describe('Ingestion', function () {
   let jobManagerURL: string;
   let mapProxyApiServiceUrl: string;
   let catalogServiceURL: string;
-  let requestSender: IngestionRequestSender;
-
-  const validInputFiles: Pick<ValidationTaskParameters, 'checksums'> & Pick<IngestionUpdateLayer, 'inputFiles'> = {
-    inputFiles: {
-      gpkgFilesPath: ['validIndexed.gpkg'],
-      productShapefilePath: 'validIndexed',
-      metadataShapefilePath: 'validIndexed',
-    },
-    checksums: [
-      { algorithm: 'XXH64', checksum: 'a0915c78be995614', fileName: 'metadata/validIndexed/ShapeMetadata.cpg' },
-      { algorithm: 'XXH64', checksum: '1c4047022f216b6f', fileName: 'metadata/validIndexed/ShapeMetadata.dbf' },
-      { algorithm: 'XXH64', checksum: '691fb87c5aeebb48', fileName: 'metadata/validIndexed/ShapeMetadata.prj' },
-      { algorithm: 'XXH64', checksum: '5e371a633204f7eb', fileName: 'metadata/validIndexed/ShapeMetadata.shp' },
-      { algorithm: 'XXH64', checksum: '89abcaac2015beff', fileName: 'metadata/validIndexed/ShapeMetadata.shx' },
-    ],
-  };
-
   let jobResponse: ICreateJobResponse;
+  let requestSender: IngestionRequestSender;
 
   beforeEach(function () {
     const [app] = getApp({
