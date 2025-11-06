@@ -8,10 +8,11 @@ import { DependencyContainer } from 'tsyringe/dist/typings/types';
 import { CHECKSUM_PROCESSOR, SERVICES, SERVICE_NAME } from './common/constants';
 import { InjectionObject, registerDependencies } from './common/dependencyRegistration';
 import { tracing } from './common/tracing';
+import { INFO_ROUTER_SYMBOL, infoRouterFactory } from './info/routes/infoRouter';
 import { INGESTION_ROUTER_SYMBOL, ingestionRouterFactory } from './ingestion/routes/ingestionRouter';
 import type { HashAlgorithm, HashProcessor } from './utils/hash/interface';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, schemasValidationsFactory } from './utils/validation/schemasValidator';
-import { INFO_ROUTER_SYMBOL, infoRouterFactory } from './info/routes/infoRouter';
+import { VALIDATE_ROUTER_SYMBOL, validateRouterFactory } from './validate/routes/validateRouter';
 
 export interface RegisterOptions {
   override?: InjectionObject<unknown>[];
@@ -32,6 +33,7 @@ export const registerExternalValues = (options?: RegisterOptions): DependencyCon
     { token: SERVICES.LOGGER, provider: { useValue: logger } },
     { token: SERVICES.TRACER, provider: { useValue: tracer } },
     { token: SERVICES.METER, provider: { useValue: OtelMetrics.getMeterProvider().getMeter(SERVICE_NAME) } },
+    { token: VALIDATE_ROUTER_SYMBOL, provider: { useFactory: validateRouterFactory } },
     { token: INGESTION_ROUTER_SYMBOL, provider: { useFactory: ingestionRouterFactory } },
     { token: INFO_ROUTER_SYMBOL, provider: { useFactory: infoRouterFactory } },
     { token: INGESTION_SCHEMAS_VALIDATOR_SYMBOL, provider: { useFactory: instancePerContainerCachingFactory(schemasValidationsFactory) } },

@@ -5,10 +5,9 @@ import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
-import type { IRecordRequestParams, ResponseId, SourcesValidationResponse } from '../interfaces';
+import type { IRecordRequestParams, ResponseId } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 
-type ValidateGpkgsHandler = RequestHandler<undefined, SourcesValidationResponse, unknown>;
 type NewLayerHandler = RequestHandler<undefined, ResponseId, unknown>;
 type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseId, unknown>;
 
@@ -58,18 +57,6 @@ export class IngestionController {
       if (error instanceof UnsupportedEntityError) {
         (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
       }
-      next(error);
-    }
-  };
-
-  public validateGpkgs: ValidateGpkgsHandler = async (req, res, next): Promise<void> => {
-    try {
-      const validGpkgInputFilesRequestBody = await this.schemasValidator.validateGpkgsInputFilesRequestBody(req.body);
-
-      const validationResponse = await this.ingestionManager.validateGpkgs(validGpkgInputFilesRequestBody);
-
-      res.status(StatusCodes.OK).send(validationResponse);
-    } catch (error) {
       next(error);
     }
   };

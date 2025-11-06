@@ -24,6 +24,7 @@ export class ChecksumError extends UnsupportedEntityError {
   }
 }
 
+// TODO: DOES THIS ERROR BELONGS HERE?
 export class ValidationError extends Error {
   public constructor(message: string) {
     super(message);

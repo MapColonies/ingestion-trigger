@@ -8,23 +8,26 @@ import { trace } from '@opentelemetry/api';
 import { container } from 'tsyringe';
 import { CHECKSUM_PROCESSOR, SERVICES } from '../../../../src/common/constants';
 import { InfoManager } from '../../../../src/info/models/infoManager';
-import { ChecksumError, FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../../../../src/ingestion/errors/ingestionErrors';
+import { ChecksumError, FileNotFoundError, UnsupportedEntityError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
 import { ProductManager } from '../../../../src/ingestion/models/productManager';
 import { GeoValidator } from '../../../../src/ingestion/validators/geoValidator';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { CatalogClient } from '../../../../src/serviceClients/catalogClient';
-import { GpkgError } from '../../../../src/serviceClients/database/errors';
 import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 import { Checksum } from '../../../../src/utils/hash/checksum';
 import { HashAlgorithm, HashProcessor } from '../../../../src/utils/hash/interface';
+import type { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { generateCatalogLayerResponse, generateChecksum, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
-import { mockInputFiles } from '../../../mocks/sourcesRequestBody';
 
 describe('IngestionManager', () => {
   let ingestionManager: IngestionManager;
+
+  const validateManager = {
+    validateGpkgsSources: jest.fn(),
+  } satisfies Partial<ValidateManager>;
 
   const sourceValidator = {
     validateFilesExist: jest.fn(),
@@ -86,6 +89,7 @@ describe('IngestionManager', () => {
       testLogger,
       configMock,
       testTracer,
+      validateManager as unknown as ValidateManager,
       sourceValidator as unknown as SourceValidator,
       infoManagerMock as unknown as InfoManager,
       geoValidatorMock as unknown as GeoValidator,
@@ -112,8 +116,7 @@ describe('IngestionManager', () => {
       const layerRequest = generateNewLayerRequest();
       const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] };
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockResolvedValue(undefined);
       geoValidatorMock.validate.mockResolvedValue(undefined);
@@ -141,38 +144,26 @@ describe('IngestionManager', () => {
       expect(createIngestionJobSpy).not.toHaveBeenCalled();
     });
 
-    it('should throw unsupported entity error when gpkg files not found error', async () => {
+    it('should throw unsupported entity error when gpkg files validation fails', async () => {
       const layerRequest = generateNewLayerRequest();
       const expectedErrorMessage = 'errror message';
       sourceValidator.validateFilesExist.mockResolvedValueOnce(undefined);
-      sourceValidator.validateFilesExist.mockRejectedValueOnce(new FileNotFoundError(expectedErrorMessage));
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: false, message: expectedErrorMessage });
 
       const promise = ingestionManager.newLayer(layerRequest);
-      await expect(promise).rejects.toThrow(new UnsupportedEntityError(`File ${expectedErrorMessage} does not exist`));
-      expect(createIngestionJobSpy).not.toHaveBeenCalled();
-    });
 
-    it('should throw unsupported entity error when gpkg files gdal info validation throws an error', async () => {
-      const layerRequest = generateNewLayerRequest();
-      const expectedErrorMessage = 'errror message';
-      sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockRejectedValue(new GdalInfoError(expectedErrorMessage));
-
-      const promise = ingestionManager.newLayer(layerRequest);
       await expect(promise).rejects.toThrow(new UnsupportedEntityError(expectedErrorMessage));
       expect(createIngestionJobSpy).not.toHaveBeenCalled();
     });
 
-    it('should throw unsupported entity error when gpkg files validation throws an error', async () => {
+    it('should throw unsupported entity error when gpkg files validation throws an unhandled error', async () => {
       const layerRequest = generateNewLayerRequest();
       const expectedErrorMessage = 'errror message';
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockImplementation(() => {
-        throw new GpkgError(expectedErrorMessage);
-      });
+      validateManager.validateGpkgsSources.mockRejectedValue(new Error(expectedErrorMessage));
 
       const promise = ingestionManager.newLayer(layerRequest);
+
       await expect(promise).rejects.toThrow(new UnsupportedEntityError(expectedErrorMessage));
       expect(createIngestionJobSpy).not.toHaveBeenCalled();
     });
@@ -180,8 +171,7 @@ describe('IngestionManager', () => {
     it('should throw an error when fails to read gpkg info', async () => {
       const layerRequest = generateNewLayerRequest();
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockRejectedValue(new Error());
 
       const promise = ingestionManager.newLayer(layerRequest);
@@ -193,8 +183,7 @@ describe('IngestionManager', () => {
     it('should throw an error when fails to read product shapefile', async () => {
       const layerRequest = generateNewLayerRequest();
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockRejectedValue(new Error());
 
@@ -207,8 +196,7 @@ describe('IngestionManager', () => {
     it('should throw an error when fails to validate product geometry against gpkg info', async () => {
       const layerRequest = generateNewLayerRequest();
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockResolvedValue(undefined);
       geoValidatorMock.validate.mockImplementation(() => {
@@ -226,8 +214,7 @@ describe('IngestionManager', () => {
       const layerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
       const expectedErrorMessage = `Failed to create new ingestion job for layer: ${layerName}, already exists on MapProxy`;
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockResolvedValue(undefined);
       geoValidatorMock.validate.mockResolvedValue(undefined);
@@ -242,8 +229,7 @@ describe('IngestionManager', () => {
     it('should throw an error when MapProxy call throws an unhandled error', async () => {
       const layerRequest = generateNewLayerRequest();
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockResolvedValue(undefined);
       geoValidatorMock.validate.mockResolvedValue(undefined);
@@ -259,8 +245,7 @@ describe('IngestionManager', () => {
       const layerRequest = generateNewLayerRequest();
       const expectedErrorMessage = `ProductId: ${layerRequest.metadata.productId} ProductType: ${layerRequest.metadata.productType}, already exists in catalog`;
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockResolvedValue(undefined);
       geoValidatorMock.validate.mockResolvedValue(undefined);
@@ -276,8 +261,7 @@ describe('IngestionManager', () => {
     it('should throw an error when catalog call throws an unhandled error', async () => {
       const layerRequest = generateNewLayerRequest();
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockResolvedValue(undefined);
       geoValidatorMock.validate.mockResolvedValue(undefined);
@@ -294,8 +278,7 @@ describe('IngestionManager', () => {
       const layerRequest = generateNewLayerRequest();
       const expectedErrorMessage = `ProductId: ${layerRequest.metadata.productId} productType: ${layerRequest.metadata.productType}, there is at least one conflicting job already running for that layer`;
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockResolvedValue(undefined);
       geoValidatorMock.validate.mockResolvedValue(undefined);
@@ -312,8 +295,7 @@ describe('IngestionManager', () => {
     it('should throw an error when job manager call throws an unhandled error', async () => {
       const layerRequest = generateNewLayerRequest();
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockResolvedValue(undefined);
       geoValidatorMock.validate.mockResolvedValue(undefined);
@@ -332,8 +314,7 @@ describe('IngestionManager', () => {
       const filePath = '';
       const expectedErrorMessage = `Failed to calculate checksum for file: ${filePath}`;
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockResolvedValue(undefined);
       geoValidatorMock.validate.mockResolvedValue(undefined);
@@ -351,8 +332,7 @@ describe('IngestionManager', () => {
     it('should throw an error when job manager create new layer ingestion call throws an error', async () => {
       const layerRequest = generateNewLayerRequest();
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockResolvedValue(undefined);
       geoValidatorMock.validate.mockResolvedValue(undefined);
@@ -368,6 +348,7 @@ describe('IngestionManager', () => {
     });
   });
 
+  // TODO: cover with tests as in newLayer
   describe('updateLayer', () => {
     let ingestionUpdateJobType: string;
     let ingestionSwapUpdateJobType: string;
@@ -387,8 +368,7 @@ describe('IngestionManager', () => {
       const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] };
       findByIdSpy.mockResolvedValue([catalogLayerResponse]);
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockResolvedValue(undefined);
       geoValidatorMock.validate.mockResolvedValue(undefined);
@@ -417,8 +397,7 @@ describe('IngestionManager', () => {
       const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] };
       findByIdSpy.mockResolvedValue([layerRequest]);
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockResolvedValue(undefined);
       geoValidatorMock.validate.mockResolvedValue(undefined);
@@ -465,8 +444,7 @@ describe('IngestionManager', () => {
       const expectedErrorMessage = `Failed to create update job for layer: ${layerName}, layer doesn't exist on MapProxy`;
       findByIdSpy.mockResolvedValue([catalogLayerResponse]);
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockResolvedValue(undefined);
       geoValidatorMock.validate.mockResolvedValue(undefined);
@@ -484,8 +462,7 @@ describe('IngestionManager', () => {
       const expectedErrorMessage = `ProductId: ${catalogLayerResponse.metadata.productId} productType: ${catalogLayerResponse.metadata.productType}, there is at least one conflicting job already running for that layer`;
       findByIdSpy.mockResolvedValue([catalogLayerResponse]);
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
+      validateManager.validateGpkgsSources.mockResolvedValue({ isValid: true, message: 'Sources are valid' });
       getGpkgsInformationSpy.mockResolvedValue(undefined);
       readSpy.mockResolvedValue(undefined);
       geoValidatorMock.validate.mockResolvedValue(undefined);
@@ -496,47 +473,6 @@ describe('IngestionManager', () => {
 
       await expect(promise).rejects.toThrow(new ConflictError(expectedErrorMessage));
       expect(createIngestionJobSpy).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('validateSources', () => {
-    it('should return successfully validation response when all validations pass', async () => {
-      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
-      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
-      sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
-
-      const response = await ingestionManager.validateGpkgs({ gpkgFilesPath: mockInputFiles.gpkgFilesPath });
-
-      expect(response).toStrictEqual({ isValid: true, message: 'Sources are valid' });
-    });
-
-    it('should return failed validation response due to file is not exists', async () => {
-      sourceValidator.validateFilesExist.mockRejectedValue(new FileNotFoundError(mockInputFiles.gpkgFilesPath[0]));
-
-      const response = await ingestionManager.validateGpkgs({ gpkgFilesPath: mockInputFiles.gpkgFilesPath });
-
-      expect(response).toStrictEqual({ isValid: false, message: `File ${mockInputFiles.gpkgFilesPath[0]} does not exist` });
-    });
-
-    it('should return failed validation response when gdal info validation throws an error', async () => {
-      sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockRejectedValue(new GdalInfoError('Error while validating gdal info'));
-
-      const response = await ingestionManager.validateGpkgs({ gpkgFilesPath: mockInputFiles.gpkgFilesPath });
-
-      expect(response).toStrictEqual({ isValid: false, message: 'Error while validating gdal info' });
-    });
-
-    it('should return failed validation response when gpkg validation throws an error', async () => {
-      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
-      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
-      sourceValidator.validateGpkgFiles.mockImplementation(() => {
-        throw new GpkgError('Error while validating gpkg files');
-      });
-
-      const response = await ingestionManager.validateGpkgs({ gpkgFilesPath: mockInputFiles.gpkgFilesPath });
-
-      expect(response).toStrictEqual({ isValid: false, message: 'Error while validating gpkg files' });
     });
   });
 });
