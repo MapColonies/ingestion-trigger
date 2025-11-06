@@ -348,7 +348,6 @@ describe('IngestionManager', () => {
     });
   });
 
-  // TODO: cover with tests as in newLayer
   describe('updateLayer', () => {
     let ingestionUpdateJobType: string;
     let ingestionSwapUpdateJobType: string;
