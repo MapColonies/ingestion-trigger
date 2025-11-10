@@ -47,29 +47,32 @@ export class ProductManager {
   }
 
   public async read(productShapefilePath: string): Promise<AllowedProductGeometry> {
+    const logCtx: LogContext = { ...this.logContext, function: this.read.name };
     try {
       await this.reader.readAndProcess(productShapefilePath, this.processor);
       if (this.features.length > 1) {
         const errorMessage = 'product shapefile contains more than a single feature';
-        this.logger.error({ msg: errorMessage, productShapefilePath });
+        this.logger.error({ msg: errorMessage, logContext: logCtx, productShapefilePath });
         throw new BadRequestError(errorMessage);
       }
 
       const productGeometry = this.features[0].geometry;
-      this.logger.debug({ msg: `parse validate product geometry`, productGeometry });
+      this.logger.debug({ msg: `parse validate product geometry`, logContext: logCtx, productGeometry });
       const validProductGeometry = productGeometrySchema.parse(productGeometry);
       return validProductGeometry;
     } catch (error) {
       this.logger.error({
         msg: `an unexpected error occurred during product shape read, error: ${error instanceof Error ? error.message : JSON.stringify(error)}`,
+        logContext: logCtx,
       });
       throw error;
     }
   }
 
   private async process(chunk: ShapefileChunk): Promise<void> {
-    this.logger.debug({ msg: 'start processing', features: chunk.features, count: chunk.features.length });
-    this.logger.info(`Processing chunk ${chunk.id} with ${chunk.features.length} features`);
+    const logCtx: LogContext = { ...this.logContext, function: this.process.name };
+    this.logger.debug({ msg: 'start processing', logContext: logCtx, features: chunk.features, count: chunk.features.length });
+    this.logger.info({ msg: `Processing chunk ${chunk.id} with ${chunk.features.length} features`, logContext: logCtx });
     // reset features array before each process
     if (this.features.length > 0) {
       this.features = [];
@@ -77,6 +80,6 @@ export class ProductManager {
     for await (const feature of chunk.features) {
       this.features.push(feature);
     }
-    this.logger.debug(`processor done with ${chunk.features.length} features: ${chunk.features.length}`);
+    this.logger.debug({ msg: `processor done with ${chunk.features.length} features: ${chunk.features.length}`, logContext: logCtx });
   }
 }
