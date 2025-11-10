@@ -49,21 +49,33 @@ export class Checksum {
 
   @withSpanAsyncV4
   private async fromStream(stream: Readable): Promise<Pick<IChecksum, 'checksum'>> {
+    const logCtx: LogContext = { ...this.logContext, function: this.fromStream.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('checksum.fromStream');
 
     const checksum = await new Promise<string>((resolve, reject) => {
       stream.on('data', (chunk) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-        this.checksumProcessor.update(chunk);
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+          this.checksumProcessor.update(chunk);
+        } catch (err) {
+          this.logger.error({ msg: 'error processing checksum for a chunk', err, logContext: logCtx });
+          stream.destroy();
+        }
       });
       stream.on('end', () => {
-        const digest = this.checksumProcessor.digest();
-        // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-        const hash = digest.toString(16);
-        resolve(hash);
+        try {
+          const digest = this.checksumProcessor.digest();
+          // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+          const hash = digest.toString(16);
+          resolve(hash);
+        } catch (err) {
+          this.logger.error({ msg: 'error processing checksum result', err, logContext: logCtx });
+          stream.destroy();
+        }
       });
       stream.on('error', (err) => {
+        stream.destroy();
         reject(err);
       });
     });
