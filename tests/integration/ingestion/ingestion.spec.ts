@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { faker } from '@faker-js/faker';
 import { OperationStatus, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { CORE_VALIDATIONS, getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
@@ -611,6 +612,46 @@ describe('Ingestion', function () {
         expect(scope.isDone()).toBe(false);
       });
 
+      it('should return 422 status code when failed to calculate checksum for input file - cannot create read stream', async () => {
+        const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
+        const originalCreateReadStream = fs.createReadStream;
+
+        const findJobsParams = createFindJobsParams({
+          resourceId: layerRequest.metadata.productId,
+          productType: layerRequest.metadata.productType,
+        });
+
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL)
+          .post('/records/find', {
+            metadata: {
+              productId: layerRequest.metadata.productId,
+              productType: layerRequest.metadata.productType,
+            },
+          })
+          .reply(httpStatusCodes.OK, []);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(newLayerName)}`)
+          .reply(httpStatusCodes.NOT_FOUND);
+        jest
+          .spyOn(fs, 'createReadStream')
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args)) // mock replies to product shapefile
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args))
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args))
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args))
+          .mockImplementation(() => {
+            throw new Error();
+          });
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
+      });
+
       it('should return 409 status code when the ingested layer is in MapProxy', async () => {
         const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
         const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
@@ -1126,21 +1167,6 @@ describe('Ingestion', function () {
     });
 
     describe('Sad Path', () => {
-      it('should return 409 status code when there is more than one layer in the catalog', async () => {
-        const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles });
-        const updatedLayer = createCatalogLayerResponse();
-        const updatedLayerMetadata = updatedLayer.metadata;
-
-        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
-        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer, updatedLayer]);
-
-        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.CONFLICT);
-        expect(scope.isDone()).toBe(false);
-      });
-
       it('should return 404 status code when there is no such layer in the catalog', async () => {
         const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles });
         const updatedLayer = createCatalogLayerResponse();
@@ -1172,6 +1198,21 @@ describe('Ingestion', function () {
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 409 status code when there is more than one layer in the catalog', async () => {
+        const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer, updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
         expect(scope.isDone()).toBe(false);
       });
 
@@ -1375,6 +1416,40 @@ describe('Ingestion', function () {
 
         const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
         nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 422 status code when failed to calculate checksum for input file - cannot create read stream', async () => {
+        const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles, callbackUrls: undefined });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
+        const originalCreateReadStream = fs.createReadStream;
+        const findJobsParams = createFindJobsParams({
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
+        });
+
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(httpStatusCodes.OK);
+        jest
+          .spyOn(fs, 'createReadStream')
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args)) // mock replies to product shapefile
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args))
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args))
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args))
+          .mockImplementation(() => {
+            throw new Error();
+          });
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
