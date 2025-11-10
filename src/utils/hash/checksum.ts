@@ -31,13 +31,13 @@ export class Checksum {
     activeSpan?.updateName('checksum.calculate');
     this.logger.debug({ msg: 'calculating checksum', filePath, logContext: logCtx });
 
-    const stream = createReadStream(filePath, { mode: constants.R_OK });
-
-    if (this.checksumProcessor.reset) {
-      this.checksumProcessor.reset();
-    }
-
     try {
+      const stream = createReadStream(filePath, { mode: constants.R_OK });
+
+      if (this.checksumProcessor.reset) {
+        this.checksumProcessor.reset();
+      }
+
       const { checksum } = await this.fromStream(stream);
       this.logger.info({ msg: 'calculated checksum', filePath, algorithm: this.checksumProcessor.algorithm, checksum, logContext: logCtx });
       return { algorithm: this.checksumProcessor.algorithm, checksum, fileName: filePath };
