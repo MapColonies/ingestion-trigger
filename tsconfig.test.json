@@ -1,8 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "sourceMap": true,
-    "isolatedModules": true
+    "sourceMap": true
   },
 
   "include": ["src", "tests"],
