@@ -4,7 +4,7 @@ import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import { createSpanMetadata } from '../../common/tracing';
 import { GdalUtilities } from '../../utils/gdal/gdalUtilities';
-import { LogContext } from '../../utils/logger/logContext';
+import { LogContext } from '../../common/interfaces';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { GdalInfoError } from '../../ingestion/errors/ingestionErrors';
 import { InfoDataWithFile } from '../../ingestion/schemas/infoDataSchema';

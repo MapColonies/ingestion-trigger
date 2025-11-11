@@ -6,7 +6,7 @@ import { withSpanV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../../common/constants';
 import { SQLiteClient } from '../../serviceClients/database/SQLiteClient';
 import { InvalidIndexError, UnsupportedGridError, UnsupportedTileSizeError } from '../../serviceClients/database/errors';
-import { LogContext } from '../../utils/logger/logContext';
+import { LogContext } from '../../common/interfaces';
 import { Grid } from '../interfaces';
 
 @injectable()

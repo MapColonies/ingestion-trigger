@@ -16,3 +16,9 @@ export interface ISupportedIngestionSwapTypes {
   productType: RasterProductTypes;
   productSubType: string;
 }
+
+export interface LogContext {
+  fileName: string;
+  class: string;
+  function?: string;
+}

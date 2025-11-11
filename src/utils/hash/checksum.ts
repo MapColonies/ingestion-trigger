@@ -6,8 +6,8 @@ import { trace, type Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { CHECKSUM_PROCESSOR, SERVICES } from '../../common/constants';
 import { ChecksumError } from '../../ingestion/errors/ingestionErrors';
-import type { LogContext } from '../logger/logContext';
-import type { HashProcessor, Checksum as IChecksum } from './interface';
+import type { LogContext } from '../../common/interfaces';
+import type { HashProcessor, Checksum as IChecksum } from './interfaces';
 
 @injectable()
 export class Checksum {

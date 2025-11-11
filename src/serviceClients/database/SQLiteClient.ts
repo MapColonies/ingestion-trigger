@@ -5,7 +5,7 @@ import Database, { Database as SQLiteDB, SqliteError } from 'better-sqlite3';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import { Grid, IMatrixValues, matrixRatioToGrid, TileSize } from '../../ingestion/interfaces';
-import { LogContext } from '../../utils/logger/logContext';
+import { LogContext } from '../../common/interfaces';
 import { GpkgError } from './errors';
 
 @injectable()

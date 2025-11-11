@@ -13,14 +13,13 @@ import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { container, inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { IConfig, ISupportedIngestionSwapTypes } from '../../common/interfaces';
+import { IConfig, ISupportedIngestionSwapTypes, LogContext } from '../../common/interfaces';
 import { InfoManager } from '../../info/models/infoManager';
 import { CatalogClient } from '../../serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
 import { Checksum } from '../../utils/hash/checksum';
-import { Checksum as IChecksum } from '../../utils/hash/interface';
-import { LogContext } from '../../utils/logger/logContext';
+import { Checksum as IChecksum } from '../../utils/hash/interfaces';
 import { getAbsolutePathInputFiles } from '../../utils/paths';
 import { getShapefileFiles } from '../../utils/shapefile';
 import { ValidateManager } from '../../validate/models/validateManager';
@@ -493,7 +492,8 @@ export class IngestionManager {
     this.logger.info({ msg: `calucalting checksum for: ${filePath}`, logContext: logCtx });
 
     try {
-      const checksum = container.resolve<Checksum>(Checksum);
+      // eslint-disable-next-line @typescript-eslint/await-thenable
+      const checksum = container.resolve(Checksum);
       return await checksum.calculate(filePath);
     } catch (err) {
       const processingError = err instanceof ChecksumError ? err.message : 'Unknown error';

@@ -10,7 +10,7 @@ import { InjectionObject, registerDependencies } from './common/dependencyRegist
 import { tracing } from './common/tracing';
 import { INFO_ROUTER_SYMBOL, infoRouterFactory } from './info/routes/infoRouter';
 import { INGESTION_ROUTER_SYMBOL, ingestionRouterFactory } from './ingestion/routes/ingestionRouter';
-import type { HashAlgorithm, HashProcessor } from './utils/hash/interface';
+import type { HashProcessor } from './utils/hash/interfaces';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, schemasValidationsFactory } from './utils/validation/schemasValidator';
 import { VALIDATE_ROUTER_SYMBOL, validateRouterFactory } from './validate/routes/validateRouter';
 

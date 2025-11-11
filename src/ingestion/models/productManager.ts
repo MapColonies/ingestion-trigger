@@ -8,7 +8,7 @@ import { inject, injectable } from 'tsyringe';
 import z from 'zod';
 import { SERVICES } from '../../common/constants';
 import type { IConfig } from '../../common/interfaces';
-import { LogContext } from '../../utils/logger/logContext';
+import { LogContext } from '../../common/interfaces';
 
 const productGeometrySchema = z.union([polygonSchema, multiPolygonSchema]);
 export type AllowedProductGeometry = z.infer<typeof productGeometrySchema>;

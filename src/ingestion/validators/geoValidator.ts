@@ -7,7 +7,7 @@ import { Geometry, Polygon } from 'geojson';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';
-import { LogContext } from '../../utils/logger/logContext';
+import { LogContext } from '../../common/interfaces';
 import { ValidationError } from '../errors/ingestionErrors';
 import { type AllowedProductGeometry } from '../models/productManager';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';

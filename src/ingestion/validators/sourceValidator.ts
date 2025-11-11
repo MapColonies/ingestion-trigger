@@ -7,7 +7,7 @@ import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import { IConfig } from '../../common/interfaces';
 import { GdalInfoManager } from '../../info/models/gdalInfoManager';
-import { LogContext } from '../../utils/logger/logContext';
+import { LogContext } from '../../common/interfaces';
 import { FileNotFoundError } from '../errors/ingestionErrors';
 import { GpkgManager } from '../models/gpkgManager';
 

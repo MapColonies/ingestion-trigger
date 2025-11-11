@@ -9,7 +9,7 @@ import type { SourcesValidationResponse } from '../../ingestion/interfaces';
 import type { GpkgInputFiles } from '../../ingestion/schemas/inputFilesSchema';
 import { SourceValidator } from '../../ingestion/validators/sourceValidator';
 import { GpkgError } from '../../serviceClients/database/errors';
-import type { LogContext } from '../../utils/logger/logContext';
+import type { LogContext } from '../../common/interfaces';
 import { getAbsoluteGpkgFilesPath } from '../../utils/paths';
 
 @injectable()
