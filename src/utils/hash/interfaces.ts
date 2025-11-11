@@ -17,7 +17,7 @@ export interface HashProcessor {
   /**
    * The hashing algorithm used by the processor
    */
-  // algorithm: HashAlgorithm;
+  algorithm?: HashAlgorithm;
 
   /**
    * Updates the hash content with a chunk of data

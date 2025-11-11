@@ -12,11 +12,12 @@ import type { HashProcessor, Checksum as IChecksum } from './interfaces';
 @injectable()
 export class Checksum {
   private readonly logContext: LogContext;
+  private checksum: HashProcessor | undefined;
 
   public constructor(
     @inject(SERVICES.LOGGER) protected readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
-    @inject(CHECKSUM_PROCESSOR) private readonly checksumProcessor: HashProcessor
+    @inject(CHECKSUM_PROCESSOR) private readonly checksumProcessor: () => Promise<HashProcessor>
   ) {
     this.logContext = {
       fileName: __filename,
@@ -32,15 +33,16 @@ export class Checksum {
     this.logger.debug({ msg: 'calculating checksum', filePath, logContext: logCtx });
 
     try {
+      this.checksum = await this.checksumProcessor();
       const stream = createReadStream(filePath, { mode: constants.R_OK });
 
-      if (this.checksumProcessor.reset) {
-        this.checksumProcessor.reset();
+      if (this.checksum.reset) {
+        this.checksum.reset();
       }
 
       const { checksum } = await this.fromStream(stream);
-      this.logger.info({ msg: 'calculated checksum', filePath, algorithm: this.checksumProcessor.algorithm, checksum, logContext: logCtx });
-      return { algorithm: this.checksumProcessor.algorithm, checksum, fileName: filePath };
+      this.logger.info({ msg: 'calculated checksum', filePath, algorithm: 'XXH64', checksum, logContext: logCtx });
+      return { algorithm: 'XXH64', checksum, fileName: filePath };
     } catch (err) {
       this.logger.error({ msg: 'error calculating checksum', err, logContext: logCtx });
       throw new ChecksumError(`Failed to calculate checksum for file: ${filePath}`);
@@ -57,7 +59,7 @@ export class Checksum {
       stream.on('data', (chunk) => {
         try {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-          this.checksumProcessor.update(chunk);
+          this.checksum?.update(chunk);
         } catch (err) {
           this.logger.error({ msg: 'error processing checksum for a chunk', err, logContext: logCtx });
           stream.destroy();
@@ -65,7 +67,11 @@ export class Checksum {
       });
       stream.on('end', () => {
         try {
-          const digest = this.checksumProcessor.digest();
+          if (!this.checksum) {
+            return reject();
+          }
+
+          const digest = this.checksum.digest();
           // eslint-disable-next-line @typescript-eslint/no-magic-numbers
           const hash = digest.toString(16);
           resolve(hash);

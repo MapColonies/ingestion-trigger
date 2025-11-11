@@ -1,16 +1,16 @@
 import jsLogger, { LoggerOptions } from '@map-colonies/js-logger';
 import { Metrics, getOtelMixin } from '@map-colonies/telemetry';
-import { Xxh64 } from '@node-rs/xxhash';
 import { metrics as OtelMetrics, trace } from '@opentelemetry/api';
 import config from 'config';
 import { instancePerContainerCachingFactory } from 'tsyringe';
 import { DependencyContainer } from 'tsyringe/dist/typings/types';
+import xxhashFactory from 'xxhash-wasm';
 import { CHECKSUM_PROCESSOR, SERVICES, SERVICE_NAME } from './common/constants';
 import { InjectionObject, registerDependencies } from './common/dependencyRegistration';
 import { tracing } from './common/tracing';
 import { INFO_ROUTER_SYMBOL, infoRouterFactory } from './info/routes/infoRouter';
 import { INGESTION_ROUTER_SYMBOL, ingestionRouterFactory } from './ingestion/routes/ingestionRouter';
-import type { HashProcessor } from './utils/hash/interfaces';
+import type { HashAlgorithm, HashProcessor } from './utils/hash/interfaces';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, schemasValidationsFactory } from './utils/validation/schemasValidator';
 import { VALIDATE_ROUTER_SYMBOL, validateRouterFactory } from './validate/routes/validateRouter';
 
@@ -40,8 +40,11 @@ export const registerExternalValues = (options?: RegisterOptions): DependencyCon
     {
       token: CHECKSUM_PROCESSOR,
       provider: {
-        useFactory: (): HashProcessor => {
-          return Object.assign(new Xxh64(), { algorithm: 'XXH64' as const satisfies HashAlgorithm });
+        useFactory: (): (() => Promise<HashProcessor & Required<Pick<HashProcessor, 'algorithm'>>>) => {
+          return async () => {
+            const xxhash = await xxhashFactory();
+            return Object.assign(xxhash.create64(), { algorithm: 'XXH64' as const satisfies HashAlgorithm });
+          };
         },
       },
     },
