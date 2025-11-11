@@ -15,6 +15,8 @@ module.exports = {
     '!<rootDir>/src/serviceClients/database/SQLiteClient.ts',
     '!<rootDir>/src/ingestion/errors/ingestionErrors.ts',
     '!<rootDir>/src/ingestion/schemas/constants.ts',
+    '!<rootDir>/src/**/interfaces.ts',
+    '!<rootDir>/src/utils/hash/constants.ts',
   ],
   coverageDirectory: '<rootDir>/coverage',
   rootDir: '../../../.',
