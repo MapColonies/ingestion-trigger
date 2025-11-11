@@ -1,12 +1,10 @@
 import { constants as fsConstants, promises as fsp } from 'node:fs';
 import jsLogger from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
-import { getApp } from '../../../../src/app';
 import { GdalInfoManager } from '../../../../src/info/models/gdalInfoManager';
 import { FileNotFoundError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
-import { getTestContainerConfig } from '../../../integration/ingestion/helpers/containerConfig';
 import { configMock } from '../../../mocks/configMock';
 import { mockGdalInfoDataWithFile } from '../../../mocks/gdalInfoMock';
 import { generateInputFiles } from '../../../mocks/mockFactory';
@@ -16,10 +14,6 @@ describe('SourceValidator', () => {
   let mockGdalInfoManager: GdalInfoManager;
   let mockGpkgManager: GpkgManager;
   let fspAccessSpy: jest.SpyInstance;
-  getApp({
-    override: [...getTestContainerConfig()],
-    useChild: true,
-  });
 
   beforeEach(() => {
     mockGdalInfoManager = { getInfoData: jest.fn, validateInfoData: jest.fn } as unknown as GdalInfoManager;

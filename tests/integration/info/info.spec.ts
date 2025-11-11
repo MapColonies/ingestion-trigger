@@ -140,7 +140,7 @@ describe('Info', function () {
     });
 
     describe('Sad Path', () => {
-      it('should return 404 status code and sources info', async () => {
+      it('should return 404 status code when gpkgs not found', async () => {
         const badRequest = { gpkgFilesPath: rasterLayerInputFilesGenerators.gpkgFilesPath() };
 
         const response = await requestSender.getGpkgsInfo(badRequest);

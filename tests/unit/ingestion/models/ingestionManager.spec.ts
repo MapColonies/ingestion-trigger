@@ -3,9 +3,9 @@ import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import jsLogger from '@map-colonies/js-logger';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { getMapServingLayerName } from '@map-colonies/raster-shared';
-import { Xxh64 } from '@node-rs/xxhash';
 import { trace } from '@opentelemetry/api';
 import { container } from 'tsyringe';
+import xxhashFactory from 'xxhash-wasm';
 import { CHECKSUM_PROCESSOR, SERVICES } from '../../../../src/common/constants';
 import { InfoManager } from '../../../../src/info/models/infoManager';
 import { ChecksumError, FileNotFoundError, UnsupportedEntityError } from '../../../../src/ingestion/errors/ingestionErrors';
@@ -17,7 +17,7 @@ import { CatalogClient } from '../../../../src/serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 import { Checksum } from '../../../../src/utils/hash/checksum';
-import { HashAlgorithm, HashProcessor } from '../../../../src/utils/hash/interface';
+import { HashProcessor } from '../../../../src/utils/hash/interfaces';
 import type { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { generateCatalogLayerResponse, generateChecksum, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
@@ -67,8 +67,11 @@ describe('IngestionManager', () => {
     container.register(SERVICES.TRACER, { useValue: testTracer });
     container.register(SERVICES.LOGGER, { useValue: testLogger });
     container.register(CHECKSUM_PROCESSOR, {
-      useFactory: (): HashProcessor => {
-        return Object.assign(new Xxh64(), { algorithm: 'XXH64' as const satisfies HashAlgorithm });
+      useFactory: (): (() => Promise<HashProcessor>) => {
+        return async () => {
+          const xxhash = await xxhashFactory();
+          return xxhash.create64();
+        };
       },
     });
 

@@ -30,14 +30,14 @@ import type { DeepPartial, DeepRequired, FlattenKeyTupleUnion } from '../../util
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
 import { IngestionRequestSender } from './helpers/ingestionRequestSender';
 
-describe('Ingestion', function () {
+describe('Ingestion', () => {
   let jobManagerURL: string;
   let mapProxyApiServiceUrl: string;
   let catalogServiceURL: string;
   let jobResponse: ICreateJobResponse;
   let requestSender: IngestionRequestSender;
 
-  beforeEach(function () {
+  beforeEach(() => {
     const [app] = getApp({
       override: [...getTestContainerConfig()],
     });
@@ -53,7 +53,7 @@ describe('Ingestion', function () {
     requestSender = new IngestionRequestSender(app);
   });
 
-  afterEach(function () {
+  afterEach(() => {
     resetContainer();
     jest.restoreAllMocks();
     nock.cleanAll();
