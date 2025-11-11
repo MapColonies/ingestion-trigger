@@ -51,10 +51,8 @@ export const registerExternalValues = (options?: RegisterOptions): DependencyCon
     {
       token: 'onSignal',
       provider: {
-        useValue: {
-          useValue: async (): Promise<void> => {
-            await Promise.all([tracing.stop(), metrics.stop()]);
-          },
+        useValue: async (): Promise<void> => {
+          await Promise.all([tracing.stop(), metrics.stop()]);
         },
       },
     },
