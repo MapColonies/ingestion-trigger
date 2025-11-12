@@ -5,9 +5,17 @@ export class UnsupportedEntityError extends Error {
 }
 export class FileNotFoundError extends UnsupportedEntityError {
   public constructor(fileName: string);
+  public constructor(fileName: string[]);
   public constructor(fileName: string, path: string);
-  public constructor(fileName: string, path?: string) {
-    const message = path != null ? `File '${fileName}' does not exist in path ${path}` : `File ${fileName} does not exist`;
+  public constructor(fileName: string | string[], path?: string) {
+    const names = Array.isArray(fileName) ? fileName.join(', ') : fileName;
+    const message = Array.isArray(fileName)
+      ? path !== undefined
+        ? `Files '${names}' do not exist in path ${path}`
+        : `Files ${names} do not exist`
+      : path !== undefined
+      ? `File '${names}' does not exist in path ${path}`
+      : `File ${names} does not exist`;
     super(message);
   }
 }

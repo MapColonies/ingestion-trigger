@@ -1212,6 +1212,10 @@ describe('Ingestion', () => {
           case: 'ShapeMetadata.shx',
           inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingShx' },
         },
+        {
+          case: 'multiple files missing',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingMultiple' },
+        },
       ];
       it.each(fileMissingTestCases)('should return 404 status code when file does not exist - $case', async ({ inputFiles }) => {
         const layerRequest = createUpdateLayerRequest({

@@ -58,16 +58,26 @@ export class SourceValidator {
     activeSpan?.updateName('sourceValidator.validateFilesExist');
 
     const filePromises = filesPath.map(async (fullFilePath) => {
-      fullFileSPath.push(fullFilePath);
-      return fsPromises.access(fullFilePath, fsConstants.F_OK).catch(() => {
+      try {
+        await fsPromises.access(fullFilePath, fsConstants.F_OK);
+        return fullFilePath;
+      } catch (err) {
         const fileName = basename(fullFilePath);
         const filePath = dirname(fullFilePath);
         this.logger.error({ msg: `File '${fileName}' not found at '${filePath}'`, logContext: logCtx, metadata: { fullFilePath } });
-        const error = new FileNotFoundError(fileName, filePath);
-        throw error;
-      });
+        throw new Error(fileName);
+      }
     });
-    await Promise.all(filePromises);
+    const validationResults = (await Promise.allSettled(filePromises))
+      .filter((value) => value.status === 'rejected')
+      .map((value) => (value.reason instanceof Error ? value.reason.message : 'unknown reason'));
+
+    if (validationResults.length > 0) {
+      const missingFiles = validationResults.join(',');
+      this.logger.error({ msg: 'Files were not found', logContext: logCtx, missingFiles });
+      throw new FileNotFoundError(missingFiles);
+    }
+
     activeSpan?.addEvent('sourceValidator.validateFilesExist.valid');
     this.logger.debug({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullFileSPath } });
   }
