@@ -23,7 +23,7 @@ import { Checksum as IChecksum } from '../../utils/hash/interfaces';
 import { getAbsolutePathInputFiles } from '../../utils/paths';
 import { getShapefileFiles } from '../../utils/shapefile';
 import { ValidateManager } from '../../validate/models/validateManager';
-import { ChecksumError, FileNotFoundError } from '../errors/ingestionErrors';
+import { ChecksumError } from '../errors/ingestionErrors';
 import type { ResponseId, ValidationsTaskParameters } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
@@ -317,7 +317,7 @@ export class IngestionManager {
 
     const shapefiles = [...getShapefileFiles(inputFiles.metadataShapefilePath), ...getShapefileFiles(inputFiles.productShapefilePath)];
     // validate shapefiles exist
-    await this.validateShapefiles(shapefiles);
+    await this.validateManager.validateShapefiles(shapefiles);
     this.logger.debug({ msg: 'validated shapefiles', logContext: logCtx });
 
     // validate files exist, gdal info and GPKG data
@@ -329,36 +329,6 @@ export class IngestionManager {
     const productGeometry = await this.productManager.read(productShapefilePath);
     this.geoValidator.validate(infoData, productGeometry);
     this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
-  }
-
-  @withSpanAsyncV4
-  private async validateShapefiles(shapefilePath: string[]): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateShapefiles.name };
-    const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('ingestionManager.validateShapefiles');
-
-    try {
-      await this.sourceValidator.validateFilesExist(shapefilePath);
-    } catch (error) {
-      let errorMessage = '';
-      if (error instanceof FileNotFoundError) {
-        errorMessage = `Shapefiles file not found: ${error.message}`;
-      } else if (error instanceof Error) {
-        errorMessage = `Shapefiles are not valid: ${error.message}`;
-      } else {
-        errorMessage = `An unexpected error occurred during shapefile validation`;
-      }
-
-      this.logger.error({
-        msg: errorMessage,
-        logContext: logCtx,
-        error,
-        metadata: { shapefilePath },
-      });
-      activeSpan?.recordException(error instanceof Error ? error : errorMessage);
-
-      throw error;
-    }
   }
 
   @withSpanAsyncV4

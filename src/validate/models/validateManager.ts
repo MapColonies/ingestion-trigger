@@ -106,4 +106,34 @@ export class ValidateManager {
       throw error;
     }
   }
+
+  @withSpanAsyncV4
+  public async validateShapefiles(shapefilePath: string[]): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateShapefiles.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('validateManager.validateShapefiles');
+
+    try {
+      await this.sourceValidator.validateFilesExist(shapefilePath);
+    } catch (error) {
+      let errorMessage = '';
+      if (error instanceof FileNotFoundError) {
+        errorMessage = `Shapefiles file not found: ${error.message}`;
+      } else if (error instanceof Error) {
+        errorMessage = `Shapefiles are not valid: ${error.message}`;
+      } else {
+        errorMessage = `An unexpected error occurred during shapefile validation`;
+      }
+
+      this.logger.error({
+        msg: errorMessage,
+        logContext: logCtx,
+        error,
+        metadata: { shapefilePath },
+      });
+      activeSpan?.recordException(error instanceof Error ? error : errorMessage);
+
+      throw error;
+    }
+  }
 }
