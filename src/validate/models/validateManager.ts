@@ -3,14 +3,13 @@ import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, type Tracer, trace } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import type { IConfig } from '../../common/interfaces';
+import type { IConfig, LogContext } from '../../common/interfaces';
 import { FileNotFoundError, GdalInfoError } from '../../ingestion/errors/ingestionErrors';
-import type { SourcesValidationResponse } from '../../ingestion/interfaces';
 import type { GpkgInputFiles } from '../../ingestion/schemas/inputFilesSchema';
 import { SourceValidator } from '../../ingestion/validators/sourceValidator';
 import { GpkgError } from '../../serviceClients/database/errors';
-import type { LogContext } from '../../common/interfaces';
 import { getAbsoluteGpkgFilesPath } from '../../utils/paths';
+import type { ValidateGpkgsResponse } from '../interfaces';
 
 @injectable()
 export class ValidateManager {
@@ -31,36 +30,44 @@ export class ValidateManager {
   }
 
   @withSpanAsyncV4
-  public async validateGpkgs(gpkgInputFiles: GpkgInputFiles): Promise<SourcesValidationResponse> {
+  public async validateGpkgs(gpkgInputFiles: GpkgInputFiles): Promise<ValidateGpkgsResponse> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateGpkgs.name };
     const { gpkgFilesPath } = gpkgInputFiles;
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('validateManager.validateGpkgs');
 
+    const validResponse = {
+      isValid: true,
+      message: 'Sources are valid',
+    };
+
     try {
       this.logger.info({ msg: 'Starting gpkgs validation process', logContext: logCtx, metadata: { gpkgFilesPath } });
       const absoluteGpkgFilesPath = getAbsoluteGpkgFilesPath({ gpkgFilesPath, sourceMount: this.sourceMount });
-      const response = await this.validateGpkgsSources(absoluteGpkgFilesPath);
+      await this.validateGpkgsSources(absoluteGpkgFilesPath);
       this.logger.info({ msg: 'Finished gpkgs validation process', logContext: logCtx });
       activeSpan?.setStatus({ code: SpanStatusCode.OK });
-      if (response.isValid) {
-        activeSpan?.addEvent('validateManager.validateGpkgs.valid', { isValid: true });
-      } else {
-        activeSpan?.addEvent('validateManager.validateGpkgs.invalid', { isValid: false });
+      activeSpan?.addEvent('validateManager.validateGpkgs.valid');
+      return validResponse;
+    } catch (error) {
+      activeSpan?.setStatus({ code: SpanStatusCode.ERROR });
+      if (!(error instanceof FileNotFoundError)) {
+        activeSpan?.addEvent('validateManager.validateGpkgs.invalid');
       }
-      return response;
-    } catch (err) {
-      activeSpan
-        ?.setStatus({ code: SpanStatusCode.ERROR })
-        .addEvent('validateManager.validateGpkgs.invalid', { isValid: false, error: JSON.stringify(err) });
-      throw err;
+      if (error instanceof GdalInfoError || error instanceof GpkgError) {
+        return { isValid: false, message: error.message };
+      } else {
+        throw error;
+      }
     }
   }
 
   @withSpanAsyncV4
-  public async validateGpkgsSources(gpkgInputFiles: GpkgInputFiles): Promise<SourcesValidationResponse> {
+  public async validateGpkgsSources(gpkgInputFiles: GpkgInputFiles): Promise<void> {
     // this function handles absolute paths of input files
     const logCtx: LogContext = { ...this.logContext, function: this.validateGpkgsSources.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('validateManager.validateGpkgsSources');
     const { gpkgFilesPath } = gpkgInputFiles;
 
     try {
@@ -73,26 +80,30 @@ export class ValidateManager {
       this.sourceValidator.validateGpkgFiles(gpkgFilesPath);
       this.logger.debug({ msg: 'GPKG files validation passed', logContext: logCtx, metadata: { gpkgFilesPath } });
 
-      const validationResult = { isValid: true, message: 'Sources are valid' };
       this.logger.debug({
-        msg: validationResult.message,
+        msg: 'Gpkgs are valid',
         logContext: logCtx,
-        metadata: { gpkgFilesPath, isValid: validationResult.isValid },
+        metadata: { gpkgFilesPath },
       });
-      return validationResult;
-    } catch (err) {
-      if (err instanceof FileNotFoundError || err instanceof GdalInfoError || err instanceof GpkgError) {
-        this.logger.info({ msg: `Sources are not valid: ${err.message}`, logContext: logCtx, err, metadata: { gpkgFilesPath } });
-        return { isValid: false, message: err.message };
+    } catch (error) {
+      let errorMessage = '';
+      if (error instanceof FileNotFoundError) {
+        errorMessage = `Gpkg files not found: ${error.message}`;
+      } else if (error instanceof Error) {
+        errorMessage = `Gpkgs are not valid: ${error.message}`;
+      } else {
+        errorMessage = `An unexpected error occurred during gpkg validation`;
       }
 
       this.logger.error({
-        msg: `An unexpected error occurred during source validation`,
+        msg: errorMessage,
         logContext: logCtx,
-        err,
+        error,
         metadata: { gpkgFilesPath },
       });
-      throw err;
+      activeSpan?.recordException(error instanceof Error ? error : errorMessage);
+
+      throw error;
     }
   }
 }

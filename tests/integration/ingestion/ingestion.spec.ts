@@ -1167,6 +1167,71 @@ describe('Ingestion', () => {
     });
 
     describe('Sad Path', () => {
+      const fileMissingTestCases: ({ case: string } & Pick<IngestionUpdateLayer, 'inputFiles'>)[] = [
+        {
+          case: 'gpkg',
+          inputFiles: { ...validInputFiles.inputFiles, gpkgFilesPath: ['not-existing-file.gpkg'] },
+        },
+        {
+          case: 'Prodcut.cpg',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingCpg' },
+        },
+        {
+          case: 'Prodcut.dbf',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingDbf' },
+        },
+        {
+          case: 'Prodcut.prj',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingPrj' },
+        },
+        {
+          case: 'Prodcut.shp',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingShp' },
+        },
+        {
+          case: 'Prodcut.shx',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingShx' },
+        },
+        {
+          case: 'ShapeMetadata.cpg',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingCpg' },
+        },
+        {
+          case: 'ShapeMetadata.dbf',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingDbf' },
+        },
+        {
+          case: 'ShapeMetadata.prj',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingPrj' },
+        },
+        {
+          case: 'ShapeMetadata.shp',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingShp' },
+        },
+        {
+          case: 'ShapeMetadata.shx',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingShx' },
+        },
+      ];
+      it.each(fileMissingTestCases)('should return 404 status code when file does not exist - $case', async ({ inputFiles }) => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles,
+        });
+        const catalogLayerResponse = createCatalogLayerResponse({
+          metadata: { classification: layerRequest.metadata.classification },
+        });
+        const updatedLayerMetadata = catalogLayerResponse.metadata;
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [catalogLayerResponse]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+        expect(scope.isDone()).toBe(false);
+      });
+
       it('should return 404 status code when there is no such layer in the catalog', async () => {
         const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles });
         const updatedLayer = createCatalogLayerResponse();
@@ -1247,71 +1312,6 @@ describe('Ingestion', () => {
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.CONFLICT);
-        expect(scope.isDone()).toBe(false);
-      });
-
-      const fileMissingTestCases: ({ case: string } & Pick<IngestionUpdateLayer, 'inputFiles'>)[] = [
-        {
-          case: 'gpkg',
-          inputFiles: { ...validInputFiles.inputFiles, gpkgFilesPath: ['not-existing-file.gpkg'] },
-        },
-        {
-          case: 'Prodcut.cpg',
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingCpg' },
-        },
-        {
-          case: 'Prodcut.dbf',
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingDbf' },
-        },
-        {
-          case: 'Prodcut.prj',
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingPrj' },
-        },
-        {
-          case: 'Prodcut.shp',
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingShp' },
-        },
-        {
-          case: 'Prodcut.shx',
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingShx' },
-        },
-        {
-          case: 'ShapeMetadata.cpg',
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingCpg' },
-        },
-        {
-          case: 'ShapeMetadata.dbf',
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingDbf' },
-        },
-        {
-          case: 'ShapeMetadata.prj',
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingPrj' },
-        },
-        {
-          case: 'ShapeMetadata.shp',
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingShp' },
-        },
-        {
-          case: 'ShapeMetadata.shx',
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingShx' },
-        },
-      ];
-      it.each(fileMissingTestCases)('should return 422 status code when file does not exist - $case', async ({ inputFiles }) => {
-        const layerRequest = createUpdateLayerRequest({
-          inputFiles,
-        });
-        const catalogLayerResponse = createCatalogLayerResponse({
-          metadata: { classification: layerRequest.metadata.classification },
-        });
-        const updatedLayerMetadata = catalogLayerResponse.metadata;
-
-        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
-        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [catalogLayerResponse]);
-
-        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
         expect(scope.isDone()).toBe(false);
       });
 

@@ -19,6 +19,9 @@ import { ValidateRequestSender } from './helpers/validateRequestSender';
 
 describe('Validate', function () {
   let requestSender: ValidateRequestSender;
+  let validateFilesExistSpy: jest.SpyInstance;
+  let validateGdalInfoSpy: jest.SpyInstance;
+  let validateGpkgFilesSpy: jest.SpyInstance;
 
   beforeEach(function () {
     const [app] = getApp({
@@ -26,6 +29,10 @@ describe('Validate', function () {
     });
 
     requestSender = new ValidateRequestSender(app);
+
+    validateFilesExistSpy = jest.spyOn(SourceValidator.prototype, 'validateFilesExist');
+    validateGdalInfoSpy = jest.spyOn(SourceValidator.prototype, 'validateGdalInfo');
+    validateGpkgFilesSpy = jest.spyOn(SourceValidator.prototype, 'validateGpkgFiles');
   });
 
   afterEach(function () {
@@ -36,22 +43,6 @@ describe('Validate', function () {
 
   describe('POST /validate/gpkgs', function () {
     describe('Happy Path', function () {
-      let validateFilesExistSpy: jest.SpyInstance;
-      let validateGdalInfoSpy: jest.SpyInstance;
-      let validateGpkgFilesSpy: jest.SpyInstance;
-
-      beforeEach(function () {
-        validateFilesExistSpy = jest.spyOn(SourceValidator.prototype, 'validateFilesExist');
-        validateGdalInfoSpy = jest.spyOn(SourceValidator.prototype, 'validateGdalInfo');
-        validateGpkgFilesSpy = jest.spyOn(SourceValidator.prototype, 'validateGpkgFiles');
-      });
-
-      afterEach(function () {
-        validateFilesExistSpy.mockClear();
-        validateGdalInfoSpy.mockClear();
-        validateGpkgFilesSpy.mockClear();
-      });
-
       it('should return 200 status code and sources is valid response', async () => {
         const validateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(validInputFiles.inputFiles.gpkgFilesPath) };
 
@@ -64,20 +55,6 @@ describe('Validate', function () {
         expect(response.status).toBe(httpStatusCodes.OK);
         expect(response.body).toHaveProperty('isValid', true);
         expect(response.body).toHaveProperty('message', 'Sources are valid');
-      });
-
-      it('should return 200 status code and sources invalid response - file does not exist', async () => {
-        const validateGpkgsRequest = { gpkgFilesPath: rasterLayerInputFilesGenerators.gpkgFilesPath() };
-
-        const response = await requestSender.validateGpkgs(validateGpkgsRequest);
-
-        expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
-        await expect(validateFilesExistSpy).rejects.toThrow();
-        expect(validateGdalInfoSpy).toHaveBeenCalledTimes(0);
-        expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(0);
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.OK);
-        expect(response.body).toHaveProperty('isValid', false);
       });
 
       it('should return 200 status code and sources invalid response - unsupported CRS', async () => {
@@ -268,6 +245,19 @@ describe('Validate', function () {
         jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
           throw new SqliteError('failed read sqlite file', 'SQLITE_ERROR');
         });
+      });
+
+      it('should return 404 status code and sources invalid response - file does not exist', async () => {
+        const validateGpkgsRequest = { gpkgFilesPath: rasterLayerInputFilesGenerators.gpkgFilesPath() };
+
+        const response = await requestSender.validateGpkgs(validateGpkgsRequest);
+
+        expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
+        await expect(validateFilesExistSpy).rejects.toThrow();
+        expect(validateGdalInfoSpy).toHaveBeenCalledTimes(0);
+        expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(0);
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
       });
 
       it('should return 500 status code and error message, isGpkgIndexExist access db error', async () => {

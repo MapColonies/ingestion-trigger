@@ -2,11 +2,6 @@
 import { ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import type { Checksum } from '../utils/hash/interfaces';
 
-export interface SourcesValidationResponse {
-  isValid: boolean;
-  message: string;
-}
-
 export interface ResponseId {
   jobId: ICreateJobResponse['id'];
   taskId: ICreateJobResponse['taskIds'][number];

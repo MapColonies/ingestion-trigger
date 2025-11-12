@@ -3,8 +3,9 @@ import { RequestHandler } from 'express';
 import { HttpError } from 'express-openapi-validator/dist/framework/types';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
+import { GpkgError } from '../../serviceClients/database/errors';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
-import { UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
+import { FileNotFoundError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
 import type { IRecordRequestParams, ResponseId } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 
@@ -27,11 +28,11 @@ export class IngestionController {
     } catch (error) {
       if (error instanceof ValidationError) {
         (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
-      }
-      if (error instanceof ConflictError) {
+      } else if (error instanceof FileNotFoundError) {
+        (error as HttpError).status = StatusCodes.NOT_FOUND; //404
+      } else if (error instanceof ConflictError) {
         (error as HttpError).status = StatusCodes.CONFLICT; //409
-      }
-      if (error instanceof UnsupportedEntityError) {
+      } else if (error instanceof UnsupportedEntityError) {
         (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
       }
       next(error);
@@ -50,11 +51,11 @@ export class IngestionController {
     } catch (error) {
       if (error instanceof ValidationError) {
         (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
-      }
-      if (error instanceof ConflictError) {
+      } else if (error instanceof FileNotFoundError) {
+        (error as HttpError).status = StatusCodes.NOT_FOUND; //404
+      } else if (error instanceof ConflictError) {
         (error as HttpError).status = StatusCodes.CONFLICT; //409
-      }
-      if (error instanceof UnsupportedEntityError) {
+      } else if (error instanceof UnsupportedEntityError || error instanceof GpkgError) {
         (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
       }
       next(error);

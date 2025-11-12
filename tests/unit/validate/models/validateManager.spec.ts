@@ -47,14 +47,14 @@ describe('ValidateManager', () => {
       expect(response).toStrictEqual({ isValid: true, message: 'Sources are valid' });
     });
 
-    it('should return failed validation response due to file is not exists', async () => {
+    it('should throw file not fount error when file does not exists', async () => {
       const validateGpkgRequest = { gpkgFilesPath: generateInputFiles().gpkgFilesPath };
       const expectedError = validateGpkgRequest.gpkgFilesPath[0];
       sourceValidator.validateFilesExist.mockRejectedValue(new FileNotFoundError(expectedError));
 
-      const response = await validateManager.validateGpkgs(validateGpkgRequest);
+      const promise = validateManager.validateGpkgs(validateGpkgRequest);
 
-      expect(response).toStrictEqual({ isValid: false, message: `File ${expectedError} does not exist` });
+      await expect(promise).rejects.toThrow(new FileNotFoundError(expectedError));
     });
 
     it('should return failed validation response when gdal info validation throws an error', async () => {
