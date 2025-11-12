@@ -9,7 +9,7 @@ import {
   type InputFiles,
   type RasterProductTypes,
 } from '@map-colonies/raster-shared';
-import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { container, inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
@@ -181,11 +181,8 @@ export class IngestionManager {
 
     const { id, productId, productType } = rasterLayerMetadata;
     const { metadata, inputFiles } = updateLayer;
-    const absoluteInputFilesPaths = {
-      gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => gpkgFilePath.absolute),
-      metadataShapefilePath: inputFiles.metadataShapefilePath.absolute,
-      productShapefilePath: inputFiles.productShapefilePath.absolute,
-    };
+    const absoluteInputFilesPaths = this.getAbsoluteInputFilesPaths(inputFiles);
+
     this.logger.debug({
       msg: 'started update layer validation',
       catalogId: id,
@@ -212,13 +209,9 @@ export class IngestionManager {
     const logCtx: LogContext = { ...this.logContext, function: this.newLayerValidations.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.newLayerValidations');
-
     const { metadata, inputFiles } = newLayer;
-    const absoluteInputFilesPaths = {
-      gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => gpkgFilePath.absolute),
-      metadataShapefilePath: inputFiles.metadataShapefilePath.absolute,
-      productShapefilePath: inputFiles.productShapefilePath.absolute,
-    };
+    const absoluteInputFilesPaths = this.getAbsoluteInputFilesPaths(inputFiles);
+
     this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, inputFiles }, logCtx: logCtx });
     this.logger.info({
       productId: metadata.productId,
@@ -500,5 +493,14 @@ export class IngestionManager {
       activeSpan?.addEvent('ingestionManager.getFileChecksum.invalid', { processingError });
       throw err;
     }
+  }
+
+  @withSpanV4
+  private getAbsoluteInputFilesPaths(inputFiles: InputFilesPaths): InputFiles {
+    return {
+      gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => gpkgFilePath.absolute),
+      metadataShapefilePath: inputFiles.metadataShapefilePath.absolute,
+      productShapefilePath: inputFiles.productShapefilePath.absolute,
+    };
   }
 }
