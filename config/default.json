@@ -61,7 +61,7 @@
     "ingestionNewJobType": "Ingestion_New",
     "ingestionUpdateJobType": "Ingestion_Update",
     "ingestionSwapUpdateJobType": "Ingestion_Swap_Update",
-    "validationTaskType": "validation",
+    "validationsTaskType": "validations",
     "supportedIngestionSwapTypes": [
       {
         "productType": "RasterVectorBest",
