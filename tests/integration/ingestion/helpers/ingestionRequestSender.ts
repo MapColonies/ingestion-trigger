@@ -1,5 +1,5 @@
 import supertest from 'supertest';
-import type { IngestionNewLayer } from '../../../../src/ingestion/schemas/ingestionLayerSchema';
+import type { IngestionNewLayer } from '../../../../src/ingestion/schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../../../../src/ingestion/schemas/updateLayerSchema';
 
 export class IngestionRequestSender {

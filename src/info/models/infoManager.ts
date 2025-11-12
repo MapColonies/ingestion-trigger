@@ -4,11 +4,11 @@ import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import type { IConfig } from '../../common/interfaces';
-import { InfoDataWithFile } from '../../ingestion/schemas/infoDataSchema';
-import { GpkgInputFiles } from '../../ingestion/schemas/inputFilesSchema';
-import { SourceValidator } from '../../ingestion/validators/sourceValidator';
 import { LogContext } from '../../common/interfaces';
+import { InfoDataWithFile } from '../../ingestion/schemas/infoDataSchema';
+import { SourceValidator } from '../../ingestion/validators/sourceValidator';
 import { getAbsoluteGpkgFilesPath } from '../../utils/paths';
+import { GpkgInputFiles } from '../../utils/validation/schemasValidator';
 import { GdalInfoManager } from './gdalInfoManager';
 
 @injectable()

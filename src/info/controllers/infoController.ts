@@ -4,8 +4,7 @@ import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
 import { FileNotFoundError, GdalInfoError } from '../../ingestion/errors/ingestionErrors';
 import { InfoData } from '../../ingestion/schemas/infoDataSchema';
-import { GpkgInputFiles } from '../../ingestion/schemas/inputFilesSchema';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
+import { GpkgInputFiles, INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { InfoManager } from '../models/infoManager';
 
 type SourcesInfoHandler = RequestHandler<undefined, InfoData[], unknown>;

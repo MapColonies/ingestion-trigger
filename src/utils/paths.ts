@@ -1,6 +1,6 @@
 import { join, relative } from 'node:path';
 import type { InputFiles } from '@map-colonies/raster-shared';
-import type { IngestionNewLayer } from '../ingestion/schemas/ingestionLayerSchema';
+import type { IngestionNewLayer } from '../ingestion/schemas/newLayerSchema';
 
 export const getAbsolutePathInputFiles = ({
   sourceMount,

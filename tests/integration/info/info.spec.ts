@@ -3,7 +3,7 @@ import httpStatusCodes from 'http-status-codes';
 import unset from 'lodash.unset';
 import nock from 'nock';
 import { getApp } from '../../../src/app';
-import type { GpkgInputFiles } from '../../../src/ingestion/schemas/inputFilesSchema';
+import type { GpkgInputFiles } from '../../../src/utils/validation/schemasValidator';
 import { getGpkgsFilesLocalPath, rasterLayerInputFilesGenerators } from '../../mocks/mockFactory';
 import { validInputFiles } from '../../mocks/static/exampleData';
 import type { DeepPartial, DeepRequired, FlattenKeyTupleUnion } from '../../utils/types';

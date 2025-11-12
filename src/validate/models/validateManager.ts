@@ -5,7 +5,7 @@ import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import type { IConfig, LogContext } from '../../common/interfaces';
 import { FileNotFoundError, GdalInfoError } from '../../ingestion/errors/ingestionErrors';
-import type { GpkgInputFiles } from '../../ingestion/schemas/inputFilesSchema';
+import type { GpkgInputFiles } from '../../utils/validation/schemasValidator';
 import { SourceValidator } from '../../ingestion/validators/sourceValidator';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { getAbsoluteGpkgFilesPath } from '../../utils/paths';

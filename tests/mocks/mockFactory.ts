@@ -12,6 +12,9 @@ import {
   type CallbackUrlsTargetArray,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
+  type InputFiles,
+  type NewRasterLayerMetadata,
+  type UpdateRasterLayerMetadata,
 } from '@map-colonies/raster-shared';
 import { Domain, RecordStatus, TilesMimeFormat } from '@map-colonies/types';
 import { randomPolygon } from '@turf/turf';
@@ -19,12 +22,9 @@ import type { BBox, Polygon } from 'geojson';
 import merge from 'lodash.merge';
 import { randexp } from 'randexp';
 import type { ValidationsTaskParameters } from '../../src/ingestion/interfaces';
-import type { IngestionNewLayer } from '../../src/ingestion/schemas/ingestionLayerSchema';
-import type { InputFiles } from '../../src/ingestion/schemas/inputFilesSchema';
 import type { RasterLayersCatalog } from '../../src/ingestion/schemas/layerCatalogSchema';
-import type { IngestionNewMetadata } from '../../src/ingestion/schemas/newMetadataSchema';
+import type { IngestionNewLayer } from '../../src/ingestion/schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
-import type { IngestionUpdateMetadata } from '../../src/ingestion/schemas/updateMetadataSchema';
 import { getShapefileFiles } from '../../src/utils/shapefile';
 import type { DeepPartial, FlatRecordValues, ReplaceValueWithFunctionResponse as ReplaceValueWithGenerator } from '../utils/types';
 import { configMock } from './configMock';
@@ -162,7 +162,7 @@ const generateCatalogLayerMetadata = ({ productId, productType }: { productId: s
   };
 };
 
-const generateNewLayerMetadata = (): IngestionNewMetadata => {
+const generateNewLayerMetadata = (): NewRasterLayerMetadata => {
   return {
     classification: rasterLayerMetadataGenerators.classification(),
     productId: rasterLayerMetadataGenerators.productId(),
@@ -179,7 +179,7 @@ const generateNewLayerMetadata = (): IngestionNewMetadata => {
   };
 };
 
-const generateUpdateLayerMetadata = (): IngestionUpdateMetadata => {
+const generateUpdateLayerMetadata = (): UpdateRasterLayerMetadata => {
   return {
     classification: faker.number.int({ max: 100 }).toString(),
   };

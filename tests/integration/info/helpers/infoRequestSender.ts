@@ -1,5 +1,5 @@
 import supertest from 'supertest';
-import type { GpkgInputFiles } from '../../../../src/ingestion/schemas/inputFilesSchema';
+import type { GpkgInputFiles } from '../../../../src/utils/validation/schemasValidator';
 
 export class InfoRequestSender {
   public constructor(private readonly app: Express.Application) {}

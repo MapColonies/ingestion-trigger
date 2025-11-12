@@ -9,7 +9,7 @@ import nock from 'nock';
 import { randexp } from 'randexp';
 import { getApp } from '../../../src/app';
 import { type ResponseId } from '../../../src/ingestion/interfaces';
-import type { IngestionNewLayer } from '../../../src/ingestion/schemas/ingestionLayerSchema';
+import type { IngestionNewLayer } from '../../../src/ingestion/schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../../../src/ingestion/schemas/updateLayerSchema';
 import { SQLiteClient } from '../../../src/serviceClients/database/SQLiteClient';
 import { Checksum } from '../../../src/utils/hash/checksum';
