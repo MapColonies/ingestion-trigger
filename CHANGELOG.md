@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.0.0-alpha.1](https://github.com/MapColonies/ingestion-trigger/compare/v3.2.5...v4.0.0-alpha.1) (2025-11-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* ingestion api(MAPCO-8326) (#36)
+
 ## [3.2.5](https://github.com/MapColonies/ingestion-trigger/compare/v3.2.4...v3.2.5) (2025-02-24)
 
 
