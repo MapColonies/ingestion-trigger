@@ -1,4 +1,4 @@
-import { InputFiles, inputFilesSchema, newRasterLayerMetadataSchema, updateRasterLayerMetadataSchema } from '@map-colonies/raster-shared';
+import { inputFilesSchema, newRasterLayerMetadataSchema, updateRasterLayerMetadataSchema } from '@map-colonies/raster-shared';
 import { DependencyContainer } from 'tsyringe';
 import type z from 'zod';
 import { gdalInfoSchema, type GdalInfo } from '../../ingestion/schemas/gdalDataSchema';
@@ -20,13 +20,10 @@ export function schemasValidationsFactory(container: DependencyContainer) {
   const infoDataSchema = createInfoDataSchema(container);
 
   return {
-    validateInputFilesRequestBody: async (value: unknown): Promise<InputFiles> => validator.validate(inputFilesSchema, value),
     validateGpkgsInputFilesRequestBody: async (value: unknown): Promise<GpkgInputFiles> => validator.validate(gpkgInputFilesSchema, value),
     validateInfoData: async (value: unknown): Promise<InfoData> => validator.validate(infoDataSchema, value),
     validateGdalInfo: async (value: unknown): Promise<GdalInfo> => validator.validate(gdalInfoSchema, value),
     validateNewLayerRequest: async (value: unknown): Promise<IngestionNewLayer> => validator.validate(newLayerSchema, value),
-    validateNewMetadata: async (value: unknown): Promise<IngestionNewMetadata> => validator.validate(newRasterLayerMetadataSchema, value),
-    validateUpdateMetadata: async (value: unknown): Promise<IngestionUpdateMetadata> => validator.validate(updateRasterLayerMetadataSchema, value),
     validateUpdateLayerRequest: async (value: unknown): Promise<IngestionUpdateLayerRequest> => validator.validate(updateLayerSchema, value),
     validateRasterLayersCatalog: async (value: unknown): Promise<RasterLayersCatalog> => validator.validate(rasterLayersCatalogSchema, value),
   };
