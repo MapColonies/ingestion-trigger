@@ -1,4 +1,4 @@
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 import type { InputFiles } from '@map-colonies/raster-shared';
 import type { IngestionNewLayer } from '../ingestion/schemas/newLayerSchema';
 
@@ -11,19 +11,6 @@ export const getAbsolutePathInputFiles = ({
       ...getAbsoluteGpkgFilesPath({ sourceMount, gpkgFilesPath: inputFiles.gpkgFilesPath }),
       metadataShapefilePath: join(sourceMount, inputFiles.metadataShapefilePath),
       productShapefilePath: join(sourceMount, inputFiles.productShapefilePath),
-    },
-  };
-};
-
-export const getRelativePathInputFiles = ({
-  sourceMount,
-  inputFiles,
-}: { sourceMount: string } & Pick<IngestionNewLayer, 'inputFiles'>): Pick<IngestionNewLayer, 'inputFiles'> => {
-  return {
-    inputFiles: {
-      gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => relative(sourceMount, gpkgFilePath)),
-      metadataShapefilePath: relative(sourceMount, inputFiles.metadataShapefilePath),
-      productShapefilePath: relative(sourceMount, inputFiles.productShapefilePath),
     },
   };
 };
