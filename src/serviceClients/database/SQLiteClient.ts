@@ -1,13 +1,11 @@
-import { join } from 'path';
-import Database, { Database as SQLiteDB, SqliteError } from 'better-sqlite3';
 import { Logger } from '@map-colonies/js-logger';
-import { inject, injectable } from 'tsyringe';
-import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { withSpanV4 } from '@map-colonies/telemetry';
-import { IConfig } from '../../common/interfaces';
+import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
+import Database, { Database as SQLiteDB, SqliteError } from 'better-sqlite3';
+import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { Grid, IMatrixValues, TileSize, matrixRatioToGrid } from '../../ingestion/interfaces';
-import { LogContext } from '../../utils/logger/logContext';
+import { Grid, IMatrixValues, matrixRatioToGrid, TileSize } from '../../ingestion/interfaces';
+import { LogContext } from '../../common/interfaces';
 import { GpkgError } from './errors';
 
 @injectable()
@@ -17,13 +15,10 @@ export class SQLiteClient {
 
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
-    private readonly packageName: string,
-    private readonly originDirectory: string
+    private readonly packageFilePath: string
   ) {
-    const layerSourceDir = this.config.get<string>('storageExplorer.layerSourceDir');
-    this.fullPath = join(layerSourceDir, this.originDirectory, this.packageName);
+    this.fullPath = this.packageFilePath;
     this.logContext = {
       fileName: __filename,
       class: SQLiteClient.name,

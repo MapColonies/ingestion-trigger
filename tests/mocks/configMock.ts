@@ -68,7 +68,7 @@ const registerDefaultConfig = (): void => {
       },
     },
     storageExplorer: {
-      layerSourceDir: 'tests/mocks',
+      layerSourceDir: 'tests/mocks/testFiles',
       displayNameDir: '\\layerSources',
       watchDirectory: 'watch',
       validFileExtensions: ['gpkg'],
@@ -92,7 +92,7 @@ const registerDefaultConfig = (): void => {
       ingestionNewJobType: 'Ingestion_New',
       ingestionUpdateJobType: 'Ingestion_Update',
       ingestionSwapUpdateJobType: 'Ingestion_Swap_Update',
-      initTaskType: 'init',
+      validationsTaskType: 'validations',
       supportedIngestionSwapTypes: [
         {
           productType: 'RasterVectorBest',

@@ -42,7 +42,7 @@ jobDefinitions:
     swapUpdate:
       type: ""
   tasks:
-    init:
+    validations:
       type: ""
 
 storage:
@@ -139,6 +139,8 @@ env:
     attempts: 5
     delay: exponential
     resetTimeout: true
+  productReader:
+    maxVerticesPerChunk: 10000
   supportedIngestionSwapTypes: {}
   forbiddenJobTypesForParallelIngestion:
     - Ingestion_New

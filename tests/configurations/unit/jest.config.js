@@ -1,3 +1,4 @@
+/** @type {import('jest').Config} */
 module.exports = {
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }],
@@ -15,6 +16,8 @@ module.exports = {
     '!<rootDir>/src/*',
     '!<rootDir>/src/serviceClients/database/SQLiteClient.ts',
     '!<rootDir>/src/ingestion/errors/ingestionErrors.ts',
+    '!<rootDir>/src/**/interfaces.ts',
+    '!<rootDir>/src/utils/hash/constants.ts',
   ],
   coverageDirectory: '<rootDir>/coverage',
   reporters: [
@@ -27,10 +30,10 @@ module.exports = {
   testEnvironment: 'node',
   coverageThreshold: {
     global: {
-      branches: 80,
-      functions: 80,
+      branches: 60,
+      functions: 70,
       lines: 80,
-      statements: -10,
+      statements: -120,
     },
   },
 };

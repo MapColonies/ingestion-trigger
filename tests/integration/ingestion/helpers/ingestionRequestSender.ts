@@ -1,22 +1,15 @@
 import supertest from 'supertest';
-import { InputFiles, NewRasterLayer, UpdateRasterLayer } from '@map-colonies/mc-model-types';
+import type { IngestionNewLayer } from '../../../../src/ingestion/schemas/newLayerSchema';
+import type { IngestionUpdateLayer } from '../../../../src/ingestion/schemas/updateLayerSchema';
 
 export class IngestionRequestSender {
   public constructor(private readonly app: Express.Application) {}
 
-  public async ingestNewLayer(body: NewRasterLayer): Promise<supertest.Response> {
-    return supertest.agent(this.app).post('/ingestion').send(body).set('Content-Type', 'application/json');
+  public async ingestNewLayer(body: IngestionNewLayer): Promise<supertest.Response> {
+    return supertest.agent(this.app).post('/ingestion').set('Content-Type', 'application/json').send(body);
   }
 
-  public async updateLayer(id: string, body: UpdateRasterLayer): Promise<supertest.Response> {
-    return supertest.agent(this.app).put(`/ingestion/${id}`).send(body).set('Content-Type', 'application/json');
-  }
-
-  public async validateSources(body: InputFiles): Promise<supertest.Response> {
-    return supertest.agent(this.app).post('/ingestion/validateSources').send(body).set('Content-Type', 'application/json');
-  }
-
-  public async getSourcesGdalInfo(body: InputFiles): Promise<supertest.Response> {
-    return supertest.agent(this.app).post('/ingestion/sourcesInfo').send(body).set('Content-Type', 'application/json');
+  public async updateLayer(id: string, body: IngestionUpdateLayer): Promise<supertest.Response> {
+    return supertest.agent(this.app).put(`/ingestion/${id}`).set('Content-Type', 'application/json').send(body);
   }
 }

@@ -1,219 +1,218 @@
-import { inject, injectable } from 'tsyringe';
-import { Logger } from '@map-colonies/js-logger';
-import { InputFiles, ProductType, NewRasterLayer, UpdateRasterLayer, PolygonPart } from '@map-colonies/mc-model-types';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
-import { ICreateJobResponse, IJobResponse, OperationStatus, IFindJobsByCriteriaBody } from '@map-colonies/mc-priority-queue';
+import { Logger } from '@map-colonies/js-logger';
+import { IFindJobsByCriteriaBody, OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
+import {
+  getMapServingLayerName,
+  type IngestionNewJobParams,
+  type IngestionSwapUpdateJobParams,
+  type IngestionUpdateJobParams,
+  type InputFiles,
+  type RasterProductTypes,
+} from '@map-colonies/raster-shared';
+import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
-import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { container, inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { SourceValidator } from '../validators/sourceValidator';
-import { FileNotFoundError, GdalInfoError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import { SourcesValidationResponse } from '../interfaces';
-import { GpkgError } from '../../serviceClients/database/errors';
-import { LogContext } from '../../utils/logger/logContext';
-import { InfoDataWithFile } from '../schemas/infoDataSchema';
-import { PolygonPartValidator } from '../validators/polygonPartValidator';
+import { IConfig, ISupportedIngestionSwapTypes, LogContext } from '../../common/interfaces';
+import { InfoManager } from '../../info/models/infoManager';
 import { CatalogClient } from '../../serviceClients/catalogClient';
-import { IConfig, IFindResponseRecord, ISupportedIngestionSwapTypes, LayerDetails } from '../../common/interfaces';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
-import { ITaskParameters } from '../interfaces';
-import { getMapServingLayerName } from '../../utils/layerNameGenerator';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
-import { GdalInfoManager } from './gdalInfoManager';
+import { Checksum } from '../../utils/hash/checksum';
+import { Checksum as IChecksum } from '../../utils/hash/interfaces';
+import { getAbsolutePathInputFiles } from '../../utils/paths';
+import { getShapefileFiles } from '../../utils/shapefile';
+import { ValidateManager } from '../../validate/models/validateManager';
+import { ChecksumError } from '../errors/ingestionErrors';
+import type { ResponseId, ValidationsTaskParameters } from '../interfaces';
+import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
+import type { IngestionNewLayer } from '../schemas/newLayerSchema';
+import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
+import { GeoValidator } from '../validators/geoValidator';
+import { SourceValidator } from '../validators/sourceValidator';
+import { ProductManager } from './productManager';
+
+type ReplaceValuesOfKey<T extends Record<PropertyKey, unknown>, Key extends keyof T, Value> = {
+  [K in keyof T]: K extends Key ? Value : T[K];
+};
+type MapToRelativeAndAbsolute<T extends Record<PropertyKey, unknown>> = {
+  [K in keyof T]: T[K] extends unknown[] ? { relative: T[K][number]; absolute: T[K][number] }[] : { relative: T[K]; absolute: T[K] };
+};
+type InputFilesPaths = MapToRelativeAndAbsolute<InputFiles>;
+type EnhancedIngestionNewLayer = ReplaceValuesOfKey<IngestionNewLayer, 'inputFiles', InputFilesPaths>;
+type EnhancedIngestionUpdateLayer = ReplaceValuesOfKey<IngestionUpdateLayer, 'inputFiles', InputFilesPaths>;
 
 @injectable()
 export class IngestionManager {
   private readonly logContext: LogContext;
+  private readonly jobDomain: string;
+  private readonly ingestionNewJobType: string;
   private readonly forbiddenJobTypes: string[];
   private readonly supportedIngestionSwapTypes: ISupportedIngestionSwapTypes[];
   private readonly updateJobType: string;
   private readonly swapUpdateJobType: string;
+  private readonly validationsTaskType: string;
+  private readonly sourceMount: string;
+  private readonly jobTrackerServiceUrl: string;
 
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
+    private readonly validateManager: ValidateManager,
     private readonly sourceValidator: SourceValidator,
-    private readonly gdalInfoManager: GdalInfoManager,
-    private readonly polygonPartValidator: PolygonPartValidator,
+    private readonly infoManager: InfoManager,
+    private readonly geoValidator: GeoValidator,
     private readonly catalogClient: CatalogClient,
     private readonly jobManagerWrapper: JobManagerWrapper,
-    private readonly mapProxyClient: MapProxyClient
+    private readonly mapProxyClient: MapProxyClient,
+    private readonly productManager: ProductManager
   ) {
     this.logContext = {
       fileName: __filename,
       class: IngestionManager.name,
     };
-    this.forbiddenJobTypes = this.config.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
-    this.supportedIngestionSwapTypes = this.config.get<ISupportedIngestionSwapTypes[]>('jobManager.supportedIngestionSwapTypes');
+    this.jobDomain = config.get<string>('jobManager.jobDomain');
+    this.ingestionNewJobType = config.get<string>('jobManager.ingestionNewJobType');
+    this.forbiddenJobTypes = config.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
+    this.supportedIngestionSwapTypes = config.get<ISupportedIngestionSwapTypes[]>('jobManager.supportedIngestionSwapTypes');
     this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
     this.swapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
+    this.validationsTaskType = config.get<string>('jobManager.validationsTaskType');
+    this.sourceMount = config.get<string>('storageExplorer.layerSourceDir');
+    this.jobTrackerServiceUrl = config.get<string>('services.jobTrackerServiceURL');
   }
 
   @withSpanAsyncV4
-  public async getInfoData(inputFiles: InputFiles): Promise<InfoDataWithFile[]> {
-    const logCtx: LogContext = { ...this.logContext, function: this.getInfoData.name };
+  public async newLayer(newLayer: IngestionNewLayer): Promise<ResponseId> {
+    const logCtx: LogContext = { ...this.logContext, function: this.newLayer.name };
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('ingestionManager.getInfoData');
-    const { originDirectory, fileNames } = inputFiles;
-    this.logger.info({ msg: 'getting gdal info for files', logContext: logCtx, metadata: { originDirectory, fileNames } });
+    activeSpan?.updateName('ingestionManager.newLayer');
 
-    await this.sourceValidator.validateFilesExist(originDirectory, fileNames);
-    this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { originDirectory, fileNames } });
+    const absoluteInputFilesPath = getAbsolutePathInputFiles({ inputFiles: newLayer.inputFiles, sourceMount: this.sourceMount });
+    const newLayerLocal: EnhancedIngestionNewLayer = {
+      ...newLayer,
+      inputFiles: {
+        gpkgFilesPath: newLayer.inputFiles.gpkgFilesPath.map((gpkgFilePath, index) => {
+          return {
+            absolute: absoluteInputFilesPath.inputFiles.gpkgFilesPath[index],
+            relative: gpkgFilePath,
+          };
+        }),
+        metadataShapefilePath: {
+          absolute: absoluteInputFilesPath.inputFiles.metadataShapefilePath,
+          relative: newLayer.inputFiles.metadataShapefilePath,
+        },
+        productShapefilePath: {
+          absolute: absoluteInputFilesPath.inputFiles.productShapefilePath,
+          relative: newLayer.inputFiles.productShapefilePath,
+        },
+      },
+    };
 
-    const filesGdalInfoData = await this.gdalInfoManager.getInfoData(originDirectory, fileNames);
-    activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('getInfoData.get.ok');
-    return filesGdalInfoData;
-  }
-
-  @withSpanAsyncV4
-  public async validateSources(inputFiles: InputFiles): Promise<SourcesValidationResponse> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateSources.name };
-    const { originDirectory, fileNames } = inputFiles;
-    const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('IngestionManager.validateSources');
-    try {
-      this.logger.info({ msg: 'Starting source validation process', logContext: logCtx, metadata: { originDirectory, fileNames } });
-
-      await this.sourceValidator.validateFilesExist(originDirectory, fileNames);
-      this.logger.debug({ msg: 'Files exist validation passed', logContext: logCtx, metadata: { originDirectory, fileNames } });
-
-      await this.sourceValidator.validateGdalInfo(originDirectory, fileNames);
-      this.logger.debug({ msg: 'GDAL info validation passed', logContext: logCtx, metadata: { originDirectory, fileNames } });
-
-      this.sourceValidator.validateGpkgFiles(originDirectory, fileNames);
-      this.logger.debug({ msg: 'GPKG files validation passed', logContext: logCtx, metadata: { originDirectory, fileNames } });
-
-      const validationResult: SourcesValidationResponse = { isValid: true, message: 'Sources are valid' };
-
-      this.logger.debug({
-        msg: validationResult.message,
-        logContext: logCtx,
-        metadata: { originDirectory, fileNames, isValid: validationResult.isValid },
-      });
-      activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.validateSources.valid', { isValid: true });
-      return validationResult;
-    } catch (err) {
-      if (err instanceof FileNotFoundError || err instanceof GdalInfoError || err instanceof GpkgError) {
-        this.logger.info({ msg: `Sources are not valid:${err.message}`, logContext: logCtx, err: err, metadata: { originDirectory, fileNames } });
-        activeSpan?.addEvent('ingestionManager.validateSources.invalid', { isValid: false, validationError: err.message });
-        return { isValid: false, message: err.message };
-      }
-
-      this.logger.error({
-        msg: `An unexpected error occurred during source validation`,
-        logContext: logCtx,
-        err,
-        metadata: { originDirectory, fileNames },
-      });
-      throw err;
-    }
-  }
-
-  @withSpanAsyncV4
-  public async ingestNewLayer(rasterIngestionLayer: NewRasterLayer): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.ingestNewLayer.name };
-    const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('IngestionManager.ingestNewLayer');
-
-    await this.validateNewLayer(rasterIngestionLayer);
-    this.logger.info({ msg: `finished validation of new Layer. all checks have passed`, logContext: logCtx });
+    await this.newLayerValidations(newLayerLocal);
+    this.logger.info({ msg: `finished validation of new layer. all checks have passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
-    const response: ICreateJobResponse = await this.jobManagerWrapper.createInitJob(rasterIngestionLayer);
+    const createJobRequest = await this.newLayerJobPayload(newLayerLocal);
+    const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
+    const taskId = taskIds[0];
 
-    activeSpan
-      ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.ingestLayer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
-    this.logger.info({ msg: `new job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `, logContext: logCtx });
-  }
-
-  @withSpanAsyncV4
-  public async updateLayer(catalogId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.updateLayer.name };
-    const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('IngestionManager.updateLayer');
-
-    const layerDetails: LayerDetails = await this.validateAndGetUpdatedLayerParams(catalogId, rasterUpdateLayer);
-    this.logger.info({ msg: `finished validation of update Layer. all checks have passed`, logContext: logCtx });
-    activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
-
-    const response = await this.setAndCreateUpdateJob(catalogId, layerDetails, rasterUpdateLayer);
     this.logger.info({
-      msg: `new update job and init task were created. jobId: ${response.id}, taskId: ${response.taskIds[0]} `,
+      msg: `new ingestion job and validation task were created. jobId: ${jobId}, taskId: ${taskId}`,
       logContext: logCtx,
     });
-    activeSpan
-      ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId: response.id, taskId: response.taskIds[0] });
+    activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.newLayer.success', { triggerSuccess: true, jobId, taskId });
+
+    return { jobId, taskId };
   }
 
   @withSpanAsyncV4
-  private async setAndCreateUpdateJob(
-    catalogId: string,
-    layerDetails: LayerDetails,
-    rasterUpdateLayer: UpdateRasterLayer
-  ): Promise<ICreateJobResponse> {
-    const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
-      return supportedSwapObj.productType === layerDetails.productType && supportedSwapObj.productSubType === layerDetails.productSubType;
-    });
-
-    const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
-    return this.jobManagerWrapper.createInitUpdateJob(layerDetails, catalogId, rasterUpdateLayer, updateJobAction);
-  }
-
-  @withSpanAsyncV4
-  private async validateAndGetUpdatedLayerParams(catalogId: string, rasterUpdateLayer: UpdateRasterLayer): Promise<LayerDetails> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateAndGetUpdatedLayerParams.name };
+  public async updateLayer(catalogId: string, updateLayer: IngestionUpdateLayer): Promise<ResponseId> {
+    const logCtx: LogContext = { ...this.logContext, function: this.updateLayer.name };
     const activeSpan = trace.getActiveSpan();
-    activeSpan?.updateName('ingestionManager.validateAndGetUpdatedLayerParams');
-    const { metadata, partsData, inputFiles } = rasterUpdateLayer;
+    activeSpan?.updateName('ingestionManager.updateLayer');
+
+    const rasterLayerMetadata = await this.getLayerMetadata(catalogId);
+
+    const absoluteInputFilesPath = getAbsolutePathInputFiles({ inputFiles: updateLayer.inputFiles, sourceMount: this.sourceMount });
+    const updateLayerLocal = {
+      ...updateLayer,
+      inputFiles: {
+        gpkgFilesPath: updateLayer.inputFiles.gpkgFilesPath.map((gpkgFilePath, index) => {
+          return {
+            absolute: absoluteInputFilesPath.inputFiles.gpkgFilesPath[index],
+            relative: gpkgFilePath,
+          };
+        }),
+        metadataShapefilePath: {
+          absolute: absoluteInputFilesPath.inputFiles.metadataShapefilePath,
+          relative: updateLayer.inputFiles.metadataShapefilePath,
+        },
+        productShapefilePath: {
+          absolute: absoluteInputFilesPath.inputFiles.productShapefilePath,
+          relative: updateLayer.inputFiles.productShapefilePath,
+        },
+      },
+    };
+
+    await this.updateLayerValidations(rasterLayerMetadata, updateLayerLocal);
+    this.logger.info({ msg: `finished validation of update layer. all checks have passed`, logContext: logCtx });
+    activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
+
+    const createJobRequest = await this.updateLayerJobPayload(rasterLayerMetadata, updateLayerLocal);
+    const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
+    const taskId = taskIds[0];
+
+    this.logger.info({
+      msg: `new update job and validation task were created. jobId: ${jobId}, taskId: ${taskId} `,
+      logContext: logCtx,
+    });
+    activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId });
+
+    return { jobId, taskId };
+  }
+
+  @withSpanAsyncV4
+  private async updateLayerValidations(rasterLayerMetadata: RasterLayerMetadata, updateLayer: EnhancedIngestionUpdateLayer): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.updateLayerValidations.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('ingestionManager.updateLayerValidations');
+
+    const { id, productId, productType } = rasterLayerMetadata;
+    const { metadata, inputFiles } = updateLayer;
+    const absoluteInputFilesPaths = this.getAbsoluteInputFilesPaths(inputFiles);
+
     this.logger.debug({
       msg: 'started update layer validation',
-      catalogId: catalogId,
-      requestBody: { metadata, partsData, inputFiles },
+      catalogId: id,
+      requestBody: { metadata, inputFiles },
       logCtx: logCtx,
     });
     this.logger.info({
-      catalogId: catalogId,
+      catalogId: id,
       msg: 'started validation on update layer request',
       logCtx: logCtx,
     });
-    await this.validateRequestInputs(partsData, inputFiles);
-    //catalog call must be before map proxy to get productId and Type
-    const layerDetails = await this.getLayer(catalogId);
-    const {
-      productId,
-      productVersion,
-      productType,
-      productSubType = '',
-      tileOutputFormat,
-      displayPath,
-      productName,
-      footprint,
-    } = layerDetails.metadata as LayerDetails;
-    activeSpan?.addEvent('updateLayer.getLayer', {
-      productId,
-      productVersion,
-      productType,
-      productSubType,
-      tileOutputFormat,
-      displayPath,
-      productName,
-    });
+    // validate input files (gpkgs, metadata shp, product shp files)
+    await this.validateInputFiles(absoluteInputFilesPaths);
 
+    // validate against catalog, mapproxy, job-manager
     const layerName = getMapServingLayerName(productId, productType);
     await this.validateLayerExistsInMapProxy(layerName);
     await this.validateNoParallelJobs(productId, productType);
     this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
-    return { productId, productVersion, productType, productSubType, tileOutputFormat, displayPath, productName, footprint };
   }
 
   @withSpanAsyncV4
-  private async validateNewLayer(rasterIngestionLayer: NewRasterLayer): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateNewLayer.name };
-    const { metadata, partsData, inputFiles } = rasterIngestionLayer;
-    this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, partsData, inputFiles }, logCtx: logCtx });
+  private async newLayerValidations(newLayer: EnhancedIngestionNewLayer): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.newLayerValidations.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('ingestionManager.newLayerValidations');
+    const { metadata, inputFiles } = newLayer;
+    const absoluteInputFilesPaths = this.getAbsoluteInputFilesPaths(inputFiles);
+
+    this.logger.debug({ msg: 'started new layer validation', requestBody: { metadata, inputFiles }, logCtx: logCtx });
     this.logger.info({
       productId: metadata.productId,
       productType: metadata.productType,
@@ -221,38 +220,30 @@ export class IngestionManager {
       msg: 'started validation on new layer request',
       logCtx: logCtx,
     });
+    // validate input files (gpkgs, metadata shp, product shp files)
+    await this.validateInputFiles(absoluteInputFilesPaths);
 
-    await this.validateRequestInputs(partsData, inputFiles);
-    //catalog ,mapproxy, jobmanager validation
+    // validate against catalog, mapproxy, job-manager
     const layerName = getMapServingLayerName(metadata.productId, metadata.productType);
     await this.validateLayerDoesntExistInMapProxy(layerName);
-    await this.isInCatalog(metadata.productId, metadata.productType);
-    await this.validateNoConflictingJobs(metadata.productId, metadata.productType);
-    this.logger.info({ msg: 'validation in catalog ,job manager and mapProxy passed', logContext: logCtx });
+    await this.validateLayerDoesntExistInCatalog(metadata.productId, metadata.productType);
+    await this.validateNoParallelJobs(metadata.productId, metadata.productType);
+    this.logger.info({ msg: 'validation in catalog, job-manager and mapproxy passed', logContext: logCtx });
   }
 
   @withSpanAsyncV4
-  private async validateNoConflictingJobs(productId: string, productType: ProductType): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateNoConflictingJobs.name };
-    const jobs = await this.getJobs(productId, productType);
-    if (jobs.length !== 0) {
-      const message = `ProductId: ${productId} ProductType: ${productType}, there is at least one conflicting job already running for that layer`;
-      this.logger.error({
-        productId: productId,
-        productType: productType,
-        msg: message,
-        logCtx: logCtx,
-      });
-      const error = new ConflictError(message);
-      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
-      throw error;
-    }
-  }
-
-  @withSpanAsyncV4
-  private async validateNoParallelJobs(productId: string, productType: ProductType): Promise<void> {
+  private async validateNoParallelJobs(productId: string, productType: RasterProductTypes): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.validateNoParallelJobs.name };
-    const jobs = await this.getJobs(productId, productType, this.forbiddenJobTypes);
+
+    const findJobParameters: IFindJobsByCriteriaBody = {
+      resourceId: productId,
+      productType,
+      isCleaned: false,
+      shouldReturnTasks: false,
+      statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS, OperationStatus.FAILED, OperationStatus.SUSPENDED],
+      types: this.forbiddenJobTypes,
+    };
+    const jobs = await this.jobManagerWrapper.findJobs(findJobParameters);
     if (jobs.length !== 0) {
       const message = `ProductId: ${productId} productType: ${productType}, there is at least one conflicting job already running for that layer`;
       this.logger.error({
@@ -265,24 +256,6 @@ export class IngestionManager {
       trace.getActiveSpan()?.setAttribute('exception.type', error.status);
       throw error;
     }
-  }
-
-  @withSpanAsyncV4
-  private async getJobs(
-    productId: string,
-    productType: ProductType,
-    forbiddenParallel?: string[]
-  ): Promise<IJobResponse<Record<string, unknown>, ITaskParameters>[]> {
-    const findJobParameters: IFindJobsByCriteriaBody = {
-      resourceId: productId,
-      productType,
-      isCleaned: false,
-      shouldReturnTasks: false,
-      statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
-      types: forbiddenParallel,
-    };
-    const jobs = await this.jobManagerWrapper.findJobs<Record<string, unknown>, ITaskParameters>(findJobParameters);
-    return jobs;
   }
 
   @withSpanAsyncV4
@@ -307,7 +280,7 @@ export class IngestionManager {
     const logCtx: LogContext = { ...this.logContext, function: this.validateLayerExistsInMapProxy.name };
     const exists = await this.mapProxyClient.exists(layerName);
     if (!exists) {
-      const message = `Failed to create update job for layer: ${layerName}, layer doesnt exist on MapProxy`;
+      const message = `Failed to create update job for layer: ${layerName}, layer doesn't exist on MapProxy`;
       this.logger.error({
         layerName: layerName,
         msg: message,
@@ -320,8 +293,8 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async isInCatalog(productId: string, productType: ProductType): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.isInCatalog.name };
+  private async validateLayerDoesntExistInCatalog(productId: string, productType: RasterProductTypes): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateLayerDoesntExistInCatalog.name };
     const existsInCatalog = await this.catalogClient.exists(productId, productType);
     if (existsInCatalog) {
       const message = `ProductId: ${productId} ProductType: ${productType}, already exists in catalog`;
@@ -338,40 +311,160 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async getLayer(catalogId: string): Promise<IFindResponseRecord> {
-    const layerDetails = await this.catalogClient.findById(catalogId);
+  private async validateInputFiles(inputFiles: InputFiles): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateInputFiles.name };
+    const { productShapefilePath } = inputFiles;
+
+    const shapefiles = [...getShapefileFiles(inputFiles.metadataShapefilePath), ...getShapefileFiles(inputFiles.productShapefilePath)];
+    // validate shapefiles exist
+    await this.validateManager.validateShapefiles(shapefiles);
+    this.logger.debug({ msg: 'validated shapefiles', logContext: logCtx });
+
+    // validate files exist, gdal info and GPKG data
+    await this.validateManager.validateGpkgsSources({ gpkgFilesPath: inputFiles.gpkgFilesPath });
+    this.logger.debug({ msg: 'validated gpkgs', logContext: logCtx });
+
+    // validate new ingestion product.shp against gpkg data extent
+    const infoData = await this.infoManager.getGpkgsInformation(inputFiles);
+    const productGeometry = await this.productManager.read(productShapefilePath);
+    this.geoValidator.validate(infoData, productGeometry);
+    this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
+  }
+
+  @withSpanAsyncV4
+  private async getLayerMetadata(catalogId: string): Promise<RasterLayerMetadata> {
+    const rasterLayersCatalog = await this.catalogClient.findById(catalogId);
+
     const getLayerSpan = trace.getActiveSpan();
-    if (layerDetails.length === 0) {
-      const message = `there isnt a layer with id of ${catalogId}`;
+    if (rasterLayersCatalog.length === 0) {
+      const message = `there isn't a layer with id of ${catalogId}`;
       const error = new NotFoundError(message);
       getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
-    } else if (layerDetails.length !== 1) {
-      const message = `found more than one layer with id of ${catalogId}, Please check the catalog layers`;
+    } else if (rasterLayersCatalog.length !== 1) {
+      const message = `found more than one layer with id of ${catalogId}, please check the catalog layers`;
       const error = new ConflictError(message);
       getLayerSpan?.setAttribute('exception.type', error.status);
       throw error;
     }
-    return layerDetails[0];
+
+    return rasterLayersCatalog[0].metadata;
   }
 
   @withSpanAsyncV4
-  private async validateRequestInputs(partsData: PolygonPart[], inputFiles: InputFiles): Promise<void> {
-    const logCtx: LogContext = { ...this.logContext, function: this.validateRequestInputs.name };
+  private async newLayerJobPayload(newLayer: EnhancedIngestionNewLayer): Promise<ICreateJobBody<IngestionNewJobParams, ValidationsTaskParameters>> {
+    const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath.absolute);
+    const taskParameters = { checksums };
 
-    //validate files exist, gdal info and GPKG data
-    const isValidSources: SourcesValidationResponse = await this.validateSources(inputFiles);
-    if (!isValidSources.isValid) {
-      const errorMessage = isValidSources.message;
-      this.logger.error({ msg: errorMessage, logContext: logCtx, inputFiles: { inputFiles } });
-      const error = new UnsupportedEntityError(isValidSources.message);
-      throw error;
+    const newLayerRelative = {
+      ...newLayer,
+      ...{
+        inputFiles: {
+          metadataShapefilePath: newLayer.inputFiles.metadataShapefilePath.relative,
+          productShapefilePath: newLayer.inputFiles.productShapefilePath.relative,
+          gpkgFilesPath: newLayer.inputFiles.gpkgFilesPath.map((gpkgFilePath) => gpkgFilePath.relative),
+        },
+      },
+    };
+
+    const ingestionNewJobParams = {
+      ...newLayerRelative,
+      additionalParams: { jobTrackerServiceURL: this.jobTrackerServiceUrl },
+    };
+    const initialProductVersion = '1.0';
+    const createJobRequest = {
+      resourceId: newLayerRelative.metadata.productId,
+      version: initialProductVersion,
+      type: this.ingestionNewJobType,
+      status: OperationStatus.PENDING,
+      parameters: ingestionNewJobParams,
+      productName: newLayerRelative.metadata.productName,
+      productType: newLayerRelative.metadata.productType,
+      domain: this.jobDomain,
+      tasks: [{ type: this.validationsTaskType, parameters: taskParameters }],
+    };
+    return createJobRequest;
+  }
+
+  @withSpanAsyncV4
+  private async updateLayerJobPayload(
+    rasterLayerMetadata: RasterLayerMetadata,
+    updateLayer: EnhancedIngestionUpdateLayer
+  ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationsTaskParameters>> {
+    const { displayPath, id, productId, productType, productVersion, tileOutputFormat, productName, productSubType } = rasterLayerMetadata;
+    const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
+      return supportedSwapObj.productType === productType && supportedSwapObj.productSubType === productSubType;
+    });
+    const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
+
+    const checksums = await this.getFilesChecksum(updateLayer.inputFiles.metadataShapefilePath.absolute);
+    const taskParameters = { checksums };
+
+    const updateLayerRelative = {
+      ...updateLayer,
+      ...{
+        inputFiles: {
+          metadataShapefilePath: updateLayer.inputFiles.metadataShapefilePath.relative,
+          productShapefilePath: updateLayer.inputFiles.productShapefilePath.relative,
+          gpkgFilesPath: updateLayer.inputFiles.gpkgFilesPath.map((gpkgFilePath) => gpkgFilePath.relative),
+        },
+      },
+    };
+
+    const ingestionUpdateJobParams = {
+      ...updateLayerRelative,
+      additionalParams: {
+        tileOutputFormat,
+        jobTrackerServiceURL: this.jobTrackerServiceUrl,
+        ...(updateJobAction === this.updateJobType && { displayPath }),
+      },
+    };
+    const createJobRequest = {
+      resourceId: productId,
+      version: (parseFloat(productVersion) + 1).toFixed(1),
+      internalId: id,
+      type: updateJobAction,
+      productName,
+      productType,
+      status: OperationStatus.PENDING,
+      parameters: ingestionUpdateJobParams,
+      domain: this.jobDomain,
+      tasks: [{ type: this.validationsTaskType, parameters: taskParameters }],
+    };
+    return createJobRequest;
+  }
+
+  @withSpanAsyncV4
+  private async getFilesChecksum(shapefilePath: string): Promise<IChecksum[]> {
+    const checksums = await Promise.all(getShapefileFiles(shapefilePath).map(async (fileName) => this.getFileChecksum(fileName)));
+    return checksums;
+  }
+
+  @withSpanAsyncV4
+  private async getFileChecksum(filePath: string): Promise<IChecksum> {
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('ingestionManager.getFileChecksum');
+    const logCtx: LogContext = { ...this.logContext, function: this.getFileChecksum.name };
+
+    this.logger.info({ msg: `calucalting checksum for: ${filePath}`, logContext: logCtx });
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/await-thenable
+      const checksum = container.resolve(Checksum);
+      return await checksum.calculate(filePath);
+    } catch (err) {
+      const processingError = err instanceof ChecksumError ? err.message : 'Unknown error';
+      activeSpan?.addEvent('ingestionManager.getFileChecksum.invalid', { processingError });
+      throw err;
     }
-    this.logger.debug({ msg: 'validated sources', logContext: logCtx });
+  }
 
-    //validate new ingestion payload against gpkg data for each part
-    const infoData: InfoDataWithFile[] = await this.getInfoData(inputFiles);
-    this.polygonPartValidator.validate(partsData, infoData);
-    this.logger.debug({ msg: 'validated geometries', logContext: logCtx });
+  @withSpanV4
+  private getAbsoluteInputFilesPaths(inputFiles: InputFilesPaths): InputFiles {
+    return {
+      gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => gpkgFilePath.absolute),
+      metadataShapefilePath: inputFiles.metadataShapefilePath.absolute,
+      productShapefilePath: inputFiles.productShapefilePath.absolute,
+    };
   }
 }

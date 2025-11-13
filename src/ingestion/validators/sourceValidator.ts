@@ -1,20 +1,21 @@
-import { promises as fsPromises, constants as fsConstants } from 'node:fs';
-import { join } from 'node:path';
-import { inject, injectable } from 'tsyringe';
+import { constants as fsConstants, promises as fsPromises } from 'node:fs';
+import { basename, dirname } from 'node:path';
 import { Logger } from '@map-colonies/js-logger';
-import { IConfig } from 'config';
-import { trace, Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
-import { FileNotFoundError } from '../errors/ingestionErrors';
-import { LogContext } from '../../utils/logger/logContext';
+import { trace, Tracer } from '@opentelemetry/api';
+import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
+import { IConfig } from '../../common/interfaces';
+import { GdalInfoManager } from '../../info/models/gdalInfoManager';
+import { LogContext } from '../../common/interfaces';
+import { FileNotFoundError } from '../errors/ingestionErrors';
 import { GpkgManager } from '../models/gpkgManager';
-import { GdalInfoManager } from '../models/gdalInfoManager';
 
 @injectable()
 export class SourceValidator {
   private readonly logContext: LogContext;
   private readonly sourceMount: string;
+  private readonly extentBufferInMeters: number;
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
@@ -27,45 +28,57 @@ export class SourceValidator {
       class: SourceValidator.name,
     };
     this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
+    this.extentBufferInMeters = this.config.get<number>('validationValuesByInfo.extentBufferInMeters');
   }
 
   @withSpanAsyncV4
-  public async validateGdalInfo(originDirectory: string, files: string[]): Promise<void> {
+  public async validateGdalInfo(filesPath: string[]): Promise<void> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('sourceValidator.validateGdalInfo');
-    const gdalInfoData = await this.gdalInfoManager.getInfoData(originDirectory, files);
+    const gdalInfoData = await this.gdalInfoManager.getInfoData(filesPath);
     await this.gdalInfoManager.validateInfoData(gdalInfoData);
     activeSpan?.addEvent('sourceValidator.validateGdalInfo.passed');
   }
 
   @withSpanV4
-  public validateGpkgFiles(originDirectory: string, files: string[]): void {
+  public validateGpkgFiles(filesPath: string[]): void {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('sourceValidator.validateGpkgFiles');
-    this.gpkgManager.validateGpkgFiles(originDirectory, files);
+    this.gpkgManager.validateGpkgFiles(filesPath);
     activeSpan?.addEvent('sourceValidator.validateGpkgFiles.passed');
   }
 
   @withSpanAsyncV4
-  public async validateFilesExist(srcDir: string, files: string[]): Promise<void> {
+  public async validateFilesExist(filesPath: string[]): Promise<void> {
     const logCtx = { ...this.logContext, function: this.validateFilesExist.name };
-    this.logger.debug({ msg: 'validating source files exist', logContext: logCtx, metadata: { srcDir, files } });
-    const fullPaths: string[] = [];
+    this.logger.debug({ msg: 'validating source files exist', logContext: logCtx, metadata: { filesPath } });
+    const fullFileSPath: string[] = [];
 
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('sourceValidator.validateFilesExist');
 
-    const filePromises = files.map(async (file) => {
-      const fullPath = join(this.sourceMount, srcDir, file);
-      fullPaths.push(fullPath);
-      return fsPromises.access(fullPath, fsConstants.F_OK).catch(() => {
-        this.logger.error({ msg: `File '${file}' not found at '${fullPath}'`, logContext: logCtx, metadata: { file, fullPath } });
-        const error = new FileNotFoundError(file, fullPath);
-        throw error;
-      });
+    const filePromises = filesPath.map(async (fullFilePath) => {
+      try {
+        await fsPromises.access(fullFilePath, fsConstants.F_OK);
+        return fullFilePath;
+      } catch (err) {
+        const fileName = basename(fullFilePath);
+        const filePath = dirname(fullFilePath);
+        this.logger.error({ msg: `File '${fileName}' not found at '${filePath}'`, logContext: logCtx, metadata: { fullFilePath } });
+        throw new Error(fileName);
+      }
     });
-    await Promise.all(filePromises);
+    const validationResults = (await Promise.allSettled(filePromises))
+      .filter((value) => value.status === 'rejected')
+      .map((value) => (value.reason instanceof Error ? value.reason.message : 'unknown reason'));
+
+    if (validationResults.length > 0) {
+      const missingFiles = validationResults.join(',');
+      this.logger.error({ msg: 'Files were not found', logContext: logCtx, missingFiles });
+      throw new FileNotFoundError(missingFiles);
+    }
+
     activeSpan?.addEvent('sourceValidator.validateFilesExist.valid');
-    this.logger.debug({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullPaths } });
+    this.logger.debug({ msg: 'source files exist', logContext: logCtx, metadata: { fullFilesPaths: fullFileSPath } });
   }
 }

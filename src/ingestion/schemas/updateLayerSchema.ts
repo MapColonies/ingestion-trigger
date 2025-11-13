@@ -1,14 +1,15 @@
+import { callbackUrlsArraySchema, ingestionResolutionSchema, inputFilesSchema, updateRasterLayerMetadataSchema } from '@map-colonies/raster-shared';
 import { z } from 'zod';
-import { DependencyContainer } from 'tsyringe';
-import { createPartsDataSchema } from './partsDataSchema';
-import { createInputFilesSchema } from './inputFilesSchema';
-import { createUpdateMetadataSchema } from './updateMetadataSchema';
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export const createUpdateLayerSchema = (container: DependencyContainer) => {
-  return z.object({
-    metadata: createUpdateMetadataSchema(),
-    partsData: createPartsDataSchema(),
-    inputFiles: createInputFilesSchema(container),
-  });
-};
+export type IngestionUpdateLayerRequest = z.infer<typeof updateLayerSchema>;
+export type IngestionUpdateLayer = IngestionUpdateLayerRequest['reqBody'];
+
+export const updateLayerSchema = z.object({
+  reqBody: z.object({
+    metadata: updateRasterLayerMetadataSchema,
+    inputFiles: inputFilesSchema,
+    ingestionResolution: ingestionResolutionSchema,
+    callbackUrls: callbackUrlsArraySchema.optional(),
+  }),
+  paramsId: z.string().uuid(),
+});

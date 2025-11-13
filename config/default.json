@@ -35,10 +35,10 @@
     }
   },
   "storageExplorer": {
-    "layerSourceDir": "/layerSources",
+    "layerSourceDir": "",
     "displayNameDir": "\\layerSources",
     "watchDirectory": "watch",
-    "validFileExtensions": ["gpkg"]
+    "validFileExtensions": ["gpkg", "shp", "shx", "dbf", "prj", "cpg"]
   },
   "validationValuesByInfo": {
     "crs": [4326],
@@ -46,6 +46,9 @@
     "tileSize": 256,
     "resolutionFixedPointTolerance": 12,
     "extentBufferInMeters": 50
+  },
+  "productReader": {
+    "maxVerticesPerChunk": 10000
   },
   "services": {
     "jobManagerURL": "",
@@ -58,7 +61,7 @@
     "ingestionNewJobType": "Ingestion_New",
     "ingestionUpdateJobType": "Ingestion_Update",
     "ingestionSwapUpdateJobType": "Ingestion_Swap_Update",
-    "initTaskType": "init",
+    "validationsTaskType": "validations",
     "supportedIngestionSwapTypes": [
       {
         "productType": "RasterVectorBest",

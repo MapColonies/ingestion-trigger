@@ -115,3 +115,6 @@ reports
 
 # OpenAPI output bundledAPI
 bundledApi.yaml
+
+# Local configs
+config/*local*.json

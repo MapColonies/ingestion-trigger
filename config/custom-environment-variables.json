@@ -70,6 +70,12 @@
       "__format": "number"
     }
   },
+  "productReader": {
+    "maxVerticesPerChunk": {
+      "__name": "PRODUCT_READER_MAX_VERTICES_PER_CHUNK",
+      "__format": "number"
+    }
+  },
   "services": {
     "jobManagerURL": "JOB_MANAGER_URL",
     "mapProxyApiServiceUrl": "MAP_PROXY_API_SERVICE_URL",
@@ -79,7 +85,7 @@
   "jobManager": {
     "jobDomain": "JOB_DOMAIN",
     "ingestionNewJobType": "INGESTION_NEW_JOB_TYPE",
-    "initTaskType": "INIT_TASK_TYPE",
+    "validationsTaskType": "VALIDATIONS_TASK_TYPE",
     "ingestionUpdateJobType": "INGESTION_UPDATE_JOB_TYPE",
     "ingestionSwapUpdateJobType": "INGESTION_SWAP_UPDATE_JOB_TYPE",
     "supportedIngestionSwapTypes": {

@@ -1,541 +1,758 @@
-import httpStatusCodes from 'http-status-codes';
-import { InputFiles, ProductType } from '@map-colonies/mc-model-types';
-import gdal from 'gdal-async';
+import fs from 'node:fs';
+import { faker } from '@faker-js/faker';
+import { OperationStatus, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
+import { CORE_VALIDATIONS, getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
 import { SqliteError } from 'better-sqlite3';
+import httpStatusCodes from 'http-status-codes';
+import { matches, merge, set, unset } from 'lodash';
 import nock from 'nock';
-import { OperationStatus } from '@map-colonies/mc-priority-queue';
+import { randexp } from 'randexp';
 import { getApp } from '../../../src/app';
-import { infoDataSchemaArray } from '../../../src/ingestion/schemas/infoDataSchema';
-import { SourceValidator } from '../../../src/ingestion/validators/sourceValidator';
+import { type ResponseId } from '../../../src/ingestion/interfaces';
+import type { IngestionNewLayer } from '../../../src/ingestion/schemas/newLayerSchema';
+import type { IngestionUpdateLayer } from '../../../src/ingestion/schemas/updateLayerSchema';
 import { SQLiteClient } from '../../../src/serviceClients/database/SQLiteClient';
-import { ZodValidator } from '../../../src/utils/validation/zodValidator';
-import { Grid } from '../../../src/ingestion/interfaces';
-import { GpkgManager } from '../../../src/ingestion/models/gpkgManager';
-import { fakeIngestionSources } from '../../mocks/sourcesRequestBody';
-import { jobResponse, newJobRequest, newLayerRequest } from '../../mocks/newIngestionRequestMockData';
-import { getMapServingLayerName } from '../../../src/utils/layerNameGenerator';
+import { Checksum } from '../../../src/utils/hash/checksum';
+import { configMock } from '../../mocks/configMock';
 import {
-  updateJobRequest,
-  updateLayerRequest,
-  updateRunningJobResponse,
-  updateSwapJobRequest,
-  updatedLayer,
-  updatedSwapLayer,
-} from '../../mocks/updateRequestMockData';
-import { IngestionRequestSender } from './helpers/ingestionRequestSender';
+  createCatalogLayerResponse,
+  createFindJobsParams,
+  createNewJobRequest,
+  createNewLayerRequest,
+  createUpdateJobRequest,
+  createUpdateLayerRequest,
+  generateCallbackUrl,
+  rasterLayerInputFilesGenerators,
+  rasterLayerMetadataGenerators,
+} from '../../mocks/mockFactory';
+import { validInputFiles } from '../../mocks/static/exampleData';
+import type { DeepPartial, DeepRequired, FlattenKeyTupleUnion } from '../../utils/types';
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
+import { IngestionRequestSender } from './helpers/ingestionRequestSender';
 
-describe('Ingestion', function () {
+describe('Ingestion', () => {
+  let jobManagerURL: string;
+  let mapProxyApiServiceUrl: string;
+  let catalogServiceURL: string;
+  let jobResponse: ICreateJobResponse;
   let requestSender: IngestionRequestSender;
 
-  beforeEach(function () {
+  beforeEach(() => {
     const [app] = getApp({
       override: [...getTestContainerConfig()],
-      useChild: true,
     });
+    jobResponse = {
+      id: faker.string.uuid(),
+      taskIds: [faker.string.uuid()],
+    };
+
+    jobManagerURL = configMock.get<string>('services.jobManagerURL');
+    mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
+    catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
 
     requestSender = new IngestionRequestSender(app);
   });
 
-  afterEach(function () {
+  afterEach(() => {
     resetContainer();
     jest.restoreAllMocks();
+    nock.cleanAll();
   });
 
-  describe('validateSources', function () {
-    describe('Happy Path', function () {
-      let validateFilesExistSpy: jest.SpyInstance;
-      let validateGdalInfoSpy: jest.SpyInstance;
-      let validateGpkgFilesSpy: jest.SpyInstance;
-
-      beforeEach(function () {
-        validateFilesExistSpy = jest.spyOn(SourceValidator.prototype, 'validateFilesExist');
-        validateGdalInfoSpy = jest.spyOn(SourceValidator.prototype, 'validateGdalInfo');
-        validateGpkgFilesSpy = jest.spyOn(SourceValidator.prototype, 'validateGpkgFiles');
-      });
-
-      afterEach(function () {
-        validateFilesExistSpy.mockClear();
-        validateGdalInfoSpy.mockClear();
-        validateGpkgFilesSpy.mockClear();
-      });
-
-      it('should return 200 status code and sources is valid response', async function () {
-        const validSources: InputFiles = fakeIngestionSources.validSources.validInputFiles;
-
-        const response = await requestSender.validateSources(validSources);
-
-        expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
-        expect(validateGdalInfoSpy).toHaveBeenCalledTimes(1);
-        expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(1);
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.OK);
-        expect(response.body).toHaveProperty('isValid', true);
-        expect(response.body).toHaveProperty('message', 'Sources are valid');
-      });
-
-      it('should return 200 status code and sources invalid response - file does not exist', async function () {
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.filesNotExist;
-        const response = await requestSender.validateSources(invalidSources);
-
-        expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
-        await expect(validateFilesExistSpy).rejects.toThrow();
-        expect(validateGdalInfoSpy).toHaveBeenCalledTimes(0);
-        expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(0);
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.OK);
-        expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
-      });
-
-      it('should return 200 status code and sources invalid response - directory does not exist', async function () {
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.directoryNotExist;
-        const response = await requestSender.validateSources(invalidSources);
-
-        expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
-        await expect(validateFilesExistSpy).rejects.toThrow();
-        expect(validateGdalInfoSpy).toHaveBeenCalledTimes(0);
-        expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(0);
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.OK);
-        expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
-      });
-
-      it('should return 200 status code and sources invalid response - unsupported CRS', async function () {
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.unsupportedCrs;
-        const response = await requestSender.validateSources(invalidSources);
-
-        expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
-        expect(validateGdalInfoSpy).toHaveBeenCalledTimes(1);
-        await expect(validateGdalInfoSpy).rejects.toThrow();
-        expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(0);
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.OK);
-        expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
-      });
-
-      it('should return 200 status code and sources invalid response - unsupported pixel size', async function () {
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.unsupportedPixelSize;
-        const response = await requestSender.validateSources(invalidSources);
-
-        expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
-        expect(validateGdalInfoSpy).toHaveBeenCalledTimes(1);
-        await expect(validateGdalInfoSpy).rejects.toThrow();
-        expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(0);
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.OK);
-        expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
-      });
-
-      it('should return 200 status code and sources invalid response - failed to get gdal info gdal.infoAsync', async function () {
-        jest.spyOn(gdal, 'infoAsync').mockRejectedValue(new Error('failed to read file'));
-
-        const invalidSources: InputFiles = fakeIngestionSources.validSources.validInputFiles;
-        const response = await requestSender.validateSources(invalidSources);
-
-        expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
-        expect(validateGdalInfoSpy).toHaveBeenCalledTimes(1);
-        await expect(validateGdalInfoSpy).rejects.toThrow();
-        expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(0);
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.OK);
-        expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
-      });
-
-      it('should return 200 status code and sources invalid response - failed to open gdal dataset gdal.openAsync', async function () {
-        jest.spyOn(gdal, 'openAsync').mockRejectedValue(new Error('failed to read file'));
-
-        const invalidSources: InputFiles = fakeIngestionSources.validSources.validInputFiles;
-        const response = await requestSender.validateSources(invalidSources);
-
-        expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
-        expect(validateGdalInfoSpy).toHaveBeenCalledTimes(1);
-        await expect(validateGdalInfoSpy).rejects.toThrow();
-        expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(0);
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.OK);
-        expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
-      });
-
-      it('should return 200 status code and sources invalid response - gpkg index not exist', async function () {
-        const validateGpkgIndexSpy = jest.spyOn(GpkgManager.prototype as unknown as { validateGpkgIndex: jest.Mock }, 'validateGpkgIndex');
-
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.withoutGpkgIndex;
-        const response = await requestSender.validateSources(invalidSources);
-
-        expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
-        expect(validateGdalInfoSpy).toHaveBeenCalledTimes(1);
-        expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(1);
-        expect(validateGpkgIndexSpy).toHaveBeenCalledTimes(1);
-        expect(validateGpkgIndexSpy).toThrow();
-        expect(validateGpkgFilesSpy).toThrow();
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.OK);
-        expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
-      });
-
-      it('should return 200 status code and sources invalid response - unsupported grid', async function () {
-        const validateGpkgGridSpy = jest.spyOn(GpkgManager.prototype as unknown as { validateGpkgGrid: jest.Mock }, 'validateGpkgGrid');
-
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.unsupportedGrid;
-        const response = await requestSender.validateSources(invalidSources);
-
-        expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
-        expect(validateGdalInfoSpy).toHaveBeenCalledTimes(1);
-        expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(1);
-        expect(validateGpkgGridSpy).toHaveBeenCalledTimes(1);
-        expect(validateGpkgGridSpy).toThrow();
-        expect(validateGpkgFilesSpy).toThrow();
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.OK);
-        expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
-      });
-
-      it('should return 200 status code and sources invalid response - unsupported tile size', async function () {
-        const validateTilesSizeSpy = jest.spyOn(GpkgManager.prototype as unknown as { validateTilesSize: jest.Mock }, 'validateTilesSize');
-
-        const invalidSources: InputFiles = fakeIngestionSources.invalidSources.unsupportedTileWidthSize;
-        const response = await requestSender.validateSources(invalidSources);
-
-        expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
-        expect(validateGdalInfoSpy).toHaveBeenCalledTimes(1);
-        expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(1);
-        expect(validateTilesSizeSpy).toHaveBeenCalledTimes(1);
-        expect(validateTilesSizeSpy).toThrow();
-        expect(validateGpkgFilesSpy).toThrow();
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.OK);
-        expect(response.body).toHaveProperty('isValid', false);
-        expect(response.body).toHaveProperty('message');
-      });
-    });
-
-    describe('Bad Path', function () {
-      let zodValidatorSpy: jest.SpyInstance;
-      beforeEach(function () {
-        zodValidatorSpy = jest.spyOn(ZodValidator.prototype, 'validate');
-      });
-      afterEach(function () {
-        zodValidatorSpy.mockClear();
-      });
-
-      it('should return 400 status code and error message too many files', async function () {
-        const invalidSources = fakeIngestionSources.invalidValidation.tooManyFiles;
-        const response = await requestSender.validateSources(invalidSources);
-
-        expect(zodValidatorSpy).toHaveBeenCalledTimes(1);
-        await expect(zodValidatorSpy).rejects.toThrow();
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-        expect(response.body).toHaveProperty('message', 'fileNames: Number of files should be 1');
-      });
-
-      it('should return 400 status code and error message not supported file', async function () {
-        const invalidSources = fakeIngestionSources.invalidValidation.notGpkg;
-        const response = await requestSender.validateSources(invalidSources);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-        expect(response.body).toHaveProperty('message');
-      });
-
-      it('should return 400 status code and error message no files supplied', async function () {
-        const invalidSources = fakeIngestionSources.invalidValidation.noFiles;
-        const response = await requestSender.validateSources(invalidSources);
-
-        expect(zodValidatorSpy).toHaveBeenCalledTimes(1);
-        await expect(zodValidatorSpy).rejects.toThrow();
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-        expect(response.body).toHaveProperty('message');
-      });
-
-      it('should return 400 status code and error message no directory supplied', async function () {
-        const invalidSources = fakeIngestionSources.invalidValidation.noDirectory;
-        const response = await requestSender.validateSources(invalidSources);
-
-        expect(zodValidatorSpy).toHaveBeenCalledTimes(1);
-        await expect(zodValidatorSpy).rejects.toThrow();
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-        expect(response.body).toHaveProperty('message');
-      });
-    });
-
-    describe('Sad Path', function () {
-      beforeEach(function () {
-        jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
-          throw new SqliteError('failed read sqlite file', 'SQLITE_ERROR');
-        });
-      });
-
-      afterEach(function () {
-        jest.restoreAllMocks();
-      });
-
-      it('should return 500 status code and error message, isGpkgIndexExist access db error', async function () {
-        const sources = fakeIngestionSources.validSources.validInputFiles;
-
-        const response = await requestSender.validateSources(sources);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
-        expect(response.body).toHaveProperty('message');
-      });
-
-      it('should return 500 status code and error message, getGrid access db error', async function () {
-        const sources = fakeIngestionSources.validSources.validInputFiles;
-
-        jest.spyOn(SQLiteClient.prototype, 'isGpkgIndexExist').mockReturnValue(true);
-
-        const response = await requestSender.validateSources(sources);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
-        expect(response.body).toHaveProperty('message');
-      });
-
-      it('should return 500 status code and error message, getGpkgTileSize access db error', async function () {
-        const sources = fakeIngestionSources.validSources.validInputFiles;
-
-        jest.spyOn(SQLiteClient.prototype, 'isGpkgIndexExist').mockReturnValue(true);
-        jest.spyOn(SQLiteClient.prototype, 'getGrid').mockReturnValue(Grid.TWO_ON_ONE);
-
-        const response = await requestSender.validateSources(sources);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
-        expect(response.body).toHaveProperty('message');
-      });
-    });
-  });
-
-  describe('Ingestion Sources Info', () => {
+  describe('POST /ingestion', () => {
     describe('Happy Path', () => {
-      it('should return 200 status code and sources info', async () => {
-        const sources = fakeIngestionSources.validSources.validInputFiles;
-        const response = await requestSender.getSourcesGdalInfo(sources);
-
-        expect(response.status).toBe(httpStatusCodes.OK);
-        expect(response.body).toHaveLength(sources.fileNames.length);
-        expect(infoDataSchemaArray.safeParse(response.body).success).toBe(true);
-      });
-    });
-
-    describe('Bad Path', () => {
-      it('should return 400 status code and sources info', async () => {
-        const sources = fakeIngestionSources.invalidValidation.tooManyFiles;
-
-        const response = await requestSender.getSourcesGdalInfo(sources);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-      });
-
-      it('should return 404 status code and sources info', async () => {
-        const sources = fakeIngestionSources.invalidSources.filesNotExist;
-
-        const response = await requestSender.getSourcesGdalInfo(sources);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
-      });
-
-      it('should return 200 status code and sources info', async () => {
-        const sources = fakeIngestionSources.invalidSources.unsupportedCrs;
-
-        const response = await requestSender.getSourcesGdalInfo(sources);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.OK);
-      });
-    });
-  });
-
-  describe('Ingestion Validation', () => {
-    const jobManagerURL = 'http://jobmanagerurl';
-    const mapProxyApiServiceUrl = 'http://mapproxyapiserviceurl';
-    const catalogServiceURL = 'http://catalogserviceurl';
-    const layerName = getMapServingLayerName(newLayerRequest.valid.metadata.productId, newLayerRequest.valid.metadata.productType);
-    const catalogPostBody = {
-      metadata: { productId: newLayerRequest.valid.metadata.productId, productType: newLayerRequest.valid.metadata.productType },
-    };
-
-    describe('Happy Path', () => {
-      afterEach(() => {
-        jest.restoreAllMocks();
-        nock.cleanAll();
-      });
-      it('should return 200 status code', async () => {
-        const layerRequest = newLayerRequest.valid;
-        const getJobsParams = {
+      it('should return 200 status code when product shapefile is polygon', async () => {
+        const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
+        const findJobsParams = createFindJobsParams({
           resourceId: layerRequest.metadata.productId,
           productType: layerRequest.metadata.productType,
-          isCleaned: false,
-          shouldReturnTasks: false,
-          statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
-        };
-        nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
-        nock(jobManagerURL).post('/jobs', newJobRequest).reply(200, jobResponse);
-        nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(200, []);
+        });
+        const newJobRequest = createNewJobRequest({
+          ingestionNewLayer: layerRequest,
+          checksums: validInputFiles.checksums,
+        });
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL)
+          .post('/jobs', matches(JSON.parse(JSON.stringify(newJobRequest))))
+          .reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL)
+          .post('/records/find', {
+            metadata: {
+              productId: layerRequest.metadata.productId,
+              productType: layerRequest.metadata.productType,
+            },
+          })
+          .reply(httpStatusCodes.OK, []);
         nock(mapProxyApiServiceUrl)
-          .get(`/layer/${encodeURIComponent(layerName)}`)
-          .reply(404);
+          .get(`/layer/${encodeURIComponent(newLayerName)}`)
+          .reply(httpStatusCodes.NOT_FOUND);
+        const expectedResponseBody: ResponseId = {
+          jobId: jobResponse.id,
+          taskId: jobResponse.taskIds[0],
+        };
 
         const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toStrictEqual(expectedResponseBody);
+      });
+
+      it('should return 200 status code when product shapefile is multipolygon', async () => {
+        const layerRequest = createNewLayerRequest({
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validIndexedMultiPolygon' },
+        });
+        const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
+        const findJobsParams = createFindJobsParams({
+          resourceId: layerRequest.metadata.productId,
+          productType: layerRequest.metadata.productType,
+        });
+        const newJobRequest = createNewJobRequest({
+          ingestionNewLayer: layerRequest,
+          checksums: validInputFiles.checksums,
+        });
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL)
+          .post('/jobs', matches(JSON.parse(JSON.stringify(newJobRequest))))
+          .reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL)
+          .post('/records/find', {
+            metadata: {
+              productId: layerRequest.metadata.productId,
+              productType: layerRequest.metadata.productType,
+            },
+          })
+          .reply(httpStatusCodes.OK, []);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(newLayerName)}`)
+          .reply(httpStatusCodes.NOT_FOUND);
+        const expectedResponseBody: ResponseId = {
+          jobId: jobResponse.id,
+          taskId: jobResponse.taskIds[0],
+        };
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toStrictEqual(expectedResponseBody);
       });
     });
 
     describe('Bad Path', () => {
-      it('should return 400 status code when the validation of the metadata fails', async () => {
-        const layerRequest = newLayerRequest.invalid.metadata;
+      const badRequestBodyTestCases: {
+        testCase: string;
+        badRequest: DeepPartial<IngestionNewLayer>;
+        removeProperty?: FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>;
+      }[] = [
+        {
+          testCase: 'req body is not an object',
+          badRequest: '' as DeepPartial<IngestionNewLayer>,
+        },
+        {
+          testCase: 'inputFiles in req body is not set',
+          badRequest: createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }),
+          removeProperty: ['inputFiles'],
+        },
+        {
+          testCase: 'inputFiles in req body is not an object',
+          badRequest: merge(createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
+            inputFiles: '',
+          }),
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is not set',
+          badRequest: createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }),
+          removeProperty: ['inputFiles', 'gpkgFilesPath'],
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is not an array',
+          badRequest: merge(createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
+            inputFiles: { gpkgFilesPath: faker.string.alphanumeric({ length: { min: 1, max: 100 } }) },
+          }),
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is an array with items count not equal to 1',
+          badRequest: set(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            ['inputFiles', 'gpkgFilesPath'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
+            faker.helpers.arrayElement([
+              [],
+              faker.helpers.multiple(() => faker.string.alphanumeric({ length: { min: 1, max: 100 } }), {
+                count: { min: 2, max: 10 },
+              }),
+            ])
+          ),
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is an array with 1 item that is not a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { gpkgFilesPath: [false] } }
+          ),
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is an array with 1 item that does not match file pattern',
+          badRequest: createNewLayerRequest({
+            inputFiles: {
+              ...validInputFiles.inputFiles,
+              gpkgFilesPath: [rasterLayerInputFilesGenerators.gpkgFilesPath()[0] + ' '],
+            },
+          }),
+        },
+        {
+          testCase: 'productShapefilePath in inputFiles in req body is not set',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['inputFiles', 'productShapefilePath'],
+        },
+        {
+          testCase: 'productShapefilePath in inputFiles in req body is not a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { productShapefilePath: false } }
+          ),
+        },
+        {
+          testCase: 'productShapefilePath in inputFiles in req body does not match file pattern',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { productShapefilePath: rasterLayerInputFilesGenerators.productShapefilePath() + ' ' } }
+          ),
+        },
+        {
+          testCase: 'metadataShapefilePath in inputFiles in req body is not set',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['inputFiles', 'metadataShapefilePath'],
+        },
+        {
+          testCase: 'metadataShapefilePath in inputFiles in req body is not a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { metadataShapefilePath: false } }
+          ),
+        },
+        {
+          testCase: 'metadataShapefilePath in inputFiles in req body does not match file pattern',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { metadataShapefilePath: rasterLayerInputFilesGenerators.metadataShapefilePath() + ' ' } }
+          ),
+        },
+        {
+          testCase: 'metadata in req body is not set',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata'],
+        },
+        {
+          testCase: 'metadata in req body is not an object',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            metadata: '' as unknown as IngestionNewLayer['metadata'],
+          }),
+        },
+        {
+          testCase: 'classification in metadata in req body is not a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { classification: false } }
+          ),
+        },
+        {
+          testCase: 'classification in metadata in req body does not match string pattern',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { classification: '00' } }
+          ),
+        },
+        {
+          testCase: 'productId in metadata in req body is not set',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'productId'],
+        },
+        {
+          testCase: 'productId in metadata in req body is not a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { productId: false } }
+          ),
+        },
+        {
+          testCase: 'productId in metadata in req body does not match string pattern',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            {
+              metadata: {
+                productId: faker.helpers.arrayElement([
+                  randexp('^[^A-Za-z]{1}[A-Za-z0-9_]{0,37}$'),
+                  randexp('^[A-Za-z]{1}[A-Za-z0-9_]{37}$') + faker.string.alphanumeric(),
+                ]),
+              },
+            }
+          ),
+        },
+        {
+          testCase: 'productName in metadata in req body is not set',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'productName'],
+        },
+        {
+          testCase: 'productName in metadata in req body is not a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { productName: false } }
+          ),
+        },
+        {
+          testCase: 'productName in metadata in req body must have a length of at least 1',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { productName: '' } }
+          ),
+        },
+        {
+          testCase: 'productType in metadata in req body is not set',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'productType'],
+        },
+        {
+          testCase: 'productType in metadata in req body is not a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { productType: false } }
+          ),
+        },
+        {
+          testCase: 'productType in metadata in req body must be one of allowed raster product types',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { productType: '' } }
+          ),
+        },
+        {
+          testCase: 'srs in metadata in req body is not set',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'srs'],
+        },
+        {
+          testCase: 'srs in metadata in req body is not a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { srs: false } }
+          ),
+        },
+        {
+          testCase: 'srs in metadata in req body must be one of allowed srs values',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { srs: '' } }
+          ),
+        },
+        {
+          testCase: 'srsName in metadata in req body is not set',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'srsName'],
+        },
+        {
+          testCase: 'srsName in metadata in req body is not a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { srsName: false } }
+          ),
+        },
+        {
+          testCase: 'srsName in metadata in req body must be one of allowed srsName values',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { srsName: '' } }
+          ),
+        },
+        {
+          testCase: 'transparency in metadata in req body is not set',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'transparency'],
+        },
+        {
+          testCase: 'transparency in metadata in req body is not a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { transparency: false } }
+          ),
+        },
+        {
+          testCase: 'transparency in metadata in req body must be one of allowed transparency values',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { transparency: '' } }
+          ),
+        },
+        {
+          testCase: 'region in metadata in req body is not set',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'region'],
+        },
+        {
+          testCase: 'region in metadata in req body is not an array',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { region: false } }
+          ),
+        },
+        {
+          testCase: 'region in metadata in req body is an empty array',
+          badRequest: set(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            ['metadata', 'region'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
+            []
+          ),
+        },
+        {
+          testCase: 'region in metadata in req body is an array with a region of min length of 1',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { region: [...faker.helpers.multiple(() => rasterLayerMetadataGenerators.region(), { count: { min: 1, max: 10 } }), ''] } }
+          ),
+        },
+        {
+          testCase: 'description in metadata in req body is not a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { description: false } }
+          ),
+        },
+        {
+          testCase: 'scale in metadata in req body is not a number',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { scale: false } }
+          ),
+        },
+        {
+          testCase: 'producerName in metadata in req body is not a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { producerName: false } }
+          ),
+        },
+        {
+          testCase: 'productSubType in metadata in req body is not a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { productSubType: false } }
+          ),
+        },
+        {
+          testCase: 'ingestionResolution in req body is not set',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['ingestionResolution'],
+        },
+        {
+          testCase: 'ingestionResolution in req body is not a number',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            ingestionResolution: '' as unknown as number,
+          }),
+        },
+        {
+          testCase: 'ingestionResolution in req body is not in a range of valid values',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            ingestionResolution: faker.helpers.arrayElement([
+              faker.number.float({ min: Number.MIN_SAFE_INTEGER, max: CORE_VALIDATIONS.resolutionDeg.min }),
+              faker.number.float({ min: CORE_VALIDATIONS.resolutionDeg.max + Number.EPSILON, max: Number.MAX_SAFE_INTEGER }),
+            ]),
+          }),
+        },
+        {
+          testCase: 'callbackUrls in req body is not an array',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            callbackUrls: '' as unknown as string[],
+          }),
+        },
+        {
+          testCase: 'callbackUrls in req body is an empty array',
+          badRequest: set(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            ['callbackUrls'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
+            []
+          ),
+        },
+        {
+          testCase: 'callbackUrls in req body does not match url pattern',
+          badRequest: createNewLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            callbackUrls: [generateCallbackUrl() + ' '],
+          }),
+        },
+      ];
 
+      it.each(badRequestBodyTestCases)('should return 400 status code when invalid input - $testCase', async ({ badRequest, removeProperty }) => {
+        if (removeProperty) {
+          unset(badRequest, removeProperty);
+        }
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+
+        const response = await requestSender.ingestNewLayer(badRequest as IngestionNewLayer);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 400 status code when product shapefile is not contained within gpkg extent', async () => {
+        const layerRequest = createNewLayerRequest({
+          inputFiles: {
+            gpkgFilesPath: ['validIndexed.gpkg'],
+            metadataShapefilePath: 'validIndexed',
+            productShapefilePath: 'blueMarble',
+          },
+        });
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
         const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
       });
+    });
 
-      it('should return 400 status code when partsData BeginTime is after EndTime', async () => {
-        const layerRequest = newLayerRequest.invalid.invalidBeginDate;
+    describe('Sad Path', () => {
+      it('should return 422 status code when invalid gdal info', async () => {
+        const layerRequest = createNewLayerRequest({
+          inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+        });
 
-        const response = await requestSender.ingestNewLayer(layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-      });
-
-      it('should return 400 status code when partsData geometry isnt a valid geometry', async () => {
-        const layerRequest = newLayerRequest.invalid.invalidpartsDataGeometry;
-
-        const response = await requestSender.ingestNewLayer(layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-      });
-
-      it('should return 400 status code when partsData BeginTime is after currentTime', async () => {
-        const layerRequest = newLayerRequest.invalid.invalidBeginDateAfterCurrent;
-
-        const response = await requestSender.ingestNewLayer(layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-      });
-
-      it('should return 400 status code when partsData EndTime is after currentTime', async () => {
-        const layerRequest = newLayerRequest.invalid.invalidEndDateAfterCurrent;
-
-        const response = await requestSender.ingestNewLayer(layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-      });
-
-      it('should return 400 status code when partsData geometry type is wrong', async () => {
-        const layerRequest = newLayerRequest.invalid.invalidGeometryType;
-
-        const response = await requestSender.ingestNewLayer(layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-      });
-
-      it('should return 400 status code when partsData polygon geometry isnt contained by extent', async () => {
-        const layerRequest = newLayerRequest.invalid.notContainedPolygon;
-        const response = await requestSender.ingestNewLayer(layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-      });
-
-      it('should return 400 status code when partsData resolutionDeg isnt greater than pixel size', async () => {
-        const layerRequest = newLayerRequest.invalid.invalidResolutionDeg;
-        const response = await requestSender.ingestNewLayer(layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-      });
-
-      it('should throw 409 status when the ingested layer is in mapProxy', async () => {
-        const layerRequest = newLayerRequest.valid;
-
-        nock(mapProxyApiServiceUrl)
-          .get(`/layer/${encodeURIComponent(layerName)}`)
-          .reply(200, []);
-        const response = await requestSender.ingestNewLayer(layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.CONFLICT);
-      });
-
-      it('should throw 422 status when invalid gdal info', async () => {
-        const layerRequest = newLayerRequest.invalid.gdalInfo;
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
 
         const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
       });
-    });
 
-    describe('Sad Path', () => {
-      afterEach(() => {
-        jest.restoreAllMocks();
-        nock.cleanAll();
+      it('should return 422 status code when failed to calculate checksum for input file - cannot create read stream', async () => {
+        const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
+        const originalCreateReadStream = fs.createReadStream;
+
+        const findJobsParams = createFindJobsParams({
+          resourceId: layerRequest.metadata.productId,
+          productType: layerRequest.metadata.productType,
+        });
+
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL)
+          .post('/records/find', {
+            metadata: {
+              productId: layerRequest.metadata.productId,
+              productType: layerRequest.metadata.productType,
+            },
+          })
+          .reply(httpStatusCodes.OK, []);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(newLayerName)}`)
+          .reply(httpStatusCodes.NOT_FOUND);
+        jest
+          .spyOn(fs, 'createReadStream')
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args)) // mock replies to product shapefile
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args))
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args))
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args))
+          .mockImplementation(() => {
+            throw new Error();
+          });
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 409 status code when the ingested layer is in MapProxy', async () => {
+        const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(newLayerName)}`)
+          .reply(httpStatusCodes.OK, []);
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+        expect(scope.isDone()).toBe(false);
       });
 
       it('should return 500 status code when failed to read sqlite file', async () => {
-        const layerRequest = newLayerRequest.valid;
+        const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
         jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
           throw new SqliteError('failed read sqlite file', 'SQLITE_ERROR');
         });
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
 
         const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 500 status code when unexpected error from MapProxy occurs', async () => {
+        const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(newLayerName)}`)
+          .reply(httpStatusCodes.GATEWAY_TIMEOUT);
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 500 status code when failed to calculate checksum for input file', async () => {
+        const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
+
+        const findJobsParams = createFindJobsParams({
+          resourceId: layerRequest.metadata.productId,
+          productType: layerRequest.metadata.productType,
+        });
+
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL)
+          .post('/records/find', {
+            metadata: {
+              productId: layerRequest.metadata.productId,
+              productType: layerRequest.metadata.productType,
+            },
+          })
+          .reply(httpStatusCodes.OK, []);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(newLayerName)}`)
+          .reply(httpStatusCodes.NOT_FOUND);
+        jest.spyOn(Checksum.prototype, 'calculate').mockRejectedValueOnce(new Error());
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        expect(scope.isDone()).toBe(false);
       });
 
       it('should return 500 status code when failed to create new init job', async () => {
-        const layerRequest = newLayerRequest.valid;
+        const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
 
-        const getJobsParams = {
+        const findJobsParams = createFindJobsParams({
           resourceId: layerRequest.metadata.productId,
           productType: layerRequest.metadata.productType,
-          isCleaned: false,
-          shouldReturnTasks: false,
-          statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
-        };
-        nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
-        nock(jobManagerURL).post('/jobs', newJobRequest).reply(504);
-        nock(catalogServiceURL).post('/records/find', catalogPostBody).reply(200, []);
+        });
+
+        const newJobRequest = createNewJobRequest({ ingestionNewLayer: layerRequest, checksums: validInputFiles.checksums });
+
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL).post('/jobs', matches(newJobRequest)).reply(httpStatusCodes.GATEWAY_TIMEOUT);
+        nock(catalogServiceURL)
+          .post('/records/find', {
+            metadata: {
+              productId: layerRequest.metadata.productId,
+              productType: layerRequest.metadata.productType,
+            },
+          })
+          .reply(httpStatusCodes.OK, []);
         nock(mapProxyApiServiceUrl)
-          .get(`/layer/${encodeURIComponent(layerName)}`)
-          .reply(404);
-
-        const response = await requestSender.ingestNewLayer(layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
-      });
-
-      it('should return 500 status code when unexpected error from mapproxy occurs', async () => {
-        const layerRequest = newLayerRequest.valid;
-
-        nock(mapProxyApiServiceUrl)
-          .get(`/layer/${encodeURIComponent(layerName)}`)
-          .reply(504);
+          .get(`/layer/${encodeURIComponent(newLayerName)}`)
+          .reply(httpStatusCodes.NOT_FOUND);
 
         const response = await requestSender.ingestNewLayer(layerRequest);
 
@@ -545,240 +762,787 @@ describe('Ingestion', function () {
     });
   });
 
-  describe('Update Validation', () => {
-    const jobManagerURL = 'http://jobmanagerurl';
-    const mapProxyApiServiceUrl = 'http://mapproxyapiserviceurl';
-    const catalogServiceURL = 'http://catalogserviceurl';
-    const forbiddenJobTypesForParallelIngestion = ['Ingestion_New', 'Ingestion_Update'];
-
+  describe('PUT /ingestion/:id', () => {
     describe('Happy Path', () => {
-      afterEach(() => {
-        jest.restoreAllMocks();
-        nock.cleanAll();
-      });
-
-      it('should return 200 status code with update request', async () => {
-        const layerRequest = updateLayerRequest.valid;
+      it('should return 200 status code with update request when product shapefile is polygon', async () => {
+        const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles, callbackUrls: undefined });
+        const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
         const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
-
-        const getJobsParams = {
+        const findJobsParams = createFindJobsParams({
           resourceId: updatedLayerMetadata.productId,
           productType: updatedLayerMetadata.productType,
-          isCleaned: false,
-          shouldReturnTasks: false,
-          statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
-          types: forbiddenJobTypesForParallelIngestion,
-        };
+        });
+        const updateJobRequest = createUpdateJobRequest({
+          ingestionUpdateLayer: layerRequest,
+          rasterLayerMetadata: updatedLayerMetadata,
+          checksums: validInputFiles.checksums,
+        });
 
-        nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
-        nock(jobManagerURL).post('/jobs', updateJobRequest).reply(200, jobResponse);
-        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL)
+          .post('/jobs', matches(JSON.parse(JSON.stringify(updateJobRequest))))
+          .reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
         nock(mapProxyApiServiceUrl)
           .get(`/layer/${encodeURIComponent(updateLayerName)}`)
-          .reply(200);
+          .reply(httpStatusCodes.OK);
+        const expectedResponseBody: ResponseId = {
+          jobId: jobResponse.id,
+          taskId: jobResponse.taskIds[0],
+        };
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toStrictEqual(expectedResponseBody);
       });
 
-      it('should return 200 status code with swap update request', async () => {
-        const layerRequest = updateLayerRequest.valid;
-        const updatedLayerMetadata = updatedSwapLayer.metadata;
-        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType as ProductType);
-
-        const getJobsParams = {
+      it('should return 200 status code with update request when product shapefile is multipolygon', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validIndexedMultiPolygon' },
+          callbackUrls: undefined,
+        });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
+        const findJobsParams = createFindJobsParams({
           resourceId: updatedLayerMetadata.productId,
           productType: updatedLayerMetadata.productType,
-          isCleaned: false,
-          shouldReturnTasks: false,
-          statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
-          types: forbiddenJobTypesForParallelIngestion,
-        };
+        });
+        const updateJobRequest = createUpdateJobRequest({
+          ingestionUpdateLayer: layerRequest,
+          rasterLayerMetadata: updatedLayerMetadata,
+          checksums: validInputFiles.checksums,
+        });
 
-        nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
-        nock(jobManagerURL).post('/jobs', updateSwapJobRequest).reply(200, jobResponse);
-        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedSwapLayer]);
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL)
+          .post('/jobs', matches(JSON.parse(JSON.stringify(updateJobRequest))))
+          .reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
         nock(mapProxyApiServiceUrl)
           .get(`/layer/${encodeURIComponent(updateLayerName)}`)
-          .reply(200);
+          .reply(httpStatusCodes.OK);
+        const expectedResponseBody: ResponseId = {
+          jobId: jobResponse.id,
+          taskId: jobResponse.taskIds[0],
+        };
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toStrictEqual(expectedResponseBody);
+      });
+
+      it('should return 200 status code with swap update request when product shapefile is polygon', async () => {
+        const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const catalogLayerResponse = createCatalogLayerResponse({
+          metadata: {
+            classification: layerRequest.metadata.classification,
+            productType: RasterProductTypes.RASTER_VECTOR_BEST,
+            productSubType: 'testProductSubType',
+          },
+        });
+        const updatedLayerMetadata = catalogLayerResponse.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
+        const findJobsParams = createFindJobsParams({
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
+        });
+        const updateSwapJobRequest = createUpdateJobRequest(
+          { ingestionUpdateLayer: layerRequest, rasterLayerMetadata: updatedLayerMetadata, checksums: validInputFiles.checksums },
+          true
+        );
+
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL)
+          .post('/jobs', matches(JSON.parse(JSON.stringify(updateSwapJobRequest))))
+          .reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [catalogLayerResponse]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(httpStatusCodes.OK);
+        const expectedResponseBody: ResponseId = {
+          jobId: jobResponse.id,
+          taskId: jobResponse.taskIds[0],
+        };
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toStrictEqual(expectedResponseBody);
+      });
+
+      it('should return 200 status code with swap update request when product shapefile is multipolygon', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validIndexedMultiPolygon' },
+        });
+        const catalogLayerResponse = createCatalogLayerResponse({
+          metadata: {
+            classification: layerRequest.metadata.classification,
+            productType: RasterProductTypes.RASTER_VECTOR_BEST,
+            productSubType: 'testProductSubType',
+          },
+        });
+        const updatedLayerMetadata = catalogLayerResponse.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
+        const findJobsParams = createFindJobsParams({
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
+        });
+        const updateSwapJobRequest = createUpdateJobRequest(
+          { ingestionUpdateLayer: layerRequest, rasterLayerMetadata: updatedLayerMetadata, checksums: validInputFiles.checksums },
+          true
+        );
+
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL)
+          .post('/jobs', matches(JSON.parse(JSON.stringify(updateSwapJobRequest))))
+          .reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [catalogLayerResponse]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(httpStatusCodes.OK);
+        const expectedResponseBody: ResponseId = {
+          jobId: jobResponse.id,
+          taskId: jobResponse.taskIds[0],
+        };
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toStrictEqual(expectedResponseBody);
       });
     });
 
     describe('Bad Path', () => {
-      afterEach(() => {
-        jest.restoreAllMocks();
-        nock.cleanAll();
-      });
+      it('should return 400 status code when layer identifier in req params is not uuid v4', async () => {
+        const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
 
-      it('should return 400 status code when the validation of the metadata fails', async () => {
-        const layerRequest = updateLayerRequest.invalid.metadata;
-
-        const response = await requestSender.updateLayer('14460cdd-44ae-4a04-944f-29e907b6cd2a', layerRequest);
+        const response = await requestSender.updateLayer('not uuid', layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
       });
 
-      it('should return 409 status code when there is more than one layer in the catalog', async () => {
-        const layerRequest = updateLayerRequest.valid;
-        const updatedLayerMetadata = updatedLayer.metadata;
+      const badRequestBodyTestCases: {
+        testCase: string;
+        badRequest: DeepPartial<IngestionUpdateLayer>;
+        removeProperty?: FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>;
+      }[] = [
+        {
+          testCase: 'req body is not an object',
+          badRequest: '' as DeepPartial<IngestionUpdateLayer>,
+        },
+        {
+          testCase: 'inputFiles in req body is not set',
+          badRequest: createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles }),
+          removeProperty: ['inputFiles'],
+        },
+        {
+          testCase: 'inputFiles in req body is not an object',
+          badRequest: merge(createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
+            inputFiles: '',
+          }),
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is not set',
+          badRequest: createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles }),
+          removeProperty: ['inputFiles', 'gpkgFilesPath'],
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is not an array',
+          badRequest: merge(createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
+            inputFiles: { gpkgFilesPath: faker.string.alphanumeric({ length: { min: 1, max: 100 } }) },
+          }),
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is an array with items count not equal to 1',
+          badRequest: set(
+            createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            ['inputFiles', 'gpkgFilesPath'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
+            faker.helpers.arrayElement([
+              [],
+              faker.helpers.multiple(() => faker.string.alphanumeric({ length: { min: 1, max: 100 } }), {
+                count: { min: 2, max: 10 },
+              }),
+            ])
+          ),
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is an array with 1 item that is not a string',
+          badRequest: merge(
+            createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { gpkgFilesPath: [false] } }
+          ),
+        },
+        {
+          testCase: 'gpkgFilesPath in inputFiles in req body is an array with 1 item that does not match file pattern',
+          badRequest: createUpdateLayerRequest({
+            inputFiles: {
+              ...validInputFiles.inputFiles,
+              gpkgFilesPath: [rasterLayerInputFilesGenerators.gpkgFilesPath()[0] + ' '],
+            },
+          }),
+        },
+        {
+          testCase: 'productShapefilePath in inputFiles in req body is not set',
+          badRequest: createUpdateLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['inputFiles', 'productShapefilePath'],
+        },
+        {
+          testCase: 'productShapefilePath in inputFiles in req body is not a string',
+          badRequest: merge(
+            createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { productShapefilePath: false } }
+          ),
+        },
+        {
+          testCase: 'productShapefilePath in inputFiles in req body does not match file pattern',
+          badRequest: merge(
+            createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { productShapefilePath: rasterLayerInputFilesGenerators.productShapefilePath() + ' ' } }
+          ),
+        },
+        {
+          testCase: 'metadataShapefilePath in inputFiles in req body is not set',
+          badRequest: createUpdateLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['inputFiles', 'metadataShapefilePath'],
+        },
+        {
+          testCase: 'metadataShapefilePath in inputFiles in req body is not a string',
+          badRequest: merge(
+            createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { metadataShapefilePath: false } }
+          ),
+        },
+        {
+          testCase: 'metadataShapefilePath in inputFiles in req body does not match file pattern',
+          badRequest: merge(
+            createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { inputFiles: { metadataShapefilePath: rasterLayerInputFilesGenerators.metadataShapefilePath() + ' ' } }
+          ),
+        },
+        {
+          testCase: 'metadata in req body is not set',
+          badRequest: createUpdateLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata'],
+        },
+        {
+          testCase: 'metadata in req body is not an object',
+          badRequest: createUpdateLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            metadata: '' as unknown as IngestionUpdateLayer['metadata'],
+          }),
+        },
+        {
+          testCase: 'classification in metadata in req body is not set',
+          badRequest: createUpdateLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['metadata', 'classification'],
+        },
+        {
+          testCase: 'classification in metadata in req body is not a string',
+          badRequest: createUpdateLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            metadata: { classification: false as unknown as string },
+          }),
+        },
+        {
+          testCase: 'classification in metadata in req body does not match string pattern',
+          badRequest: createUpdateLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            metadata: { classification: '00' },
+          }),
+        },
+        {
+          testCase: 'ingestionResolution in req body is not set',
+          badRequest: createUpdateLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+          }),
+          removeProperty: ['ingestionResolution'],
+        },
+        {
+          testCase: 'ingestionResolution in req body is not a number',
+          badRequest: createUpdateLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            ingestionResolution: '' as unknown as number,
+          }),
+        },
+        {
+          testCase: 'ingestionResolution in req body is not in a range of valid values',
+          badRequest: createUpdateLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            ingestionResolution: faker.helpers.arrayElement([
+              faker.number.float({ min: Number.MIN_SAFE_INTEGER, max: CORE_VALIDATIONS.resolutionDeg.min }),
+              faker.number.float({ min: CORE_VALIDATIONS.resolutionDeg.max + Number.EPSILON, max: Number.MAX_SAFE_INTEGER }),
+            ]),
+          }),
+        },
+        {
+          testCase: 'callbackUrls in req body is not an array',
+          badRequest: createUpdateLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            callbackUrls: '' as unknown as string[],
+          }),
+        },
+        {
+          testCase: 'callbackUrls in req body is an empty array',
+          badRequest: set(
+            createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            ['callbackUrls'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
+            []
+          ),
+        },
+        {
+          testCase: 'callbackUrls in req body does not match url pattern',
+          badRequest: createUpdateLayerRequest({
+            inputFiles: validInputFiles.inputFiles,
+            callbackUrls: [faker.internet.url() + ' '],
+          }),
+        },
+      ];
 
-        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer, updatedLayer]);
+      it.each(badRequestBodyTestCases)('should return 400 status code when invalid input - $testCase', async ({ badRequest, removeProperty }) => {
+        if (removeProperty) {
+          unset(badRequest, removeProperty);
+        }
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
 
-        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+        const response = await requestSender.updateLayer(rasterLayerMetadataGenerators.id(), badRequest as IngestionUpdateLayer);
 
         expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
       });
 
-      it('should return 404 status code when there is no such layer in the catalog', async () => {
-        const layerRequest = updateLayerRequest.valid;
+      it('should return 400 status code when product shapefile is not contained within gpkg extent', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: {
+            gpkgFilesPath: ['validIndexed.gpkg'],
+            metadataShapefilePath: 'validIndexed',
+            productShapefilePath: 'blueMarble',
+          },
+        });
+        const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
 
-        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, []);
-
-        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
-      });
-
-      it('should return 400 status code when there is a validation error', async () => {
-        const layerRequest = updateLayerRequest.invalid.notContainedPolygon;
-        const updatedLayerMetadata = updatedLayer.metadata;
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-      });
-
-      it('should return 404 status code when the layer is not in mapProxy', async () => {
-        const layerRequest = updateLayerRequest.valid;
-        const updatedLayerMetadata = updatedLayer.metadata;
-        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
-
-        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
-        nock(mapProxyApiServiceUrl)
-          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
-          .reply(404);
-
-        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
-      });
-
-      it('should return 409 status code when there are conflicting jobs', async () => {
-        const layerRequest = updateLayerRequest.valid;
-        const updatedLayerMetadata = updatedLayer.metadata;
-        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
-
-        const getJobsParams = {
-          resourceId: updatedLayerMetadata.productId,
-          productType: updatedLayerMetadata.productType,
-          isCleaned: false,
-          shouldReturnTasks: false,
-          statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
-          types: forbiddenJobTypesForParallelIngestion,
-        };
-
-        nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, updateRunningJobResponse);
-        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
-        nock(mapProxyApiServiceUrl)
-          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
-          .reply(200);
-
-        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.CONFLICT);
-      });
-
-      it('should throw 422 status when invalid gdal info', async () => {
-        const layerRequest = updateLayerRequest.invalid.gdalInfo;
-
-        const response = await requestSender.updateLayer('14460cdd-44ae-4a04-944f-29e907b6cd2a', layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
       });
     });
 
     describe('Sad Path', () => {
-      afterEach(() => {
-        jest.restoreAllMocks();
-        nock.cleanAll();
+      const fileMissingTestCases: ({ case: string } & Pick<IngestionUpdateLayer, 'inputFiles'>)[] = [
+        {
+          case: 'gpkg',
+          inputFiles: { ...validInputFiles.inputFiles, gpkgFilesPath: ['not-existing-file.gpkg'] },
+        },
+        {
+          case: 'Prodcut.cpg',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingCpg' },
+        },
+        {
+          case: 'Prodcut.dbf',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingDbf' },
+        },
+        {
+          case: 'Prodcut.prj',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingPrj' },
+        },
+        {
+          case: 'Prodcut.shp',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingShp' },
+        },
+        {
+          case: 'Prodcut.shx',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingShx' },
+        },
+        {
+          case: 'ShapeMetadata.cpg',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingCpg' },
+        },
+        {
+          case: 'ShapeMetadata.dbf',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingDbf' },
+        },
+        {
+          case: 'ShapeMetadata.prj',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingPrj' },
+        },
+        {
+          case: 'ShapeMetadata.shp',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingShp' },
+        },
+        {
+          case: 'ShapeMetadata.shx',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingShx' },
+        },
+        {
+          case: 'multiple files missing',
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'missingMultiple' },
+        },
+      ];
+      it.each(fileMissingTestCases)('should return 404 status code when file does not exist - $case', async ({ inputFiles }) => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles,
+        });
+        const catalogLayerResponse = createCatalogLayerResponse({
+          metadata: { classification: layerRequest.metadata.classification },
+        });
+        const updatedLayerMetadata = catalogLayerResponse.metadata;
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [catalogLayerResponse]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+        expect(scope.isDone()).toBe(false);
       });
 
-      it('should return 500 status code when failed to read sqlite file', async () => {
-        const layerRequest = updateLayerRequest.valid;
+      it('should return 404 status code when there is no such layer in the catalog', async () => {
+        const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
-        jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
-          throw new SqliteError('failed read sqlite file', 'SQLITE_ERROR');
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, []);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 404 status code when the layer is not in MapProxy', async () => {
+        const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(httpStatusCodes.NOT_FOUND);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 409 status code when there is more than one layer in the catalog', async () => {
+        const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer, updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 409 status code when there are conflicting jobs', async () => {
+        const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
+
+        const findJobsParams = createFindJobsParams({
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
+        });
+        const updateRunningJobResponse = {
+          status: faker.helpers.arrayElement([
+            OperationStatus.PENDING,
+            OperationStatus.IN_PROGRESS,
+            OperationStatus.FAILED,
+            OperationStatus.SUSPENDED,
+          ]),
+          type: 'Ingestion_New',
+        };
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, updateRunningJobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(httpStatusCodes.OK);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 422 status code when invalid gdal info', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+        });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 422 status code when gpkg is invalid gpkg', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: { gpkgFilesPath: ['invalid.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+        });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 422 status code when gpkg index is missing', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: { gpkgFilesPath: ['withoutGpkgIndex.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+        });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 422 status code when gpkg grid is not a supported tile matrix grid', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: { gpkgFilesPath: ['unsupportedGridMatrix.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+        });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 422 status code when gpkg tile height size is not supported', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: {
+            gpkgFilesPath: ['unsupportedTileSize-height-512.gpkg'],
+            metadataShapefilePath: 'validIndexed',
+            productShapefilePath: 'validIndexed',
+          },
+        });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 422 status code when gpkg tile width size is not supported', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: {
+            gpkgFilesPath: ['unsupportedTileSize-width-512.gpkg'],
+            metadataShapefilePath: 'validIndexed',
+            productShapefilePath: 'validIndexed',
+          },
+        });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 422 status code when failed to calculate checksum for input file - cannot create read stream', async () => {
+        const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles, callbackUrls: undefined });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
+        const originalCreateReadStream = fs.createReadStream;
+        const findJobsParams = createFindJobsParams({
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
         });
 
-        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
-      });
-
-      it('should return 500 status code when failed to create new init update job', async () => {
-        const layerRequest = updateLayerRequest.valid;
-        const updatedLayerMetadata = updatedLayer.metadata;
-        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
-
-        const getJobsParams = {
-          resourceId: updatedLayerMetadata.productId,
-          productType: updatedLayerMetadata.productType,
-          isCleaned: false,
-          shouldReturnTasks: false,
-          statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
-          types: forbiddenJobTypesForParallelIngestion,
-        };
-
-        nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
-        nock(jobManagerURL).post('/jobs', updateJobRequest).reply(504);
-        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
         nock(mapProxyApiServiceUrl)
           .get(`/layer/${encodeURIComponent(updateLayerName)}`)
-          .reply(200);
+          .reply(httpStatusCodes.OK);
+        jest
+          .spyOn(fs, 'createReadStream')
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args)) // mock replies to product shapefile
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args))
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args))
+          .mockImplementationOnce((...args) => originalCreateReadStream(...args))
+          .mockImplementation(() => {
+            throw new Error();
+          });
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
         expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
       });
 
-      it('should return 500 status code when unexpected error from mapproxy occurs', async () => {
-        const layerRequest = updateLayerRequest.valid;
+      it('should return 500 status code when unexpected error from MapProxy occurs', async () => {
+        const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
         const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
 
-        const getJobsParams = {
+        const findJobsParams = createFindJobsParams({
           resourceId: updatedLayerMetadata.productId,
           productType: updatedLayerMetadata.productType,
-          isCleaned: false,
-          shouldReturnTasks: false,
-          statuses: [OperationStatus.PENDING, OperationStatus.IN_PROGRESS],
-          types: forbiddenJobTypesForParallelIngestion,
-        };
+        });
 
-        nock(jobManagerURL).post('/jobs/find', getJobsParams).reply(200, []);
-        nock(jobManagerURL).post('/jobs', updateJobRequest).reply(504);
-        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(200, [updatedLayer]);
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
         nock(mapProxyApiServiceUrl)
           .get(`/layer/${encodeURIComponent(updateLayerName)}`)
-          .reply(500);
+          .reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 500 status code when failed to calculate checksum for input file', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: {
+            gpkgFilesPath: ['validIndexed.gpkg'],
+            metadataShapefilePath: 'validIndexed',
+            productShapefilePath: 'validIndexed',
+          },
+        });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
+
+        const findJobsParams = createFindJobsParams({
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
+        });
+
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(httpStatusCodes.OK);
+        jest.spyOn(Checksum.prototype, 'calculate').mockRejectedValueOnce(new Error());
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 500 status code when failed to create update job', async () => {
+        const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
+
+        const findJobsParams = createFindJobsParams({
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
+        });
+
+        const rasterLayerMetadata = createCatalogLayerResponse({ metadata: updatedLayerMetadata }).metadata;
+        const updateJobRequest = createUpdateJobRequest({
+          ingestionUpdateLayer: layerRequest,
+          rasterLayerMetadata,
+          checksums: validInputFiles.checksums,
+        });
+
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL).post('/jobs', matches(updateJobRequest)).reply(httpStatusCodes.GATEWAY_TIMEOUT);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(httpStatusCodes.OK);
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 

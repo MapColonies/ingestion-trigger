@@ -1,12 +1,10 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
+import { ICreateJobResponse } from '@map-colonies/mc-priority-queue';
+import type { Checksum } from '../utils/hash/interfaces';
 
-export interface SourcesValidationResponse {
-  isValid: boolean;
-  message: string;
-}
-
-export interface ResponseStatus {
-  status: string;
+export interface ResponseId {
+  jobId: ICreateJobResponse['id'];
+  taskId: ICreateJobResponse['taskIds'][number];
 }
 
 export interface IRecordRequestParams {
@@ -44,6 +42,6 @@ export interface TileSize {
   height: number;
 }
 
-export interface ITaskParameters {
-  blockDuplication?: boolean;
+export interface ValidationsTaskParameters {
+  checksums: Checksum[];
 }
