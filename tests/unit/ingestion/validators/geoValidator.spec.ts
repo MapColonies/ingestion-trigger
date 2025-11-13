@@ -3,7 +3,7 @@ import { trace } from '@opentelemetry/api';
 import booleanContains from '@turf/boolean-contains';
 import * as turf from '@turf/turf';
 import { IConfig } from 'config';
-import { ValidationError } from '../../../../src/ingestion/errors/ingestionErrors';
+import { UnsupportedEntityError, ValidationError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { InfoDataWithFile } from '../../../../src/ingestion/schemas/infoDataSchema';
 import { GeoValidator } from '../../../../src/ingestion/validators/geoValidator';
 import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
@@ -65,14 +65,14 @@ describe('GeoValidator', () => {
       const mockInfoData: InfoDataWithFile[] = [mockGdalInfoDataWithFile];
       bufferSpy.mockReturnValue(undefined);
       const action = () => geoValidator.validate(mockInfoData, { type: 'MultiPolygon', coordinates: [[], []] });
-      expect(action).toThrow(/buffered gpkg extent is undefined/);
+      expect(action).toThrow(new UnsupportedEntityError('buffered gpkg extent is undefined'));
     });
 
     it('should throw error when extent buffer of an gpkg is undefinied - case of polygon', () => {
       const mockInfoData: InfoDataWithFile[] = [mockGdalInfoDataWithFile];
       bufferSpy.mockReturnValue(undefined);
       const action = () => geoValidator.validate(mockInfoData, { type: 'Polygon', coordinates: [] });
-      expect(action).toThrow(/buffered gpkg extent is undefined/);
+      expect(action).toThrow(new UnsupportedEntityError('buffered gpkg extent is undefined'));
     });
 
     it('should not throw an error when gpkg extent succesfully buffered', () => {

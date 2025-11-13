@@ -6,9 +6,9 @@ import { IConfig } from 'config';
 import { Geometry, Polygon } from 'geojson';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';
 import { LogContext } from '../../common/interfaces';
-import { ValidationError } from '../errors/ingestionErrors';
+import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';
+import { UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
 import { type AllowedProductGeometry } from '../models/productManager';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
 
@@ -40,7 +40,7 @@ export class GeoValidator {
     this.logger.debug({ msg: 'created combined extent', logContext: logCtx, metadata: { combinedExtent } });
     const gpkgBufferedExtent = extentBuffer(this.extentBufferInMeters, combinedExtent);
     if (gpkgBufferedExtent === undefined) {
-      throw new Error('buffered gpkg extent is undefined');
+      throw new UnsupportedEntityError('buffered gpkg extent is undefined');
     }
     // read "product.shp" file to check is contained within gpkg extent
     const hasFootprintCorrelation = this.hasFootprintCorrelation(gpkgBufferedExtent.geometry, productGeometry);
