@@ -24,7 +24,7 @@ import { getAbsolutePathInputFiles } from '../../utils/paths';
 import { getShapefileFiles } from '../../utils/shapefile';
 import { ValidateManager } from '../../validate/models/validateManager';
 import { ChecksumError } from '../errors/ingestionErrors';
-import type { ResponseId, ValidationsTaskParameters } from '../interfaces';
+import type { ResponseId, ValidationTaskParameters } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
@@ -51,7 +51,7 @@ export class IngestionManager {
   private readonly supportedIngestionSwapTypes: ISupportedIngestionSwapTypes[];
   private readonly updateJobType: string;
   private readonly swapUpdateJobType: string;
-  private readonly validationsTaskType: string;
+  private readonly validationTaskType: string;
   private readonly sourceMount: string;
   private readonly jobTrackerServiceUrl: string;
 
@@ -78,7 +78,7 @@ export class IngestionManager {
     this.supportedIngestionSwapTypes = config.get<ISupportedIngestionSwapTypes[]>('jobManager.supportedIngestionSwapTypes');
     this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
     this.swapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
-    this.validationsTaskType = config.get<string>('jobManager.validationsTaskType');
+    this.validationTaskType = config.get<string>('jobManager.validationTaskType');
     this.sourceMount = config.get<string>('storageExplorer.layerSourceDir');
     this.jobTrackerServiceUrl = config.get<string>('services.jobTrackerServiceURL');
   }
@@ -352,7 +352,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async newLayerJobPayload(newLayer: EnhancedIngestionNewLayer): Promise<ICreateJobBody<IngestionNewJobParams, ValidationsTaskParameters>> {
+  private async newLayerJobPayload(newLayer: EnhancedIngestionNewLayer): Promise<ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters>> {
     const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath.absolute);
     const taskParameters = { checksums };
 
@@ -381,7 +381,7 @@ export class IngestionManager {
       productName: newLayerRelative.metadata.productName,
       productType: newLayerRelative.metadata.productType,
       domain: this.jobDomain,
-      tasks: [{ type: this.validationsTaskType, parameters: taskParameters }],
+      tasks: [{ type: this.validationTaskType, parameters: taskParameters }],
     };
     return createJobRequest;
   }
@@ -390,7 +390,7 @@ export class IngestionManager {
   private async updateLayerJobPayload(
     rasterLayerMetadata: RasterLayerMetadata,
     updateLayer: EnhancedIngestionUpdateLayer
-  ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationsTaskParameters>> {
+  ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters>> {
     const { displayPath, id, productId, productType, productVersion, tileOutputFormat, productName, productSubType } = rasterLayerMetadata;
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === productType && supportedSwapObj.productSubType === productSubType;
@@ -429,7 +429,7 @@ export class IngestionManager {
       status: OperationStatus.PENDING,
       parameters: ingestionUpdateJobParams,
       domain: this.jobDomain,
-      tasks: [{ type: this.validationsTaskType, parameters: taskParameters }],
+      tasks: [{ type: this.validationTaskType, parameters: taskParameters }],
     };
     return createJobRequest;
   }

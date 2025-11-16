@@ -21,7 +21,7 @@ import { randomPolygon } from '@turf/turf';
 import type { BBox, Polygon } from 'geojson';
 import merge from 'lodash.merge';
 import { randexp } from 'randexp';
-import type { ValidationsTaskParameters } from '../../src/ingestion/interfaces';
+import type { ValidationTaskParameters } from '../../src/ingestion/interfaces';
 import type { RasterLayersCatalog } from '../../src/ingestion/schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../../src/ingestion/schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
@@ -287,9 +287,9 @@ export const generateUpdateLayerRequest = (): IngestionUpdateLayer => {
   };
 };
 
-export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, ValidationsTaskParameters> => {
+export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters> => {
   const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
-  const validationsTaskType = configMock.get<string>('jobManager.validationsTaskType');
+  const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
   const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
   const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
   const productId = rasterLayerMetadataGenerators.productId();
@@ -344,7 +344,7 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
     domain: Domain.RASTER,
     tasks: [
       {
-        type: validationsTaskType,
+        type: validationTaskType,
         parameters: {
           checksums,
         },
@@ -355,7 +355,7 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, V
 
 export const generateUpdateJobRequest = (
   isSwapUpdate = false
-): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationsTaskParameters> => {
+): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
   const ingestionUpdateJobType = configMock.get<string>('jobManager.ingestionUpdateJobType');
   const ingestionSwapUpdateJobType = configMock.get<string>('jobManager.ingestionSwapUpdateJobType');
   const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
@@ -363,7 +363,7 @@ export const generateUpdateJobRequest = (
   const productId = rasterLayerMetadataGenerators.productId();
   const productName = rasterLayerMetadataGenerators.productName();
   const productType = rasterLayerMetadataGenerators.productType();
-  const validationsTaskType = configMock.get<string>('jobManager.validationsTaskType');
+  const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
   const updateJobType = isSwapUpdate ? ingestionUpdateJobType : ingestionSwapUpdateJobType;
   const inputFiles = {
     gpkgFilesPath: [relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.gpkgFilesPath()[0]))],
@@ -405,7 +405,7 @@ export const generateUpdateJobRequest = (
     domain: Domain.RASTER,
     tasks: [
       {
-        type: validationsTaskType,
+        type: validationTaskType,
         parameters: {
           checksums,
         },
@@ -452,13 +452,13 @@ export const createUpdateJobRequest = (
     ingestionUpdateLayer,
     rasterLayerMetadata,
     checksums,
-  }: { ingestionUpdateLayer: IngestionUpdateLayer; rasterLayerMetadata: RasterLayerMetadata } & Pick<ValidationsTaskParameters, 'checksums'>,
+  }: { ingestionUpdateLayer: IngestionUpdateLayer; rasterLayerMetadata: RasterLayerMetadata } & Pick<ValidationTaskParameters, 'checksums'>,
   isSwapUpdate = false
-): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationsTaskParameters> => {
+): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters> => {
   const domain = configMock.get<string>('jobManager.jobDomain');
   const updateJobType = configMock.get<string>('jobManager.ingestionUpdateJobType');
   const swapUpdateJobType = configMock.get<string>('jobManager.ingestionSwapUpdateJobType');
-  const validationsTaskType = configMock.get<string>('jobManager.validationsTaskType');
+  const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
   const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
   const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
   const updateJobAction = isSwapUpdate ? swapUpdateJobType : updateJobType;
@@ -499,7 +499,7 @@ export const createUpdateJobRequest = (
     domain,
     tasks: [
       {
-        type: validationsTaskType,
+        type: validationTaskType,
         parameters: {
           checksums: checksums.map((checksum) => {
             return { ...checksum, fileName: join(sourceMount, checksum.fileName) };
@@ -513,13 +513,13 @@ export const createUpdateJobRequest = (
 export const createNewJobRequest = ({
   ingestionNewLayer,
   checksums,
-}: { ingestionNewLayer: IngestionNewLayer } & Pick<ValidationsTaskParameters, 'checksums'>): ICreateJobBody<
+}: { ingestionNewLayer: IngestionNewLayer } & Pick<ValidationTaskParameters, 'checksums'>): ICreateJobBody<
   IngestionNewJobParams,
-  ValidationsTaskParameters
+  ValidationTaskParameters
 > => {
   const domain = configMock.get<string>('jobManager.jobDomain');
   const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
-  const validationsTaskType = configMock.get<string>('jobManager.validationsTaskType');
+  const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
   const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
   const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
 
@@ -548,7 +548,7 @@ export const createNewJobRequest = ({
     domain,
     tasks: [
       {
-        type: validationsTaskType,
+        type: validationTaskType,
         parameters: {
           checksums: checksums.map((checksum) => {
             return { ...checksum, fileName: join(sourceMount, checksum.fileName) };
