@@ -4,9 +4,10 @@ import type { Logger } from '@map-colonies/js-logger';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { trace, type Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
-import { CHECKSUM_PROCESSOR, SERVICES } from '../../common/constants';
-import { ChecksumError } from '../../ingestion/errors/ingestionErrors';
+import { SERVICES } from '../../common/constants';
 import type { LogContext } from '../../common/interfaces';
+import { ChecksumError } from '../../ingestion/errors/ingestionErrors';
+import { CHECKSUM_PROCESSOR } from './constants';
 import type { HashProcessor, Checksum as IChecksum } from './interfaces';
 
 @injectable()
