@@ -2,12 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.0.0-alpha.2](https://github.com/MapColonies/ingestion-trigger/compare/v4.0.0-alpha.1...v4.0.0-alpha.2) (2025-11-16)
+
+
+### Bug Fixes
+
+* change validations task name to validation ([#40](https://github.com/MapColonies/ingestion-trigger/issues/40)) ([d7c6bad](https://github.com/MapColonies/ingestion-trigger/commit/d7c6bad67c6b5856db97e5fda9f6e39e9ab7c7a7))
+
+
 ## [4.0.0-alpha.1](https://github.com/MapColonies/ingestion-trigger/compare/v3.2.5...v4.0.0-alpha.1) (2025-11-13)
 
 
 ### ⚠ BREAKING CHANGES
 
-* ingestion api(MAPCO-8326) (#36)
+* ingestion api(MAPCO-8326) ([#36](https://github.com/MapColonies/ingestion-trigger/issues/36)) ([b222166](https://github.com/MapColonies/ingestion-trigger/commit/b2221663913b7aa367cf85f29b08cb29221d4f42))
 
 ## [3.2.5](https://github.com/MapColonies/ingestion-trigger/compare/v3.2.4...v3.2.5) (2025-02-24)
 
