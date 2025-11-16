@@ -85,7 +85,7 @@
   "jobManager": {
     "jobDomain": "JOB_DOMAIN",
     "ingestionNewJobType": "INGESTION_NEW_JOB_TYPE",
-    "validationsTaskType": "VALIDATIONS_TASK_TYPE",
+    "validationTaskType": "VALIDATION_TASK_TYPE",
     "ingestionUpdateJobType": "INGESTION_UPDATE_JOB_TYPE",
     "ingestionSwapUpdateJobType": "INGESTION_SWAP_UPDATE_JOB_TYPE",
     "supportedIngestionSwapTypes": {

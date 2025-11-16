@@ -42,6 +42,6 @@ export interface TileSize {
   height: number;
 }
 
-export interface ValidationsTaskParameters {
+export interface ValidationTaskParameters {
   checksums: Checksum[];
 }
