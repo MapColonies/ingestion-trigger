@@ -513,10 +513,7 @@ export const createUpdateJobRequest = (
 export const createNewJobRequest = ({
   ingestionNewLayer,
   checksums,
-}: { ingestionNewLayer: IngestionNewLayer } & ChecksumValidationParameters): ICreateJobBody<
-  IngestionNewJobParams,
-  ChecksumValidationParameters
-> => {
+}: { ingestionNewLayer: IngestionNewLayer } & ChecksumValidationParameters): ICreateJobBody<IngestionNewJobParams, ChecksumValidationParameters> => {
   const domain = configMock.get<string>('jobManager.jobDomain');
   const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
   const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
