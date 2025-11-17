@@ -5,8 +5,8 @@ import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
-import { FileNotFoundError, GdalInfoError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
-import type { GpkgInputFiles, IJobRequestParams, IRecordRequestParams, ResponseId, SourcesValidationResponse } from '../interfaces';
+import { FileNotFoundError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
+import type { IJobRequestParams, IRecordRequestParams, ResponseId } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 
 type NewLayerHandler = RequestHandler<undefined, ResponseId, unknown>;
@@ -18,7 +18,7 @@ export class IngestionController {
   public constructor(
     @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator,
     private readonly ingestionManager: IngestionManager
-  ) { }
+  ) {}
 
   public newLayer: NewLayerHandler = async (req, res, next) => {
     try {

@@ -192,7 +192,7 @@ export class IngestionManager {
     switch (validationTask.parameters.isValid) {
       case false:
         return this.handleRetryWithErrors(jobId, retryJob, validationTask, logCtx);
-        case true:
+      case true:
         return this.handleRetryWithoutErrors(jobId, validationTask.id, logCtx);
       default: {
         const msg = 'Cannot retry job because validation task status is unclear';
@@ -265,10 +265,15 @@ export class IngestionManager {
 
     this.validateShapefileChanges(jobId, validationTask, newChecksums, logCtx);
 
-    const newTaskParameters: IUpdateTaskBody<ValidationTaskParameters> = { parameters: { ...validationTask.parameters, checksums: [...validationTask.parameters.checksums, ...newChecksums] } };
+    const newTaskParameters: IUpdateTaskBody<ValidationTaskParameters> = {
+      parameters: { ...validationTask.parameters, checksums: [...validationTask.parameters.checksums, ...newChecksums] },
+    };
 
     await this.jobManagerWrapper.updateTask<ValidationTaskParameters>(validationTask.jobId, validationTask.id, newTaskParameters);
-    trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.retryLayer.success', { retryType: 'withChanges', jobId });
+    trace
+      .getActiveSpan()
+      ?.setStatus({ code: SpanStatusCode.OK })
+      .addEvent('ingestionManager.retryLayer.success', { retryType: 'withChanges', jobId });
     this.logger.info({ msg: 'retry layer completed successfully', logContext: logCtx, jobId, taskId: validationTask.id });
     return { jobId, taskId: validationTask.id };
   }
@@ -283,8 +288,7 @@ export class IngestionManager {
     const existingChecksums = validationTask.parameters.checksums;
     const allChecksumsExist = newChecksums.every((newChecksum) =>
       existingChecksums.some(
-        (existingChecksum: IChecksum) =>
-          existingChecksum.checksum === newChecksum.checksum && existingChecksum.fileName === newChecksum.fileName
+        (existingChecksum: IChecksum) => existingChecksum.checksum === newChecksum.checksum && existingChecksum.fileName === newChecksum.fileName
       )
     );
 

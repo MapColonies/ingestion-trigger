@@ -587,17 +587,13 @@ describe('IngestionManager', () => {
       const result = await ingestionManager.retryLayer(jobId);
 
       expect(result).toEqual({ jobId, taskId });
-      expect(updateTaskSpy).toHaveBeenCalledWith(
-        jobId,
-        taskId,
-        {
-          parameters: {
-            isValid: false,
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            checksums: expect.arrayContaining([existingChecksum, newChecksum]),
-          },
-        }
-      );
+      expect(updateTaskSpy).toHaveBeenCalledWith(jobId, taskId, {
+        parameters: {
+          isValid: false,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          checksums: expect.arrayContaining([existingChecksum, newChecksum]),
+        },
+      });
       expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
@@ -637,17 +633,13 @@ describe('IngestionManager', () => {
       const result = await ingestionManager.retryLayer(jobId);
 
       expect(result).toEqual({ jobId, taskId });
-      expect(updateTaskSpy).toHaveBeenCalledWith(
-        jobId,
-        taskId,
-        {
-          parameters: {
-            isValid: false,
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            checksums: expect.arrayContaining([existingChecksum, newChecksum]),
-          },
-        }
-      );
+      expect(updateTaskSpy).toHaveBeenCalledWith(jobId, taskId, {
+        parameters: {
+          isValid: false,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          checksums: expect.arrayContaining([existingChecksum, newChecksum]),
+        },
+      });
       expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
