@@ -19,7 +19,7 @@ export interface IRecordRequestParams {
   id: string;
 }
 
-export interface IJobRequestParams {
+export interface IRetryRequestParams {
   jobId: string;
 }
 
@@ -60,8 +60,7 @@ export interface ChecksumValidationParameters {
   checksums: Checksum[];
 }
 
-export interface ValidationTaskParameters extends Omit<BaseValidationTaskParams, 'isValid'>, ChecksumValidationParameters {
-  isValid?: boolean;
+export interface ValidationTaskParameters extends BaseValidationTaskParams, ChecksumValidationParameters {
 }
 
 export const gpkgFilesPathSchema = inputFilesSchema.pick({ gpkgFilesPath: true });
