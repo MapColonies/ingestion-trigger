@@ -6,11 +6,11 @@ import { inject, injectable } from 'tsyringe';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { FileNotFoundError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
-import type { IJobRequestParams, IRecordRequestParams, ResponseId } from '../interfaces';
+import type { IRetryRequestParams, IRecordRequestParams, ResponseId } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 
 type NewLayerHandler = RequestHandler<undefined, ResponseId, unknown>;
-type RetryLayerHandler = RequestHandler<IJobRequestParams, ResponseId, unknown>;
+type RetryLayerHandler = RequestHandler<IRetryRequestParams, ResponseId, unknown>;
 type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseId, unknown>;
 
 @injectable()
@@ -18,7 +18,7 @@ export class IngestionController {
   public constructor(
     @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator,
     private readonly ingestionManager: IngestionManager
-  ) {}
+  ) { }
 
   public newLayer: NewLayerHandler = async (req, res, next) => {
     try {
