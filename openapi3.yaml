@@ -3,8 +3,7 @@ security: []
 info:
   title: ingestion-trigger
   description: >-
-    Service that designed to validate and trigger ingestion of new layers from
-    raw data and update existing layers
+    Service that designed to validate and trigger ingestion of new layers from raw data and update existing layers
   version: 4.0.0-alpha.2
   license:
     name: MIT
@@ -14,7 +13,7 @@ paths:
     post:
       operationId: ingestNewLayer
       tags:
-        - ingestion
+      - ingestion
       summary: start a process of creating new layer from raw data
       requestBody:
         required: true
@@ -61,15 +60,15 @@ paths:
     put:
       operationId: updateLayer
       tags:
-        - ingestion
+      - ingestion
       summary: start a process of updating an existing layer from raw data
       parameters:
-        - name: id
-          in: path
-          description: The id of the layer to update
-          required: true
-          schema:
-            $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/LayerId
+      - name: id
+        in: path
+        description: The id of the layer to update
+        required: true
+        schema:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/LayerId
       requestBody:
         required: true
         content:
@@ -118,25 +117,20 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
-  /validate/gpkgs:
-    post:
-      operationId: validateGpkgs
-      tags:
-        - validate
   /ingestion/{jobId}/retry:
     put:
       operationId: retryLayer
       tags:
-        - ingestion
+      - ingestion
       summary: retry a failed ingestion job caused by validation errors
       parameters:
-        - name: jobId
-          in: path
-          description: The id of the job to retry
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: jobId
+        in: path
+        description: The id of the job to retry
+        required: true
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: OK
@@ -172,11 +166,11 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
-  /ingestion/validate/gpkgs:
+  /validate/gpkgs:
     post:
       operationId: validateGpkgs
       tags:
-        - ingestion
+      - ingestion
       summary: checks that all provided gpkgs files have valid raw data
       requestBody:
         description: A json object containing array of gpkg files paths
@@ -186,7 +180,7 @@ paths:
             schema:
               $ref: '#/components/schemas/GpkgInputFiles'
             example:
-              gpkgFilesPath: ['path/to/blue_marble.gpkg']
+              gpkgFilesPath: [ 'path/to/blue_marble.gpkg' ]
       responses:
         '200':
           description: OK
@@ -220,7 +214,7 @@ paths:
     post:
       operationId: getGpkgsInfo
       tags:
-        - info
+      - info
       summary: returns the GDAL info for the provided gpkg files
       requestBody:
         description: A json object containing array of gpkg file paths
@@ -265,7 +259,6 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
-
 components:
   schemas:
     CallbackUrls:
@@ -275,7 +268,7 @@ components:
         type: string
         pattern: ^https?:\/\/[^\s/$.?#].[^\s]*$
         description: callback url for ingestion status notifications
-      example: ['https://my-dns-for-callback']
+      example: [ 'https://my-dns-for-callback' ]
     GpkgFilesPath:
       type: array
       minItems: 1
@@ -284,18 +277,18 @@ components:
         type: string
         pattern: ^(\/?[\w-]+)(\/[\w-]+)*\/[\wא-ת\.-]+\.gpkg$
         description: gpkg source file paths
-      example: ['path/to/example.gpkg']
+      example: [ 'path/to/example.gpkg' ]
     IngestionNewLayerMetadata:
       type: object
       required:
-        - classification
-        - productId
-        - productName
-        - productType
-        - srs
-        - srsName
-        - transparency
-        - region
+      - classification
+      - productId
+      - productName
+      - productType
+      - srs
+      - srsName
+      - transparency
+      - region
       properties:
         productId:
           $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProductId
@@ -324,9 +317,9 @@ components:
     IngestionNewLayerRequest:
       type: object
       required:
-        - metadata
-        - inputFiles
-        - ingestionResolution
+      - metadata
+      - inputFiles
+      - ingestionResolution
       properties:
         metadata:
           $ref: '#/components/schemas/IngestionNewLayerMetadata'
@@ -345,16 +338,16 @@ components:
     IngestionUpdateLayerMetadata:
       type: object
       required:
-        - classification
+      - classification
       properties:
         classification:
           $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Classification
     IngestionUpdateLayerRequest:
       type: object
       required:
-        - metadata
-        - inputFiles
-        - ingestionResolution
+      - metadata
+      - inputFiles
+      - ingestionResolution
       properties:
         metadata:
           $ref: '#/components/schemas/IngestionUpdateLayerMetadata'
@@ -367,9 +360,9 @@ components:
     InputFiles:
       type: object
       required:
-        - gpkgFilesPath
-        - metadataShapefilePath
-        - productShapefilePath
+      - gpkgFilesPath
+      - metadataShapefilePath
+      - productShapefilePath
       properties:
         gpkgFilesPath:
           $ref: '#/components/schemas/GpkgFilesPath'
@@ -380,7 +373,7 @@ components:
     GpkgInputFiles:
       type: object
       required:
-        - gpkgFilesPath
+      - gpkgFilesPath
       properties:
         gpkgFilesPath:
           $ref: '#/components/schemas/GpkgFilesPath'
@@ -397,8 +390,8 @@ components:
     SuccessfulIngestionResponse:
       type: object
       required:
-        - jobId
-        - taskId
+      - jobId
+      - taskId
       properties:
         jobId:
           type: string
