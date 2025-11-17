@@ -11,7 +11,7 @@ import { tracing } from './common/tracing';
 import { INFO_ROUTER_SYMBOL, infoRouterFactory } from './info/routes/infoRouter';
 import { INGESTION_ROUTER_SYMBOL, ingestionRouterFactory } from './ingestion/routes/ingestionRouter';
 import { CHECKSUM_PROCESSOR } from './utils/hash/constants';
-import type { HashAlgorithm, HashProcessor } from './utils/hash/interfaces';
+import type { ChecksumProcessor, HashAlgorithm } from './utils/hash/interfaces';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, schemasValidationsFactory } from './utils/validation/schemasValidator';
 import { VALIDATE_ROUTER_SYMBOL, validateRouterFactory } from './validate/routes/validateRouter';
 
@@ -41,7 +41,7 @@ export const registerExternalValues = (options?: RegisterOptions): DependencyCon
     {
       token: CHECKSUM_PROCESSOR,
       provider: {
-        useFactory: (): (() => Promise<HashProcessor & Required<Pick<HashProcessor, 'algorithm'>>>) => {
+        useFactory: (): (() => Promise<ChecksumProcessor>) => {
           return async () => {
             const xxhash = await xxhashFactory();
             return Object.assign(xxhash.create64(), { algorithm: 'XXH64' as const satisfies HashAlgorithm });

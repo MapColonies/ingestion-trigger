@@ -18,7 +18,7 @@ import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrap
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 import { Checksum } from '../../../../src/utils/hash/checksum';
 import { CHECKSUM_PROCESSOR } from '../../../../src/utils/hash/constants';
-import { HashProcessor } from '../../../../src/utils/hash/interfaces';
+import type { ChecksumProcessor } from '../../../../src/utils/hash/interfaces';
 import type { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { generateCatalogLayerResponse, generateChecksum, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
@@ -69,10 +69,10 @@ describe('IngestionManager', () => {
     container.register(SERVICES.TRACER, { useValue: testTracer });
     container.register(SERVICES.LOGGER, { useValue: testLogger });
     container.register(CHECKSUM_PROCESSOR, {
-      useFactory: (): (() => Promise<HashProcessor>) => {
+      useFactory: (): (() => Promise<ChecksumProcessor>) => {
         return async () => {
           const xxhash = await xxhashFactory();
-          return xxhash.create64();
+          return { ...xxhash.create64(), algorithm: 'XXH64' };
         };
       },
     });

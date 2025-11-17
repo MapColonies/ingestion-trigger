@@ -8,7 +8,7 @@ import { SERVICES } from '../../common/constants';
 import type { LogContext } from '../../common/interfaces';
 import { ChecksumError } from '../../ingestion/errors/ingestionErrors';
 import { CHECKSUM_PROCESSOR } from './constants';
-import type { HashProcessor, Checksum as IChecksum } from './interfaces';
+import type { ChecksumProcessor, Checksum as IChecksum } from './interfaces';
 
 @injectable()
 export class Checksum {
@@ -17,7 +17,7 @@ export class Checksum {
   public constructor(
     @inject(SERVICES.LOGGER) protected readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
-    @inject(CHECKSUM_PROCESSOR) private readonly checksumProcessorInit: () => Promise<HashProcessor>
+    @inject(CHECKSUM_PROCESSOR) private readonly checksumProcessorInit: () => Promise<ChecksumProcessor>
   ) {
     this.logContext = {
       fileName: __filename,
@@ -48,7 +48,7 @@ export class Checksum {
   }
 
   @withSpanAsyncV4
-  private async fromStream(stream: Readable, checksumProcessor: HashProcessor): Promise<Pick<IChecksum, 'checksum'>> {
+  private async fromStream(stream: Readable, checksumProcessor: ChecksumProcessor): Promise<Pick<IChecksum, 'checksum'>> {
     const logCtx: LogContext = { ...this.logContext, function: this.fromStream.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('checksum.fromStream');
