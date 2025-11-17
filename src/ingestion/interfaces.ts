@@ -60,8 +60,7 @@ export interface ChecksumValidationParameters {
   checksums: Checksum[];
 }
 
-export interface ValidationTaskParameters extends BaseValidationTaskParams, ChecksumValidationParameters {
-}
+export interface ValidationTaskParameters extends BaseValidationTaskParams, ChecksumValidationParameters {}
 
 export const gpkgFilesPathSchema = inputFilesSchema.pick({ gpkgFilesPath: true });
 export type GpkgInputFiles = z.infer<typeof gpkgFilesPathSchema>;

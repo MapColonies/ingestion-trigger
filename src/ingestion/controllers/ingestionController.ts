@@ -18,7 +18,7 @@ export class IngestionController {
   public constructor(
     @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator,
     private readonly ingestionManager: IngestionManager
-  ) { }
+  ) {}
 
   public newLayer: NewLayerHandler = async (req, res, next) => {
     try {
