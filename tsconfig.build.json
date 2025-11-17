@@ -2,7 +2,8 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "sourceMap": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": [] // This tells TypeScript not to automatically include all @types/* packages from @types
   },
 
   "include": ["src"],
