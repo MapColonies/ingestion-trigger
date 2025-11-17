@@ -27,7 +27,7 @@ import { getAbsolutePathInputFiles } from '../../utils/paths';
 import { getShapefileFiles } from '../../utils/shapefile';
 import { ValidateManager } from '../../validate/models/validateManager';
 import { ChecksumError } from '../errors/ingestionErrors';
-import type { ResponseId, ValidationTaskParameters } from '../interfaces';
+import type { ChecksumValidationParameters, ResponseId, ValidationTaskParameters } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
@@ -482,9 +482,11 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async newLayerJobPayload(newLayer: EnhancedIngestionNewLayer): Promise<ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters>> {
+  private async newLayerJobPayload(
+    newLayer: EnhancedIngestionNewLayer
+  ): Promise<ICreateJobBody<IngestionNewJobParams, ChecksumValidationParameters>> {
     const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath.absolute);
-    const taskParameters: ValidationTaskParameters = { checksums };
+    const taskParameters: ChecksumValidationParameters = { checksums };
 
     const newLayerRelative = {
       ...newLayer,
@@ -520,7 +522,7 @@ export class IngestionManager {
   private async updateLayerJobPayload(
     rasterLayerMetadata: RasterLayerMetadata,
     updateLayer: EnhancedIngestionUpdateLayer
-  ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters>> {
+  ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ChecksumValidationParameters>> {
     const { displayPath, id, productId, productType, productVersion, tileOutputFormat, productName, productSubType } = rasterLayerMetadata;
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === productType && supportedSwapObj.productSubType === productSubType;
@@ -528,7 +530,7 @@ export class IngestionManager {
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
 
     const checksums = await this.getFilesChecksum(updateLayer.inputFiles.metadataShapefilePath.absolute);
-    const taskParameters: ValidationTaskParameters = { checksums };
+    const taskParameters: ChecksumValidationParameters = { checksums };
 
     const updateLayerRelative = {
       ...updateLayer,
