@@ -58,6 +58,36 @@ describe('Info', function () {
         expect(response.body).toStrictEqual(expectedResponseBody);
       });
 
+      //Added this test to make sure that pixelSize is not a rounded number but the exact number resolution
+      it('should return 200 status code and sources info from gpkg file with zoom level 21', async () => {
+        const request = { gpkgFilesPath: getGpkgsFilesLocalPath(['zoom21.gpkg']) };
+        const expectedResponseBody = [
+          {
+            crs: 4326,
+            fileFormat: 'GPKG',
+            pixelSize: 0.000000335276126861572,
+            extentPolygon: {
+              type: 'Polygon',
+              coordinates: [
+                [
+                  [34.4870513, 31.5316438],
+                  [34.4870513, 31.5297716],
+                  [34.4892373, 31.5297716],
+                  [34.4892373, 31.5316438],
+                  [34.4870513, 31.5316438],
+                ],
+              ],
+            },
+            fileName: 'tests/mocks/testFiles/gpkg/zoom21.gpkg',
+          },
+        ];
+
+        const response = await requestSender.getGpkgsInfo(request);
+
+        expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toStrictEqual(expectedResponseBody);
+      });
+
       it('should return 200 status code and sources info invalid response - unsupported CRS', async () => {
         const badRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(['invalidCrs-3857.gpkg']) };
         const expectedResponseBody = [
