@@ -42,7 +42,7 @@ describe('gdalUtilities', () => {
   let gdalUtilities: GdalUtilities;
   const schemasValidator = { validateGdalInfo: jest.fn<Promise<GdalInfo>, [unknown]>() } satisfies Partial<SchemasValidator>;
 
-  beforeEach(function () {
+  beforeEach(() => {
     gdalUtilities = new GdalUtilities(jsLogger({ enabled: false }), trace.getTracer('testTracer'), schemasValidator as unknown as SchemasValidator);
     registerDefaultConfig();
   });

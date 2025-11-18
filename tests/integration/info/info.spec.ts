@@ -10,10 +10,10 @@ import type { DeepPartial, DeepRequired, FlattenKeyTupleUnion } from '../../util
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
 import { InfoRequestSender } from './helpers/infoRequestSender';
 
-describe('Info', function () {
+describe('Info', () => {
   let requestSender: InfoRequestSender;
 
-  beforeEach(function () {
+  beforeEach(() => {
     const [app] = getApp({
       override: [...getTestContainerConfig()],
     });
@@ -21,7 +21,7 @@ describe('Info', function () {
     requestSender = new InfoRequestSender(app);
   });
 
-  afterEach(function () {
+  afterEach(() => {
     resetContainer();
     jest.restoreAllMocks();
     nock.cleanAll();
