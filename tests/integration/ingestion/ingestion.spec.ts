@@ -134,7 +134,7 @@ describe('Ingestion', () => {
 
       it('should return 200 status code when product shapefile is multipolygon', async () => {
         const layerRequest = createNewLayerRequest({
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validIndexedMultiPolygon' },
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validMultiPolygon' },
         });
         const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
         const findJobsParams = createFindJobsParams({
@@ -616,7 +616,7 @@ describe('Ingestion', () => {
         const layerRequest = createNewLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['validIndexed.gpkg'],
-            metadataShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
             productShapefilePath: 'empty',
           },
         });
@@ -633,7 +633,7 @@ describe('Ingestion', () => {
         const layerRequest = createNewLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['validIndexed.gpkg'],
-            metadataShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
             productShapefilePath: 'multiple',
           },
         });
@@ -650,7 +650,7 @@ describe('Ingestion', () => {
         const layerRequest = createNewLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['validIndexed.gpkg'],
-            metadataShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
             productShapefilePath: 'point',
           },
         });
@@ -667,7 +667,7 @@ describe('Ingestion', () => {
         const layerRequest = createNewLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['validIndexed.gpkg'],
-            metadataShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
             productShapefilePath: 'blueMarble',
           },
         });
@@ -684,7 +684,7 @@ describe('Ingestion', () => {
     describe('Sad Path', () => {
       it('should return 422 status code when invalid gdal info', async () => {
         const layerRequest = createNewLayerRequest({
-          inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+          inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'valid', productShapefilePath: 'valid' },
         });
 
         const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
@@ -698,7 +698,7 @@ describe('Ingestion', () => {
 
       it('should return 422 status code when failed to read and process product shapefile', async () => {
         const layerRequest = createNewLayerRequest({
-          inputFiles: { gpkgFilesPath: ['validIndexed.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+          inputFiles: { gpkgFilesPath: ['validIndexed.gpkg'], metadataShapefilePath: 'valid', productShapefilePath: 'valid' },
         });
 
         const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
@@ -935,7 +935,7 @@ describe('Ingestion', () => {
 
       it('should return 200 status code with update request when product shapefile is multipolygon', async () => {
         const layerRequest = createUpdateLayerRequest({
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validIndexedMultiPolygon' },
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validMultiPolygon' },
           callbackUrls: undefined,
         });
         const updatedLayer = createCatalogLayerResponse();
@@ -1013,7 +1013,7 @@ describe('Ingestion', () => {
 
       it('should return 200 status code with swap update request when product shapefile is multipolygon', async () => {
         const layerRequest = createUpdateLayerRequest({
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validIndexedMultiPolygon' },
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validMultiPolygon' },
         });
         const catalogLayerResponse = createCatalogLayerResponse({
           metadata: {
@@ -1282,7 +1282,7 @@ describe('Ingestion', () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['validIndexed.gpkg'],
-            metadataShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
             productShapefilePath: 'empty',
           },
         });
@@ -1303,7 +1303,7 @@ describe('Ingestion', () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['validIndexed.gpkg'],
-            metadataShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
             productShapefilePath: 'multiple',
           },
         });
@@ -1324,7 +1324,7 @@ describe('Ingestion', () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['validIndexed.gpkg'],
-            metadataShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
             productShapefilePath: 'point',
           },
         });
@@ -1345,7 +1345,7 @@ describe('Ingestion', () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['validIndexed.gpkg'],
-            metadataShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
             productShapefilePath: 'blueMarble',
           },
         });
@@ -1518,7 +1518,7 @@ describe('Ingestion', () => {
 
       it('should return 422 status code when invalid gdal info', async () => {
         const layerRequest = createUpdateLayerRequest({
-          inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+          inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'valid', productShapefilePath: 'valid' },
         });
         const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
@@ -1535,7 +1535,7 @@ describe('Ingestion', () => {
 
       it('should return 422 status code when gpkg is invalid gpkg', async () => {
         const layerRequest = createUpdateLayerRequest({
-          inputFiles: { gpkgFilesPath: ['invalid.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+          inputFiles: { gpkgFilesPath: ['invalid.gpkg'], metadataShapefilePath: 'valid', productShapefilePath: 'valid' },
         });
         const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
@@ -1551,7 +1551,7 @@ describe('Ingestion', () => {
 
       it('should return 422 status code when gpkg index is missing', async () => {
         const layerRequest = createUpdateLayerRequest({
-          inputFiles: { gpkgFilesPath: ['withoutGpkgIndex.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+          inputFiles: { gpkgFilesPath: ['withoutGpkgIndex.gpkg'], metadataShapefilePath: 'valid', productShapefilePath: 'valid' },
         });
         const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
@@ -1568,7 +1568,7 @@ describe('Ingestion', () => {
 
       it('should return 422 status code when gpkg grid is not a supported tile matrix grid', async () => {
         const layerRequest = createUpdateLayerRequest({
-          inputFiles: { gpkgFilesPath: ['unsupportedGridMatrix.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+          inputFiles: { gpkgFilesPath: ['unsupportedGridMatrix.gpkg'], metadataShapefilePath: 'valid', productShapefilePath: 'valid' },
         });
         const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
@@ -1587,8 +1587,8 @@ describe('Ingestion', () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['unsupportedTileSize-height-512.gpkg'],
-            metadataShapefilePath: 'validIndexed',
-            productShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
+            productShapefilePath: 'valid',
           },
         });
         const updatedLayer = createCatalogLayerResponse();
@@ -1608,8 +1608,8 @@ describe('Ingestion', () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['unsupportedTileSize-width-512.gpkg'],
-            metadataShapefilePath: 'validIndexed',
-            productShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
+            productShapefilePath: 'valid',
           },
         });
         const updatedLayer = createCatalogLayerResponse();
@@ -1629,8 +1629,8 @@ describe('Ingestion', () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['validIndexed.gpkg'],
-            metadataShapefilePath: 'validIndexed',
-            productShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
+            productShapefilePath: 'valid',
           },
         });
         const updatedLayer = createCatalogLayerResponse();
@@ -1710,8 +1710,8 @@ describe('Ingestion', () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['validIndexed.gpkg'],
-            metadataShapefilePath: 'validIndexed',
-            productShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
+            productShapefilePath: 'valid',
           },
         });
         const updatedLayer = createCatalogLayerResponse();
