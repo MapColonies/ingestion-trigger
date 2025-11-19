@@ -141,7 +141,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessfulIngestionResponse'
         '400':
-          description: Bad request - Job status is not FAILED, SUSPENDED or COMPLETED, or required parameters are missing
+          description: Bad request - Job status is not FAILED, SUSPENDED or required parameters are missing
           content:
             application/json:
               schema:
