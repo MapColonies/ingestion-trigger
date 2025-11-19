@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { ICreateJobResponse } from '@map-colonies/mc-priority-queue';
-import { inputFilesSchema } from '@map-colonies/raster-shared';
+import { inputFilesSchema, baseIngestionValidationTaskParamsSchema } from '@map-colonies/raster-shared';
 import z from 'zod';
-import { type baseIngestionValidationTaskParamsSchema } from '@map-colonies/raster-shared';
-import type { Checksum } from '../utils/hash/interfaces';
+import { checksumSchema, type Checksum } from '../utils/hash/interfaces';
 
 export interface SourcesValidationResponse {
   isValid: boolean;
@@ -62,5 +61,8 @@ export interface ChecksumValidationParameters {
 
 export interface ValidationTaskParameters extends BaseValidationTaskParams, ChecksumValidationParameters {}
 
+export const validationTaskParametersSchema = baseIngestionValidationTaskParamsSchema.extend({
+  checksums: z.array(checksumSchema),
+});
+
 export const gpkgFilesPathSchema = inputFilesSchema.pick({ gpkgFilesPath: true });
-export type GpkgInputFiles = z.infer<typeof gpkgFilesPathSchema>;

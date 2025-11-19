@@ -1,3 +1,4 @@
+import z from 'zod';
 import { HASH_ALGORITHMS } from './constants';
 
 export type HashAlgorithm = (typeof HASH_ALGORITHMS)[number];
@@ -7,6 +8,12 @@ export interface Checksum {
   checksum: string;
   fileName: string;
 }
+
+export const checksumSchema = z.object({
+  algorithm: z.enum(HASH_ALGORITHMS),
+  checksum: z.string(),
+  fileName: z.string(),
+});
 
 /**
  * Interface describing a hash processor instance.

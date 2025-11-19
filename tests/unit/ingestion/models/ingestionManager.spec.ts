@@ -467,7 +467,7 @@ describe('IngestionManager', () => {
     });
   });
 
-  describe('retryLayer', () => {
+  describe('retryIngestion', () => {
     let getJobSpy: jest.SpyInstance;
     let getTasksForJobSpy: jest.SpyInstance;
     let resetJobSpy: jest.SpyInstance;
@@ -509,7 +509,7 @@ describe('IngestionManager', () => {
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
       resetJobSpy.mockResolvedValue(undefined);
 
-      const result = await ingestionManager.retryLayer(jobId);
+      const result = await ingestionManager.retryIngestion(jobId);
 
       expect(result).toEqual({ jobId, taskId });
       expect(resetJobSpy).toHaveBeenCalledWith(jobId);
@@ -545,7 +545,7 @@ describe('IngestionManager', () => {
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
       resetJobSpy.mockResolvedValue(undefined);
 
-      const result = await ingestionManager.retryLayer(jobId);
+      const result = await ingestionManager.retryIngestion(jobId);
 
       expect(result).toEqual({ jobId, taskId });
       expect(resetJobSpy).toHaveBeenCalledWith(jobId);
@@ -584,7 +584,7 @@ describe('IngestionManager', () => {
       calcualteChecksumSpy.mockResolvedValue(newChecksum);
       updateTaskSpy.mockResolvedValue(undefined);
 
-      const result = await ingestionManager.retryLayer(jobId);
+      const result = await ingestionManager.retryIngestion(jobId);
 
       expect(result).toEqual({ jobId, taskId });
       expect(updateTaskSpy).toHaveBeenCalledWith(jobId, taskId, {
@@ -630,7 +630,7 @@ describe('IngestionManager', () => {
       calcualteChecksumSpy.mockResolvedValue(newChecksum);
       updateTaskSpy.mockResolvedValue(undefined);
 
-      const result = await ingestionManager.retryLayer(jobId);
+      const result = await ingestionManager.retryIngestion(jobId);
 
       expect(result).toEqual({ jobId, taskId });
       expect(updateTaskSpy).toHaveBeenCalledWith(jobId, taskId, {
@@ -674,7 +674,7 @@ describe('IngestionManager', () => {
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
       calcualteChecksumSpy.mockResolvedValue(existingChecksum);
 
-      await expect(ingestionManager.retryLayer(jobId)).rejects.toThrow(ConflictError);
+      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(ConflictError);
       expect(updateTaskSpy).not.toHaveBeenCalled();
       expect(resetJobSpy).not.toHaveBeenCalled();
     });
@@ -708,7 +708,7 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
 
-      await expect(ingestionManager.retryLayer(jobId)).rejects.toThrow(BadRequestError);
+      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
     });
 
     it('should throw BadRequestError when job status is PENDING', async () => {
@@ -727,7 +727,7 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
 
-      await expect(ingestionManager.retryLayer(jobId)).rejects.toThrow(BadRequestError);
+      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
       expect(getTasksForJobSpy).not.toHaveBeenCalled();
     });
 
@@ -747,7 +747,7 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
 
-      await expect(ingestionManager.retryLayer(jobId)).rejects.toThrow(BadRequestError);
+      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
     });
 
     it('should throw NotFoundError when validation task is not found', async () => {
@@ -767,7 +767,7 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([]);
 
-      await expect(ingestionManager.retryLayer(jobId)).rejects.toThrow(NotFoundError);
+      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(NotFoundError);
     });
 
     it('should find validation task among multiple tasks', async () => {
@@ -808,7 +808,7 @@ describe('IngestionManager', () => {
       getTasksForJobSpy.mockResolvedValue(mockTasks);
       resetJobSpy.mockResolvedValue(undefined);
 
-      const result = await ingestionManager.retryLayer(jobId);
+      const result = await ingestionManager.retryIngestion(jobId);
 
       expect(result).toEqual({ jobId, taskId });
       expect(resetJobSpy).toHaveBeenCalledWith(jobId);
