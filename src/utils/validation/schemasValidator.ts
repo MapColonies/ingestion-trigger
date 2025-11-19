@@ -5,6 +5,7 @@ import { gdalInfoSchema, type GdalInfo } from '../../ingestion/schemas/gdalDataS
 import { createInfoDataSchema, InfoData } from '../../ingestion/schemas/infoDataSchema';
 import { rasterLayersCatalogSchema, type RasterLayersCatalog } from '../../ingestion/schemas/layerCatalogSchema';
 import { newLayerSchema, type IngestionNewLayer } from '../../ingestion/schemas/newLayerSchema';
+import { productFeatureSchema, type ProductFeatureGeometry } from '../../ingestion/schemas/productFeatureSchema';
 import { updateLayerSchema, type IngestionUpdateLayerRequest } from '../../ingestion/schemas/updateLayerSchema';
 import { ZodValidator } from './zodValidator';
 
@@ -26,6 +27,7 @@ export function schemasValidationsFactory(container: DependencyContainer) {
     validateNewLayerRequest: async (value: unknown): Promise<IngestionNewLayer> => validator.validate(newLayerSchema, value),
     validateUpdateLayerRequest: async (value: unknown): Promise<IngestionUpdateLayerRequest> => validator.validate(updateLayerSchema, value),
     validateRasterLayersCatalog: async (value: unknown): Promise<RasterLayersCatalog> => validator.validate(rasterLayersCatalogSchema, value),
+    validateProductFeature: async (value: unknown): Promise<ProductFeatureGeometry> => validator.validate(productFeatureSchema, value),
   };
 }
 

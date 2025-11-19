@@ -86,7 +86,7 @@ export class ValidateManager {
         metadata: { gpkgFilesPath },
       });
     } catch (error) {
-      let errorMessage = '';
+      let errorMessage: string;
       if (error instanceof FileNotFoundError) {
         errorMessage = `Gpkg files not found: ${error.message}`;
       } else if (error instanceof Error) {
@@ -116,13 +116,13 @@ export class ValidateManager {
     try {
       await this.sourceValidator.validateFilesExist(shapefilePath);
     } catch (error) {
-      let errorMessage = '';
+      let errorMessage: string;
       if (error instanceof FileNotFoundError) {
         errorMessage = `Shapefiles file not found: ${error.message}`;
       } else if (error instanceof Error) {
         errorMessage = `Shapefiles are not valid: ${error.message}`;
       } else {
-        errorMessage = `An unexpected error occurred during shapefile validation`;
+        errorMessage = `An unexpected error occurred during shapefile validation: ${JSON.stringify(error)}`;
       }
 
       this.logger.error({
