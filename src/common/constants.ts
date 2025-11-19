@@ -14,5 +14,3 @@ export const SERVICES = {
   METER: Symbol('Meter'),
 } satisfies Record<string, symbol>;
 /* eslint-enable @typescript-eslint/naming-convention */
-
-export const CHECKSUM_PROCESSOR = Symbol('ChecksumProcessor');

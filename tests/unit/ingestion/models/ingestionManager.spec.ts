@@ -6,7 +6,7 @@ import { getMapServingLayerName } from '@map-colonies/raster-shared';
 import { trace } from '@opentelemetry/api';
 import { container } from 'tsyringe';
 import xxhashFactory from 'xxhash-wasm';
-import { CHECKSUM_PROCESSOR, SERVICES } from '../../../../src/common/constants';
+import { SERVICES } from '../../../../src/common/constants';
 import { InfoManager } from '../../../../src/info/models/infoManager';
 import { ChecksumError, FileNotFoundError, UnsupportedEntityError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
@@ -17,7 +17,8 @@ import { CatalogClient } from '../../../../src/serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 import { Checksum } from '../../../../src/utils/hash/checksum';
-import { HashProcessor } from '../../../../src/utils/hash/interfaces';
+import { CHECKSUM_PROCESSOR } from '../../../../src/utils/hash/constants';
+import type { ChecksumProcessor } from '../../../../src/utils/hash/interfaces';
 import type { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { generateCatalogLayerResponse, generateChecksum, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
@@ -67,10 +68,10 @@ describe('IngestionManager', () => {
     container.register(SERVICES.TRACER, { useValue: testTracer });
     container.register(SERVICES.LOGGER, { useValue: testLogger });
     container.register(CHECKSUM_PROCESSOR, {
-      useFactory: (): (() => Promise<HashProcessor>) => {
+      useFactory: (): (() => Promise<ChecksumProcessor>) => {
         return async () => {
           const xxhash = await xxhashFactory();
-          return xxhash.create64();
+          return { ...xxhash.create64(), algorithm: 'XXH64' };
         };
       },
     });
