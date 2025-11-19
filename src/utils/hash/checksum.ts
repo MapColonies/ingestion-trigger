@@ -4,20 +4,20 @@ import type { Logger } from '@map-colonies/js-logger';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { trace, type Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
-import { CHECKSUM_PROCESSOR, SERVICES } from '../../common/constants';
-import { ChecksumError } from '../../ingestion/errors/ingestionErrors';
+import { SERVICES } from '../../common/constants';
 import type { LogContext } from '../../common/interfaces';
-import type { HashProcessor, Checksum as IChecksum } from './interfaces';
+import { ChecksumError } from '../../ingestion/errors/ingestionErrors';
+import { CHECKSUM_PROCESSOR } from './constants';
+import type { ChecksumProcessor, Checksum as IChecksum } from './interfaces';
 
 @injectable()
 export class Checksum {
   private readonly logContext: LogContext;
-  private checksum: HashProcessor | undefined;
 
   public constructor(
     @inject(SERVICES.LOGGER) protected readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
-    @inject(CHECKSUM_PROCESSOR) private readonly checksumProcessor: () => Promise<HashProcessor>
+    @inject(CHECKSUM_PROCESSOR) private readonly checksumProcessorInit: () => Promise<ChecksumProcessor>
   ) {
     this.logContext = {
       fileName: __filename,
@@ -33,14 +33,12 @@ export class Checksum {
     this.logger.debug({ msg: 'calculating checksum', filePath, logContext: logCtx });
 
     try {
-      this.checksum = await this.checksumProcessor();
+      const checksumProcessor = await this.checksumProcessorInit();
       const stream = createReadStream(filePath, { mode: constants.R_OK });
 
-      if (this.checksum.reset) {
-        this.checksum.reset();
-      }
+      checksumProcessor.reset?.();
 
-      const { checksum } = await this.fromStream(stream);
+      const { checksum } = await this.fromStream(stream, checksumProcessor);
       this.logger.info({ msg: 'calculated checksum', filePath, algorithm: 'XXH64', checksum, logContext: logCtx });
       return { algorithm: 'XXH64', checksum, fileName: filePath };
     } catch (err) {
@@ -50,7 +48,7 @@ export class Checksum {
   }
 
   @withSpanAsyncV4
-  private async fromStream(stream: Readable): Promise<Pick<IChecksum, 'checksum'>> {
+  private async fromStream(stream: Readable, checksumProcessor: ChecksumProcessor): Promise<Pick<IChecksum, 'checksum'>> {
     const logCtx: LogContext = { ...this.logContext, function: this.fromStream.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('checksum.fromStream');
@@ -59,25 +57,23 @@ export class Checksum {
       stream.on('data', (chunk) => {
         try {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-          this.checksum?.update(chunk);
+          checksumProcessor.update(chunk);
         } catch (err) {
           this.logger.error({ msg: 'error processing checksum for a chunk', err, logContext: logCtx });
           stream.destroy();
+          reject(err);
         }
       });
       stream.on('end', () => {
         try {
-          if (!this.checksum) {
-            return reject();
-          }
-
-          const digest = this.checksum.digest();
+          const digest = checksumProcessor.digest();
           // eslint-disable-next-line @typescript-eslint/no-magic-numbers
           const hash = digest.toString(16);
           resolve(hash);
         } catch (err) {
           this.logger.error({ msg: 'error processing checksum result', err, logContext: logCtx });
           stream.destroy();
+          reject(err);
         }
       });
       stream.on('error', (err) => {

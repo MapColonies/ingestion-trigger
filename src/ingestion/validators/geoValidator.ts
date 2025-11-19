@@ -9,8 +9,8 @@ import { SERVICES } from '../../common/constants';
 import { LogContext } from '../../common/interfaces';
 import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';
 import { UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
-import { type AllowedProductGeometry } from '../models/productManager';
 import { InfoDataWithFile } from '../schemas/infoDataSchema';
+import type { ProductFeatureGeometry } from '../schemas/productFeatureSchema';
 
 @injectable()
 export class GeoValidator {
@@ -29,7 +29,7 @@ export class GeoValidator {
   }
 
   @withSpanV4
-  public validate(infoDataFiles: InfoDataWithFile[], productGeometry: AllowedProductGeometry): void {
+  public validate(infoDataFiles: InfoDataWithFile[], productGeometry: ProductFeatureGeometry): void {
     const logCtx = { ...this.logContext, function: this.validate.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('GeoValidator.validate');
@@ -56,7 +56,7 @@ export class GeoValidator {
   }
 
   @withSpanV4
-  private hasFootprintCorrelation(gpkgGeometry: Geometry, productGeometry: AllowedProductGeometry): boolean {
+  private hasFootprintCorrelation(gpkgGeometry: Geometry, productGeometry: ProductFeatureGeometry): boolean {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('GeoValidator.hasFootprintCorrelation');
     if (productGeometry.type === 'MultiPolygon') {

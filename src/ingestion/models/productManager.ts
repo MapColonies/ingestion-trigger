@@ -1,17 +1,15 @@
-import { BadRequestError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { ChunkProcessor, ReaderOptions, ShapefileChunk, ShapefileChunkReader } from '@map-colonies/mc-utils';
-import { multiPolygonSchema, polygonSchema } from '@map-colonies/raster-shared';
-import { Tracer } from '@opentelemetry/api';
+import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { trace, Tracer } from '@opentelemetry/api';
 import { Feature } from 'geojson';
 import { inject, injectable } from 'tsyringe';
-import z from 'zod';
 import { SERVICES } from '../../common/constants';
 import type { IConfig } from '../../common/interfaces';
 import { LogContext } from '../../common/interfaces';
-
-const productGeometrySchema = z.union([polygonSchema, multiPolygonSchema]);
-export type AllowedProductGeometry = z.infer<typeof productGeometrySchema>;
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, type SchemasValidator } from '../../utils/validation/schemasValidator';
+import { UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
+import type { ProductFeatureGeometry } from '../schemas/productFeatureSchema';
 
 @injectable()
 export class ProductManager {
@@ -25,7 +23,8 @@ export class ProductManager {
   public constructor(
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(SERVICES.TRACER) public readonly tracer: Tracer
+    @inject(SERVICES.TRACER) public readonly tracer: Tracer,
+    @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator
   ) {
     this.maxVerticesPerChunk = this.config.get('productReader.maxVerticesPerChunk');
     this.logContext = {
@@ -46,31 +45,47 @@ export class ProductManager {
     };
   }
 
-  public async read(productShapefilePath: string): Promise<AllowedProductGeometry> {
+  @withSpanAsyncV4
+  public async read(productShapefilePath: string): Promise<ProductFeatureGeometry> {
     const logCtx: LogContext = { ...this.logContext, function: this.read.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('productManager.read');
+
     try {
-      await this.reader.readAndProcess(productShapefilePath, this.processor);
-      if (this.features.length > 1) {
-        const errorMessage = 'product shapefile contains more than a single feature';
-        this.logger.error({ msg: errorMessage, logContext: logCtx, productShapefilePath });
-        throw new BadRequestError(errorMessage);
+      await this.readAndProcess(productShapefilePath);
+      this.logger.debug({ msg: `parse validate product geometry`, logContext: logCtx });
+
+      const productGeometry = await this.validateProductFeature(productShapefilePath);
+      return productGeometry;
+    } catch (error) {
+      let errorMessage: string;
+      if (error instanceof UnsupportedEntityError) {
+        errorMessage = `Failed to read product shapefile: ${error.message}`;
+      } else if (error instanceof ValidationError) {
+        errorMessage = `Product shapefile is not valid: ${error.message}`;
+      } else {
+        errorMessage = `An unexpected error occurred during product shapefile validation: ${
+          error instanceof Error ? error.message : JSON.stringify(error)
+        }`;
       }
 
-      const productGeometry = this.features[0].geometry;
-      this.logger.debug({ msg: `parse validate product geometry`, logContext: logCtx, productGeometry });
-      const validProductGeometry = productGeometrySchema.parse(productGeometry);
-      return validProductGeometry;
-    } catch (error) {
       this.logger.error({
-        msg: `an unexpected error occurred during product shape read, error: ${error instanceof Error ? error.message : JSON.stringify(error)}`,
+        msg: errorMessage,
         logContext: logCtx,
+        productShapefilePath,
       });
+      activeSpan?.recordException(error instanceof Error ? error : errorMessage);
+
       throw error;
     }
   }
 
+  @withSpanAsyncV4
   private async process(chunk: ShapefileChunk): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.process.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('productManager.process');
+
     this.logger.debug({ msg: 'start processing', logContext: logCtx, features: chunk.features, count: chunk.features.length });
     this.logger.info({ msg: `Processing chunk ${chunk.id} with ${chunk.features.length} features`, logContext: logCtx });
     // reset features array before each process
@@ -81,5 +96,38 @@ export class ProductManager {
       this.features.push(feature);
     }
     this.logger.debug({ msg: `processor done with ${chunk.features.length} features: ${chunk.features.length}`, logContext: logCtx });
+  }
+
+  @withSpanAsyncV4
+  private async validateProductFeature(productShapefilePath: string): Promise<ProductFeatureGeometry> {
+    try {
+      const productGeometry = await this.schemasValidator.validateProductFeature(this.features);
+      return productGeometry;
+    } catch (error) {
+      let errorMessage = `Failed to validate product shapefile of file: ${productShapefilePath}`;
+      if (error instanceof Error) {
+        errorMessage = `${errorMessage}: ${error.message}`;
+      }
+      throw new ValidationError(errorMessage);
+    }
+  }
+
+  @withSpanAsyncV4
+  private async readAndProcess(productShapefilePath: string): Promise<void> {
+    try {
+      await this.reader.readAndProcess(productShapefilePath, this.processor);
+    } catch (error) {
+      let errorMessage = `Failed to read product shapefile of file: ${productShapefilePath}`;
+      if (error instanceof Error) {
+        errorMessage = `${errorMessage}: ${error.message}`;
+      }
+
+      // since no custom error is returned when shapefile is empty, the error message matching is used to handle this case
+      if (error instanceof Error && /^Shapefile (\/?[\w-]+)(\/[\w-]+)*\/Product.shp has no valid features or vertices$/.test(error.message)) {
+        throw new ValidationError(errorMessage);
+      } else {
+        throw new UnsupportedEntityError(errorMessage);
+      }
+    }
   }
 }
