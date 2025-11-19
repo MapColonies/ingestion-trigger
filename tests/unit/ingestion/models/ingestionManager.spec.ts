@@ -18,6 +18,7 @@ import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrap
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 import { Checksum } from '../../../../src/utils/hash/checksum';
 import { HashProcessor } from '../../../../src/utils/hash/interfaces';
+import { ZodValidator } from '../../../../src/utils/validation/zodValidator';
 import { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { generateCatalogLayerResponse, generateChecksum, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
@@ -43,6 +44,10 @@ describe('IngestionManager', () => {
   const geoValidatorMock = {
     validate: jest.fn(),
   };
+
+  const zodValidator = {
+    validate: jest.fn(),
+  } satisfies Partial<ZodValidator>;
 
   let createIngestionJobSpy: jest.SpyInstance;
   let findJobsSpy: jest.SpyInstance;
@@ -100,7 +105,8 @@ describe('IngestionManager', () => {
       catalogClient,
       jobManagerWrapper,
       mapProxyClient,
-      productManager
+      productManager,
+      zodValidator as unknown as ZodValidator
     );
   });
 
@@ -472,12 +478,14 @@ describe('IngestionManager', () => {
     let getTasksForJobSpy: jest.SpyInstance;
     let resetJobSpy: jest.SpyInstance;
     let updateTaskSpy: jest.SpyInstance;
+    let updateJobSpy: jest.SpyInstance;
 
     beforeEach(() => {
       getJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'getJob');
       getTasksForJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'getTasksForJob');
       resetJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'resetJob');
       updateTaskSpy = jest.spyOn(JobManagerWrapper.prototype, 'updateTask');
+      updateJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'updateJob');
     });
 
     it('should reset job when validation task has no errors and job is Failed', async () => {
@@ -508,6 +516,7 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
       resetJobSpy.mockResolvedValue(undefined);
+      zodValidator.validate.mockResolvedValue(undefined);
 
       const result = await ingestionManager.retryIngestion(jobId);
 
@@ -516,12 +525,12 @@ describe('IngestionManager', () => {
       expect(updateTaskSpy).not.toHaveBeenCalled();
     });
 
-    it('should reset job when job status is COMPLETED and validation passed', async () => {
+    it('should reset job when job status is SUSPENDED and validation passed', async () => {
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
       const mockJob = {
         id: jobId,
-        status: OperationStatus.COMPLETED,
+        status: OperationStatus.SUSPENDED,
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -544,6 +553,7 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
       resetJobSpy.mockResolvedValue(undefined);
+      zodValidator.validate.mockResolvedValue(undefined);
 
       const result = await ingestionManager.retryIngestion(jobId);
 
@@ -551,7 +561,7 @@ describe('IngestionManager', () => {
       expect(resetJobSpy).toHaveBeenCalledWith(jobId);
     });
 
-    it('should update task with new checksums when shapefile has changed and job is COMPLETED', async () => {
+    it('should update task with new checksums when shapefile has changed and job is SUSPENDED', async () => {
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
       const existingChecksum = { fileName: 'metadata.shp', checksum: 'oldChecksum123' };
@@ -559,7 +569,7 @@ describe('IngestionManager', () => {
 
       const mockJob = {
         id: jobId,
-        status: OperationStatus.COMPLETED,
+        status: OperationStatus.SUSPENDED,
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -583,6 +593,9 @@ describe('IngestionManager', () => {
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
       calcualteChecksumSpy.mockResolvedValue(newChecksum);
       updateTaskSpy.mockResolvedValue(undefined);
+      updateJobSpy.mockResolvedValue(undefined);
+      zodValidator.validate.mockResolvedValue(undefined);
+      sourceValidator.validateFilesExist.mockResolvedValue(undefined);
 
       const result = await ingestionManager.retryIngestion(jobId);
 
@@ -593,7 +606,9 @@ describe('IngestionManager', () => {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           checksums: expect.arrayContaining([existingChecksum, newChecksum]),
         },
+        status: OperationStatus.PENDING,
       });
+      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING });
       expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
@@ -629,6 +644,9 @@ describe('IngestionManager', () => {
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
       calcualteChecksumSpy.mockResolvedValue(newChecksum);
       updateTaskSpy.mockResolvedValue(undefined);
+      updateJobSpy.mockResolvedValue(undefined);
+      zodValidator.validate.mockResolvedValue(undefined);
+      sourceValidator.validateFilesExist.mockResolvedValue(undefined);
 
       const result = await ingestionManager.retryIngestion(jobId);
 
@@ -639,7 +657,9 @@ describe('IngestionManager', () => {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           checksums: expect.arrayContaining([existingChecksum, newChecksum]),
         },
+        status: OperationStatus.PENDING,
       });
+      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING });
       expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
@@ -673,6 +693,8 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
       calcualteChecksumSpy.mockResolvedValue(existingChecksum);
+      zodValidator.validate.mockResolvedValue(undefined);
+      sourceValidator.validateFilesExist.mockResolvedValue(undefined);
 
       await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(ConflictError);
       expect(updateTaskSpy).not.toHaveBeenCalled();
@@ -707,6 +729,7 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
+      zodValidator.validate.mockRejectedValue(new BadRequestError('Validation failed'));
 
       await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
     });
@@ -807,6 +830,7 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue(mockTasks);
       resetJobSpy.mockResolvedValue(undefined);
+      zodValidator.validate.mockResolvedValue(undefined);
 
       const result = await ingestionManager.retryIngestion(jobId);
 
