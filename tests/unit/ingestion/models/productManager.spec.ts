@@ -11,6 +11,27 @@ import type { SchemasValidator } from '../../../../src/utils/validation/schemasV
 import { registerDefaultConfig } from '../../../mocks/configMock';
 import { generateInputFiles } from '../../../mocks/mockFactory';
 
+const mockReadShapefile = jest
+  .fn<{ done: boolean; value?: Feature }, unknown[]>()
+  .mockReturnValueOnce({ done: false, value: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[]]] } } })
+  .mockReturnValueOnce({ done: true, value: undefined })
+  .mockReturnValueOnce({ done: false, value: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[]]] } } })
+  .mockReturnValueOnce({ done: true, value: undefined });
+const mockOpenShapefile = jest.fn<{ read: () => unknown }, unknown[]>().mockReturnValue({
+  read: () => {
+    return mockReadShapefile();
+  },
+});
+jest.mock('shapefile', () => {
+  return {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    __esmodule: true,
+    open: () => {
+      return mockOpenShapefile();
+    },
+  };
+});
+
 describe('ProductManager', () => {
   let productManager: ProductManager;
   const mockSchemaValidator = {
@@ -33,6 +54,35 @@ describe('ProductManager', () => {
   });
 
   describe('read', () => {
+    describe('deep mock (white-box) - test private processor', () => {
+      it('should successfully read product shapefile and return product geometry', async () => {
+        const { productShapefilePath } = generateInputFiles();
+        const featurePolygon: Feature<Polygon> = {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'Polygon',
+            coordinates: [
+              [
+                [0, 0],
+                [1, 0],
+                [1, 1],
+                [0, 0],
+              ],
+            ],
+          },
+        };
+        mockSchemaValidator.validateProductFeature.mockResolvedValue(featurePolygon.geometry);
+
+        const response = await productManager.read(productShapefilePath);
+
+        expect(response).toStrictEqual(featurePolygon.geometry);
+        expect(mockSchemaValidator.validateProductFeature).toHaveBeenCalledTimes(1);
+        expect(mockOpenShapefile).toHaveBeenCalledTimes(2);
+        expect(mockReadShapefile).toHaveBeenCalledTimes(4);
+      });
+    });
+
     it('should successfully read product shapefile and return product geometry - polygon', async () => {
       const { productShapefilePath } = generateInputFiles();
       const featurePolygon: Feature<Polygon> = {
@@ -112,6 +162,18 @@ describe('ProductManager', () => {
 
       await expect(promise).rejects.toThrow(
         new UnsupportedEntityError(`Failed to read product shapefile of file: ${productShapefilePath}: ${errorMessage}`)
+      );
+    });
+
+    it('should throw an error when reading and processing product shapefile throws an unexpected error', async () => {
+      const { productShapefilePath } = generateInputFiles();
+      const errorMessage = `Shapefile ${productShapefilePath} has no valid features or vertices`;
+      jest.spyOn(ShapefileChunkReader.prototype, 'readAndProcess').mockRejectedValue(new Error(errorMessage));
+
+      const promise = productManager.read(productShapefilePath);
+
+      await expect(promise).rejects.toThrow(
+        new ValidationError(`Failed to read product shapefile of file: ${productShapefilePath}: ${errorMessage}`)
       );
     });
 
