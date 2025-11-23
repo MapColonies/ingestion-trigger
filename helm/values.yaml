@@ -126,6 +126,11 @@ env:
     watchDirectory: 'watch'
     validFileExtensions: 
     - 'gpkg'
+    - 'shp'
+    - 'shx'
+    - 'dbf'
+    - 'prj'
+    - 'cpg'
   validationValuesByInfo:
     crs: 
     - 4326
