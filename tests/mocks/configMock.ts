@@ -71,7 +71,7 @@ const registerDefaultConfig = (): void => {
       layerSourceDir: 'tests/mocks/testFiles',
       displayNameDir: '\\layerSources',
       watchDirectory: 'watch',
-      validFileExtensions: ['gpkg'],
+      validFileExtensions: ['gpkg', 'shp', 'shx', 'dbf', 'prj', 'cpg'],
     },
 
     validationValuesByInfo: {
