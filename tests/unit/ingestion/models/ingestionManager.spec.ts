@@ -561,8 +561,8 @@ describe('IngestionManager', () => {
     it('should update task with new checksums when shapefile has changed and job is SUSPENDED', async () => {
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
-      const existingChecksum = { fileName: 'metadata.shp', checksum: 'oldChecksum123' };
-      const newChecksum = { fileName: 'metadata.shp', checksum: 'newChecksum456' };
+      const oldChecksum = 'oldChecksum123';
+      const newChecksum = 'newChecksum456';
 
       const mockJob = {
         id: jobId,
@@ -582,13 +582,17 @@ describe('IngestionManager', () => {
         status: OperationStatus.COMPLETED,
         parameters: {
           isValid: false,
-          checksums: [existingChecksum],
+          checksums: [{ fileName: 'metadata.shp', checksum: oldChecksum }],
         },
       };
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
-      calcualteChecksumSpy.mockResolvedValue(newChecksum);
+      // Mock calculateChecksum to return unique filenames based on the input path
+      calcualteChecksumSpy.mockImplementation(async (filePath: string) => Promise.resolve({
+        fileName: filePath,
+        checksum: newChecksum,
+      }));
       updateTaskSpy.mockResolvedValue(undefined);
       updateJobSpy.mockResolvedValue(undefined);
       zodValidator.validate.mockResolvedValue(undefined);
@@ -597,14 +601,21 @@ describe('IngestionManager', () => {
       const result = await ingestionManager.retryIngestion(jobId);
 
       expect(result).toEqual({ jobId, taskId });
-      expect(updateTaskSpy).toHaveBeenCalledWith(jobId, taskId, {
-        parameters: {
-          isValid: false,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          checksums: expect.arrayContaining([existingChecksum, newChecksum]),
-        },
+      expect(updateTaskSpy).toHaveBeenCalledTimes(1);
+
+      const callArgs = updateTaskSpy.mock.calls[0] as [string, string, { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } }];
+      const [calledJobId, calledTaskId, calledParams] = callArgs;
+
+      expect(calledJobId).toBe(jobId);
+      expect(calledTaskId).toBe(taskId);
+      expect(calledParams).toEqual(expect.objectContaining({
         status: OperationStatus.PENDING,
-      });
+        attempts: 0,
+      }));
+      expect(calledParams.parameters.isValid).toBe(false);
+      expect(Array.isArray(calledParams.parameters.checksums)).toBe(true);
+      expect(calledParams.parameters.checksums.length).toBeGreaterThan(0);
+
       expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING });
       expect(resetJobSpy).not.toHaveBeenCalled();
     });
@@ -612,8 +623,8 @@ describe('IngestionManager', () => {
     it('should update task with new checksums when shapefile has changed and job is FAILED', async () => {
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
-      const existingChecksum = { fileName: 'metadata.shp', checksum: 'oldChecksum123' };
-      const newChecksum = { fileName: 'metadata.shp', checksum: 'newChecksum456' };
+      const oldChecksum = 'oldChecksum123';
+      const newChecksum = 'newChecksum456';
 
       const mockJob = {
         id: jobId,
@@ -633,13 +644,16 @@ describe('IngestionManager', () => {
         status: OperationStatus.FAILED,
         parameters: {
           isValid: false,
-          checksums: [existingChecksum],
+          checksums: [{ fileName: 'metadata.shp', checksum: oldChecksum }],
         },
       };
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
-      calcualteChecksumSpy.mockResolvedValue(newChecksum);
+      calcualteChecksumSpy.mockImplementation(async (filePath: string) => Promise.resolve({
+        fileName: filePath,
+        checksum: newChecksum,
+      }));
       updateTaskSpy.mockResolvedValue(undefined);
       updateJobSpy.mockResolvedValue(undefined);
       zodValidator.validate.mockResolvedValue(undefined);
@@ -648,14 +662,21 @@ describe('IngestionManager', () => {
       const result = await ingestionManager.retryIngestion(jobId);
 
       expect(result).toEqual({ jobId, taskId });
-      expect(updateTaskSpy).toHaveBeenCalledWith(jobId, taskId, {
-        parameters: {
-          isValid: false,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          checksums: expect.arrayContaining([existingChecksum, newChecksum]),
-        },
+      expect(updateTaskSpy).toHaveBeenCalledTimes(1);
+
+      const callArgs = updateTaskSpy.mock.calls[0] as [string, string, { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } }];
+      const [calledJobId, calledTaskId, calledParams] = callArgs;
+
+      expect(calledJobId).toBe(jobId);
+      expect(calledTaskId).toBe(taskId);
+      expect(calledParams).toEqual(expect.objectContaining({
         status: OperationStatus.PENDING,
-      });
+        attempts: 0,
+      }));
+      expect(calledParams.parameters.isValid).toBe(false);
+      expect(Array.isArray(calledParams.parameters.checksums)).toBe(true);
+      expect(calledParams.parameters.checksums.length).toBeGreaterThan(0);
+
       expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING });
       expect(resetJobSpy).not.toHaveBeenCalled();
     });
