@@ -1,4 +1,3 @@
-import { join } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { IFindJobsByCriteriaBody, IUpdateTaskBody, OperationStatus, type ICreateJobBody, type ITaskResponse } from '@map-colonies/mc-priority-queue';
@@ -239,18 +238,21 @@ export class IngestionManager {
 
     await this.zodValidator.validate(inputFilesSchema, retryJob.parameters.inputFiles);
 
-    const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = retryJob.parameters.inputFiles;
+    const absoluteInputFilesPaths = getAbsolutePathInputFiles({
+      inputFiles: retryJob.parameters.inputFiles,
+      sourceMount: this.sourceMount,
+    });
+    const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = absoluteInputFilesPaths.inputFiles;
 
     // Validate that all input files exist
     const absoluteInputFiles = [
-      ...gpkgFilesPath.map((gpkgPath) => join(this.sourceMount, gpkgPath)),
-      ...getShapefileFiles(join(this.sourceMount, metadataShapefilePath)),
-      ...getShapefileFiles(join(this.sourceMount, productShapefilePath)),
+      ...gpkgFilesPath,
+      ...getShapefileFiles(metadataShapefilePath),
+      ...getShapefileFiles(productShapefilePath),
     ];
     await this.sourceValidator.validateFilesExist(absoluteInputFiles);
 
-    const absoluteMetadataPath = join(this.sourceMount, metadataShapefilePath);
-    const newChecksums = await this.getFilesChecksum(absoluteMetadataPath);
+    const newChecksums = await this.getFilesChecksum(metadataShapefilePath);
 
     if (!this.isChecksumChanged(validationTask.parameters.checksums, newChecksums)) {
       const message = `job id: ${jobId} could not be retried, due to the detection that not a single metadata shapefile has been changed.`;
