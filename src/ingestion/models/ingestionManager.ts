@@ -34,6 +34,7 @@ import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
 import { GeoValidator } from '../validators/geoValidator';
+import { SourceValidator } from '../validators/sourceValidator';
 import { ProductManager } from './productManager';
 
 type ReplaceValuesOfKey<T extends Record<PropertyKey, unknown>, Key extends keyof T, Value> = {
@@ -58,12 +59,13 @@ export class IngestionManager {
   private readonly validationTaskType: string;
   private readonly sourceMount: string;
   private readonly jobTrackerServiceUrl: string;
-
+  
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     private readonly validateManager: ValidateManager,
+    private readonly sourceValidator: SourceValidator,
     private readonly infoManager: InfoManager,
     private readonly geoValidator: GeoValidator,
     private readonly catalogClient: CatalogClient,

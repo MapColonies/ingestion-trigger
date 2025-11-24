@@ -22,6 +22,7 @@ import { clear as clearConfig, configMock, registerDefaultConfig } from '../../.
 import { generateCatalogLayerResponse, generateChecksum, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
 import { ChecksumProcessor } from '../../../../src/utils/hash/interfaces';
 import { CHECKSUM_PROCESSOR } from '../../../../src/utils/hash/constants';
+import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 
 describe('IngestionManager', () => {
   let ingestionManager: IngestionManager;
@@ -31,6 +32,12 @@ describe('IngestionManager', () => {
     validateShapefiles: jest.fn(),
   } satisfies Partial<ValidateManager>;
 
+    const sourceValidator = {
+    validateFilesExist: jest.fn(),
+    validateGdalInfo: jest.fn(),
+    validateGpkgFiles: jest.fn(),
+  } satisfies Partial<SourceValidator>;
+  
   const productManager = { read: jest.fn() } satisfies Partial<ProductManager>;
 
   const mockInfoManager = {
@@ -89,6 +96,7 @@ describe('IngestionManager', () => {
       configMock,
       testTracer,
       mockValidateManager as unknown as ValidateManager,
+      sourceValidator as unknown as SourceValidator,
       mockInfoManager as unknown as InfoManager,
       mockGeoValidator as unknown as GeoValidator,
       catalogClient,
