@@ -252,38 +252,7 @@ export class IngestionManager {
     const absoluteMetadataPath = join(this.sourceMount, metadataShapefilePath);
     const newChecksums = await this.getFilesChecksum(absoluteMetadataPath);
 
-    this.validateShapefileChanges(jobId, validationTask, newChecksums, logCtx);
-
-    const newTaskParameters: IUpdateTaskBody<ValidationTaskParameters> = {
-      parameters: { ...validationTask.parameters, checksums: [...validationTask.parameters.checksums, ...newChecksums] },
-      status: OperationStatus.PENDING,
-    };
-
-    await this.jobManagerWrapper.updateTask<ValidationTaskParameters>(validationTask.jobId, validationTask.id, newTaskParameters);
-    await this.jobManagerWrapper.updateJob(validationTask.jobId, { status: OperationStatus.PENDING });
-    trace
-      .getActiveSpan()
-      ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.retryIngestion.success', { retryType: 'withChanges', jobId });
-    this.logger.info({ msg: 'retry layer completed successfully', logContext: logCtx, jobId, taskId: validationTask.id });
-    return { jobId, taskId: validationTask.id };
-  }
-
-  @withSpanV4
-  private validateShapefileChanges(
-    jobId: string,
-    validationTask: ITaskResponse<ValidationTaskParameters>,
-    newChecksums: IChecksum[],
-    logCtx: LogContext
-  ): void {
-    const currentChecksums = validationTask.parameters.checksums;
-    const duplicateChecksums = newChecksums.every((newChecksum) =>
-      currentChecksums.some(
-        (existingChecksum) => existingChecksum.checksum === newChecksum.checksum && existingChecksum.fileName === newChecksum.fileName
-      )
-    );
-
-    if (duplicateChecksums) {
+    if (!this.isChecksumChanged(validationTask.parameters.checksums, newChecksums)) {
       const message = `job id: ${jobId} could not be retried, due to the detection that not a single metadata shapefile has been changed.`;
       this.logger.error({ msg: message, logContext: logCtx, jobId, taskId: validationTask.id });
       const error = new ConflictError(message);
@@ -297,6 +266,79 @@ export class IngestionManager {
       jobId,
       taskId: validationTask.id,
     });
+
+    const updatedChecksums = this.buildUpdatedChecksums(validationTask.parameters.checksums, newChecksums, logCtx);
+
+    const updatedParameters = { ...validationTask.parameters, checksums: updatedChecksums };
+
+    await this.resetJobToPending(validationTask.jobId, validationTask.id, updatedParameters, logCtx);
+    trace
+      .getActiveSpan()
+      ?.setStatus({ code: SpanStatusCode.OK })
+      .addEvent('ingestionManager.retryIngestion.success', { retryType: 'withChanges', jobId });
+    this.logger.info({ msg: 'retry layer completed successfully', logContext: logCtx, jobId, taskId: validationTask.id });
+    return { jobId, taskId: validationTask.id };
+  }
+
+  @withSpanV4
+  private isChecksumChanged(existingChecksums: IChecksum[], newChecksums: IChecksum[]): boolean {
+    return newChecksums.some((newChecksum) => {
+      const matchingChecksum = existingChecksums.find(
+        (existingChecksum) => existingChecksum.fileName === newChecksum.fileName
+      );
+
+      // If file doesn't exist in previous checksums or checksum has changed, it's considered changed
+      return !matchingChecksum || matchingChecksum.checksum !== newChecksum.checksum;
+    });
+  }
+
+  @withSpanV4
+  private buildUpdatedChecksums(existingChecksums: IChecksum[], newChecksums: IChecksum[], logCtx: LogContext): IChecksum[] {
+    const changedChecksums = newChecksums.filter((newChecksum) => {
+      const matchingChecksum = existingChecksums.find(
+        (existingChecksum) => existingChecksum.fileName === newChecksum.fileName
+      );
+
+      // If file doesn't exist in previous checksums or checksum has changed, include it
+      return !matchingChecksum || matchingChecksum.checksum !== newChecksum.checksum;
+    });
+
+    // Keep unchanged checksums and add changed ones
+    const unchangedChecksums = existingChecksums.filter(
+      (existingChecksum) => !changedChecksums.some((changed) => changed.fileName === existingChecksum.fileName)
+    );
+    const updatedChecksums = [...unchangedChecksums, ...changedChecksums];
+
+    this.logger.debug({
+      msg: 'built updated checksums array',
+      logContext: logCtx,
+      totalFiles: newChecksums.length,
+      changedFiles: changedChecksums.length,
+      unchangedFiles: unchangedChecksums.length,
+      changedFileNames: changedChecksums.map(c => c.fileName),
+    });
+
+    return updatedChecksums;
+  }
+
+  @withSpanAsyncV4
+  private async resetJobToPending(
+    jobId: string,
+    taskId: string,
+    parameters: ValidationTaskParameters,
+    logCtx: LogContext
+  ): Promise<void> {
+    this.logger.debug({ msg: 'updating validation task and resetting job status to PENDING', logContext: logCtx, jobId, taskId });
+
+    const taskParameters: IUpdateTaskBody<ValidationTaskParameters> = {
+      parameters,
+      status: OperationStatus.PENDING,
+      attempts: 0,
+    };
+
+    await this.jobManagerWrapper.updateTask<ValidationTaskParameters>(jobId, taskId, taskParameters);
+    await this.jobManagerWrapper.updateJob(jobId, { status: OperationStatus.PENDING });
+    this.logger.debug({ msg: 'validation task updated and job status reset to PENDING successfully', logContext: logCtx, jobId, taskId });
   }
 
   @withSpanAsyncV4
