@@ -172,7 +172,7 @@ paths:
     post:
       operationId: validateGpkgs
       tags:
-        - ingestion
+        - validate
       summary: checks that all provided gpkgs files have valid raw data
       requestBody:
         description: A json object containing array of gpkg files paths
