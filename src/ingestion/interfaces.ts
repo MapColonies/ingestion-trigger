@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { ICreateJobResponse } from '@map-colonies/mc-priority-queue';
-import { inputFilesSchema, baseIngestionValidationTaskParamsSchema } from '@map-colonies/raster-shared';
+import { baseIngestionValidationTaskParamsSchema } from '@map-colonies/raster-shared';
 import z from 'zod';
 import { checksumSchema, type Checksum } from '../utils/hash/interfaces';
 
@@ -64,5 +64,3 @@ export interface ValidationTaskParameters extends BaseValidationTaskParams, Chec
 export const validationTaskParametersSchema = baseIngestionValidationTaskParamsSchema.extend({
   checksums: z.array(checksumSchema),
 });
-
-export const gpkgFilesPathSchema = inputFilesSchema.pick({ gpkgFilesPath: true });
