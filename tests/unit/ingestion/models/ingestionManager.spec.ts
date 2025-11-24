@@ -589,10 +589,12 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
       // Mock calculateChecksum to return unique filenames based on the input path
-      calcualteChecksumSpy.mockImplementation(async (filePath: string) => Promise.resolve({
-        fileName: filePath,
-        checksum: newChecksum,
-      }));
+      calcualteChecksumSpy.mockImplementation(async (filePath: string) =>
+        Promise.resolve({
+          fileName: filePath,
+          checksum: newChecksum,
+        })
+      );
       updateTaskSpy.mockResolvedValue(undefined);
       updateJobSpy.mockResolvedValue(undefined);
       zodValidator.validate.mockResolvedValue(undefined);
@@ -603,15 +605,21 @@ describe('IngestionManager', () => {
       expect(result).toEqual({ jobId, taskId });
       expect(updateTaskSpy).toHaveBeenCalledTimes(1);
 
-      const callArgs = updateTaskSpy.mock.calls[0] as [string, string, { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } }];
+      const callArgs = updateTaskSpy.mock.calls[0] as [
+        string,
+        string,
+        { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } }
+      ];
       const [calledJobId, calledTaskId, calledParams] = callArgs;
 
       expect(calledJobId).toBe(jobId);
       expect(calledTaskId).toBe(taskId);
-      expect(calledParams).toEqual(expect.objectContaining({
-        status: OperationStatus.PENDING,
-        attempts: 0,
-      }));
+      expect(calledParams).toEqual(
+        expect.objectContaining({
+          status: OperationStatus.PENDING,
+          attempts: 0,
+        })
+      );
       expect(calledParams.parameters.isValid).toBe(false);
       expect(Array.isArray(calledParams.parameters.checksums)).toBe(true);
       expect(calledParams.parameters.checksums.length).toBeGreaterThan(0);
@@ -650,10 +658,12 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
-      calcualteChecksumSpy.mockImplementation(async (filePath: string) => Promise.resolve({
-        fileName: filePath,
-        checksum: newChecksum,
-      }));
+      calcualteChecksumSpy.mockImplementation(async (filePath: string) =>
+        Promise.resolve({
+          fileName: filePath,
+          checksum: newChecksum,
+        })
+      );
       updateTaskSpy.mockResolvedValue(undefined);
       updateJobSpy.mockResolvedValue(undefined);
       zodValidator.validate.mockResolvedValue(undefined);
@@ -664,15 +674,21 @@ describe('IngestionManager', () => {
       expect(result).toEqual({ jobId, taskId });
       expect(updateTaskSpy).toHaveBeenCalledTimes(1);
 
-      const callArgs = updateTaskSpy.mock.calls[0] as [string, string, { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } }];
+      const callArgs = updateTaskSpy.mock.calls[0] as [
+        string,
+        string,
+        { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } }
+      ];
       const [calledJobId, calledTaskId, calledParams] = callArgs;
 
       expect(calledJobId).toBe(jobId);
       expect(calledTaskId).toBe(taskId);
-      expect(calledParams).toEqual(expect.objectContaining({
-        status: OperationStatus.PENDING,
-        attempts: 0,
-      }));
+      expect(calledParams).toEqual(
+        expect.objectContaining({
+          status: OperationStatus.PENDING,
+          attempts: 0,
+        })
+      );
       expect(calledParams.parameters.isValid).toBe(false);
       expect(Array.isArray(calledParams.parameters.checksums)).toBe(true);
       expect(calledParams.parameters.checksums.length).toBeGreaterThan(0);
