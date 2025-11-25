@@ -32,12 +32,12 @@ describe('IngestionManager', () => {
     validateShapefiles: jest.fn(),
   } satisfies Partial<ValidateManager>;
 
-    const sourceValidator = {
+  const sourceValidator = {
     validateFilesExist: jest.fn(),
     validateGdalInfo: jest.fn(),
     validateGpkgFiles: jest.fn(),
   } satisfies Partial<SourceValidator>;
-  
+
   const productManager = { read: jest.fn() } satisfies Partial<ProductManager>;
 
   const mockInfoManager = {

@@ -59,7 +59,7 @@ export class IngestionManager {
   private readonly validationTaskType: string;
   private readonly sourceMount: string;
   private readonly jobTrackerServiceUrl: string;
-  
+
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
