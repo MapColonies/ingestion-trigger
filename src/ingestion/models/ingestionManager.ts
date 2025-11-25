@@ -245,8 +245,8 @@ export class IngestionManager {
     const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = absoluteInputFilesPaths.inputFiles;
 
     // Validate that all input files exist
-    const absoluteInputFiles = [...gpkgFilesPath, ...getShapefileFiles(metadataShapefilePath), ...getShapefileFiles(productShapefilePath)];
-    await this.sourceValidator.validateFilesExist(absoluteInputFiles);
+    const combinedInputFiles = [...gpkgFilesPath, ...getShapefileFiles(metadataShapefilePath), ...getShapefileFiles(productShapefilePath)];
+    await this.sourceValidator.validateFilesExist(combinedInputFiles);
 
     const newChecksums = await this.getFilesChecksum(metadataShapefilePath);
 
@@ -269,7 +269,15 @@ export class IngestionManager {
 
     const updatedParameters = { ...validationTask.parameters, checksums: updatedChecksums };
 
-    await this.resetJobToPending(validationTask.jobId, validationTask.id, updatedParameters, logCtx);
+    this.logger.info({
+      msg: 'resetting job to PENDING status with updated validation task parameters',
+      logContext: logCtx,
+      jobId,
+      taskId: validationTask.id,
+      updatedChecksumItems: newChecksums.length
+    });
+
+    await this.resetJobAndTask(validationTask.jobId, validationTask.id, updatedParameters, logCtx);
     trace
       .getActiveSpan()
       ?.setStatus({ code: SpanStatusCode.OK })
@@ -283,8 +291,8 @@ export class IngestionManager {
     return newChecksums.some((newChecksum) => {
       const matchingChecksum = existingChecksums.find((existingChecksum) => existingChecksum.fileName === newChecksum.fileName);
 
-      // If file doesn't exist in previous checksums or checksum has changed, it's considered changed
-      return !matchingChecksum || matchingChecksum.checksum !== newChecksum.checksum;
+      // If no match found, it's a new file (changed). If match found but checksum differs, content changed.
+      return matchingChecksum?.checksum !== newChecksum.checksum;
     });
   }
 
@@ -293,8 +301,8 @@ export class IngestionManager {
     const changedChecksums = newChecksums.filter((newChecksum) => {
       const matchingChecksum = existingChecksums.find((existingChecksum) => existingChecksum.fileName === newChecksum.fileName);
 
-      // If file doesn't exist in previous checksums or checksum has changed, include it
-      return !matchingChecksum || matchingChecksum.checksum !== newChecksum.checksum;
+      // If no match found, it's a new file (changed). If match found but checksum differs, content changed.
+      return matchingChecksum?.checksum !== newChecksum.checksum;
     });
 
     // Keep unchanged checksums and add changed ones
@@ -316,8 +324,8 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async resetJobToPending(jobId: string, taskId: string, parameters: ValidationTaskParameters, logCtx: LogContext): Promise<void> {
-    this.logger.debug({ msg: 'updating validation task and resetting job status to PENDING', logContext: logCtx, jobId, taskId });
+  private async resetJobAndTask(jobId: string, taskId: string, parameters: ValidationTaskParameters, logCtx: LogContext): Promise<void> {
+    this.logger.debug({ msg: 'updating validation task status and resetting job status to PENDING', logContext: logCtx, jobId, taskId });
 
     const taskParameters: IUpdateTaskBody<ValidationTaskParameters> = {
       parameters,
