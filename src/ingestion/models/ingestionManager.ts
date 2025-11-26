@@ -203,9 +203,11 @@ export class IngestionManager {
     const parsedProductType = rasterProductTypeSchema.parse(retryJob.productType);
     await this.polygonPartsManagerClient.deleteValidationEntity(retryJob.resourceId, parsedProductType);
 
-    validationTask.parameters.isValid
-      ? await this.handleRetryWithoutErrors(jobId, validationTask, logCtx)
-      : await this.handleRetryWithErrors(jobId, retryJob, validationTask, logCtx);
+    if (validationTask.parameters.isValid) {
+      await this.handleRetryWithoutErrors(jobId, validationTask, logCtx);
+    } else {
+      await this.handleRetryWithErrors(jobId, retryJob, validationTask, logCtx);
+    }
   }
 
   @withSpanAsyncV4
@@ -226,8 +228,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async handleRetryWithoutErrors(jobId: string, validationTask: ITaskResponse<ValidationTaskParameters>,
-, logCtx: LogContext): Promise<void> {
+  private async handleRetryWithoutErrors(jobId: string, validationTask: ITaskResponse<ValidationTaskParameters>, logCtx: LogContext): Promise<void> {
     this.logger.info({ msg: 'validation completed without errors, resetting job', logContext: logCtx, jobId, taskId: validationTask.id });
     await this.resetJobAndTask(jobId, validationTask.id, validationTask.parameters, logCtx);
     trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.retryIngestion.success', { retryType: 'reset', jobId });
