@@ -5,7 +5,7 @@ import {
   getMapServingLayerName,
   inputFilesSchema,
   rasterProductTypeSchema,
-  fileMetadataSchema,
+  type FileMetadata,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
@@ -268,8 +268,7 @@ export class IngestionManager {
 
     const updatedChecksums = this.buildUpdatedChecksums(validationTask.parameters.checksums, newChecksums, logCtx);
 
-    const linksToSet =
-      validationTask.parameters.links !== undefined ? (validationTask.parameters.links as z.infer<typeof fileMetadataSchema>) : undefined;
+    const linksToSet = validationTask.parameters.links ? (validationTask.parameters.links as FileMetadata) : undefined;
     const updatedParameters: ValidationTaskParameters = {
       isValid: validationTask.parameters.isValid,
       links: linksToSet,
