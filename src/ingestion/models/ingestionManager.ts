@@ -4,6 +4,8 @@ import { IFindJobsByCriteriaBody, IUpdateTaskBody, OperationStatus, type ICreate
 import {
   getMapServingLayerName,
   inputFilesSchema,
+  rasterProductTypeSchema,
+  fileMetadataSchema,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
@@ -35,6 +37,7 @@ import type { IngestionNewLayer } from '../schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
 import { GeoValidator } from '../validators/geoValidator';
 import { SourceValidator } from '../validators/sourceValidator';
+import { PolygonPartsManagerClient } from '../../serviceClients/polygonPartsManagerClient';
 import { ProductManager } from './productManager';
 
 type ReplaceValuesOfKey<T extends Record<PropertyKey, unknown>, Key extends keyof T, Value> = {
@@ -66,6 +69,7 @@ export class IngestionManager {
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     private readonly validateManager: ValidateManager,
     private readonly sourceValidator: SourceValidator,
+    private readonly polygonPartsManagerClient: PolygonPartsManagerClient,
     private readonly infoManager: InfoManager,
     private readonly geoValidator: GeoValidator,
     private readonly catalogClient: CatalogClient,
@@ -180,7 +184,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  public async retryIngestion(jobId: string): Promise<ResponseId> {
+  public async retryIngestion(jobId: string): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.retryIngestion.name };
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.retryIngestion');
@@ -196,9 +200,12 @@ export class IngestionManager {
     const validationTask = await this.getValidationTask(jobId, logCtx);
     await this.zodValidator.validate(validationTaskParametersSchema, validationTask.parameters);
 
-    return validationTask.parameters.isValid
-      ? this.handleRetryWithoutErrors(jobId, validationTask.id, logCtx)
-      : this.handleRetryWithErrors(jobId, retryJob, validationTask, logCtx);
+    const parsedProductType = rasterProductTypeSchema.parse(retryJob.productType);
+    await this.polygonPartsManagerClient.deleteValidationEntity(retryJob.resourceId, parsedProductType);
+
+    validationTask.parameters.isValid
+      ? await this.handleRetryWithoutErrors(jobId, validationTask, logCtx)
+      : await this.handleRetryWithErrors(jobId, retryJob, validationTask, logCtx);
   }
 
   @withSpanAsyncV4
@@ -219,12 +226,12 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async handleRetryWithoutErrors(jobId: string, taskId: string, logCtx: LogContext): Promise<ResponseId> {
-    this.logger.info({ msg: 'validation completed without errors, resetting job', logContext: logCtx, jobId, taskId });
-    await this.jobManagerWrapper.resetJob(jobId);
+  private async handleRetryWithoutErrors(jobId: string, validationTask: ITaskResponse<ValidationTaskParameters>,
+, logCtx: LogContext): Promise<void> {
+    this.logger.info({ msg: 'validation completed without errors, resetting job', logContext: logCtx, jobId, taskId: validationTask.id });
+    await this.resetJobAndTask(jobId, validationTask.id, validationTask.parameters, logCtx);
     trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.retryIngestion.success', { retryType: 'reset', jobId });
-    this.logger.info({ msg: 'job reset successfully', logContext: logCtx, jobId, taskId });
-    return { jobId, taskId };
+    this.logger.info({ msg: 'job and task reset successfully', logContext: logCtx, jobId, taskId: validationTask.id });
   }
 
   @withSpanAsyncV4
@@ -233,7 +240,7 @@ export class IngestionManager {
     retryJob: { parameters: z.infer<typeof ingestionBaseJobParamsSchema> },
     validationTask: ITaskResponse<ValidationTaskParameters>,
     logCtx: LogContext
-  ): Promise<ResponseId> {
+  ): Promise<void> {
     this.logger.info({ msg: 'validation has errors, checking for shapefile changes', logContext: logCtx, jobId, taskId: validationTask.id });
 
     await this.zodValidator.validate(inputFilesSchema, retryJob.parameters.inputFiles);
@@ -258,23 +265,22 @@ export class IngestionManager {
       throw error;
     }
 
-    this.logger.debug({
-      msg: 'changes detected at one of the metadata shapefile, updating validation task parameters',
-      logContext: logCtx,
-      jobId,
-      taskId: validationTask.id,
-    });
-
     const updatedChecksums = this.buildUpdatedChecksums(validationTask.parameters.checksums, newChecksums, logCtx);
 
-    const updatedParameters = { ...validationTask.parameters, checksums: updatedChecksums };
+    const linksToSet =
+      validationTask.parameters.links !== undefined ? (validationTask.parameters.links as z.infer<typeof fileMetadataSchema>) : undefined;
+    const updatedParameters: ValidationTaskParameters = {
+      isValid: validationTask.parameters.isValid,
+      links: linksToSet,
+      checksums: updatedChecksums,
+    };
 
     this.logger.info({
-      msg: 'resetting job to PENDING status with updated validation task parameters',
+      msg: 'resetting job and task to PENDING status with updated validation task parameters',
       logContext: logCtx,
       jobId,
       taskId: validationTask.id,
-      updatedChecksumItems: newChecksums.length
+      updatedChecksumItems: newChecksums.length,
     });
 
     await this.resetJobAndTask(validationTask.jobId, validationTask.id, updatedParameters, logCtx);
@@ -283,7 +289,6 @@ export class IngestionManager {
       ?.setStatus({ code: SpanStatusCode.OK })
       .addEvent('ingestionManager.retryIngestion.success', { retryType: 'withChanges', jobId });
     this.logger.info({ msg: 'retry layer completed successfully', logContext: logCtx, jobId, taskId: validationTask.id });
-    return { jobId, taskId: validationTask.id };
   }
 
   @withSpanV4
@@ -291,7 +296,6 @@ export class IngestionManager {
     return newChecksums.some((newChecksum) => {
       const matchingChecksum = existingChecksums.find((existingChecksum) => existingChecksum.fileName === newChecksum.fileName);
 
-      // If no match found, it's a new file (changed). If match found but checksum differs, content changed.
       return matchingChecksum?.checksum !== newChecksum.checksum;
     });
   }
@@ -299,7 +303,7 @@ export class IngestionManager {
   @withSpanV4
   private buildUpdatedChecksums(existingChecksums: IChecksum[], newChecksums: IChecksum[], logCtx: LogContext): IChecksum[] {
     const changedChecksums = newChecksums.filter((newChecksum) => {
-      const matchingChecksum = existingChecksums.find((existingChecksum) => existingChecksum.fileName === newChecksum.fileName);
+      const matchingChecksum = existingChecksums.find((existingChecksum) => existingChecksum.checksum === newChecksum.checksum);
 
       // If no match found, it's a new file (changed). If match found but checksum differs, content changed.
       return matchingChecksum?.checksum !== newChecksum.checksum;
