@@ -294,38 +294,31 @@ export class IngestionManager {
 
   @withSpanV4
   private isChecksumChanged(existingChecksums: IChecksum[], newChecksums: IChecksum[]): boolean {
-    return newChecksums.some((newChecksum) => {
-      const matchingChecksum = existingChecksums.find((existingChecksum) => existingChecksum.fileName === newChecksum.fileName);
-
-      return matchingChecksum?.checksum !== newChecksum.checksum;
-    });
+    return newChecksums.some((newChecksum) => !this.checksumExists(existingChecksums, newChecksum.checksum));
   }
 
   @withSpanV4
   private buildUpdatedChecksums(existingChecksums: IChecksum[], newChecksums: IChecksum[], logCtx: LogContext): IChecksum[] {
-    const changedChecksums = newChecksums.filter((newChecksum) => {
-      const matchingChecksum = existingChecksums.find((existingChecksum) => existingChecksum.checksum === newChecksum.checksum);
+    const uniqueNewChecksums = newChecksums.filter((newChecksum) => !this.checksumExists(existingChecksums, newChecksum.checksum));
 
-      // If no match found, it's a new file (changed). If match found but checksum differs, content changed.
-      return matchingChecksum?.checksum !== newChecksum.checksum;
-    });
-
-    // Keep unchanged checksums and add changed ones
-    const unchangedChecksums = existingChecksums.filter(
-      (existingChecksum) => !changedChecksums.some((changed) => changed.fileName === existingChecksum.fileName)
-    );
-    const updatedChecksums = [...unchangedChecksums, ...changedChecksums];
+    const updatedChecksums = [...existingChecksums, ...uniqueNewChecksums];
 
     this.logger.debug({
       msg: 'built updated checksums array',
       logContext: logCtx,
-      totalFiles: newChecksums.length,
-      changedFiles: changedChecksums.length,
-      unchangedFiles: unchangedChecksums.length,
-      changedFileNames: changedChecksums.map((c) => c.fileName),
+      totalExistingFiles: existingChecksums.length,
+      totalNewFiles: newChecksums.length,
+      uniqueNewFiles: uniqueNewChecksums.length,
+      totalUpdatedFiles: updatedChecksums.length,
+      uniqueNewFileNames: uniqueNewChecksums.map((c) => c.fileName),
     });
 
     return updatedChecksums;
+  }
+
+  @withSpanV4
+  private checksumExists(checksums: IChecksum[], checksumValue: string): boolean {
+    return checksums.some((checksum) => checksum.checksum === checksumValue);
   }
 
   @withSpanAsyncV4
