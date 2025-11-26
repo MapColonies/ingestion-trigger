@@ -10,7 +10,7 @@ import type { IRetryRequestParams, IRecordRequestParams, ResponseId } from '../i
 import { IngestionManager } from '../models/ingestionManager';
 
 type NewLayerHandler = RequestHandler<undefined, ResponseId, unknown>;
-type RetryIngestionHandler = RequestHandler<IRetryRequestParams, ResponseId, unknown>;
+type RetryIngestionHandler = RequestHandler<IRetryRequestParams, void, unknown>;
 type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseId, unknown>;
 
 @injectable()
