@@ -17,7 +17,7 @@ global:
     path: '/usr/local/share/ca-certificates'
     key: 'ca.crt'
   ingress:
-    domain: 'apps.aroapp.io'        
+    domain: 'apps.aroapp.io'
 
 enabled: true
 environment: development
@@ -33,6 +33,7 @@ serviceUrls:
   catalogManager: ""
   jobManager: ""
   jobTracker: ""
+  polygonPartsManager: ""
 jobDefinitions:
   jobs:
     new:
@@ -51,7 +52,6 @@ storage:
       enabled: false
       name: ""
       subPath: ""
-
 
 cloudProvider:
   dockerRegistryUrl: my-registry-url.io
@@ -106,11 +106,9 @@ args: []
 
 sidecars: []
 
-
 caSecretName: ''
 caPath: '/usr/local/share/ca-certificates'
 caKey: 'ca.crt'
-
 
 env:
   port: 8080
@@ -120,11 +118,11 @@ env:
   logPrettyPrintEnabled: false
   responseCompressionEnabled: true
   requestPayloadLimit: 1mb
-  storageExplorer:  
+  storageExplorer:
     layerSourceDir: '/layerSources'
     displayNameDir: "\\layerSources"
     watchDirectory: 'watch'
-    validFileExtensions: 
+    validFileExtensions:
     - 'gpkg'
     - 'shp'
     - 'shx'
@@ -132,14 +130,14 @@ env:
     - 'prj'
     - 'cpg'
   validationValuesByInfo:
-    crs: 
+    crs:
     - 4326
-    fileFormat: 
+    fileFormat:
     - 'GPKG'
-    tileSize : 256
+    tileSize: 256
     resolutionFixedPointTolerance: 12
-    extentBufferInMeters: 50   
-  disableHttpClientLogs: false     
+    extentBufferInMeters: 50
+  disableHttpClientLogs: false
   httpRetry:
     attempts: 5
     delay: exponential
@@ -148,9 +146,9 @@ env:
     maxVerticesPerChunk: 10000
   supportedIngestionSwapTypes: {}
   forbiddenJobTypesForParallelIngestion:
-    - Ingestion_New
-    - Ingestion_Update
-    - Ingestion_Swap_Update
+  - Ingestion_New
+  - Ingestion_Update
+  - Ingestion_Swap_Update
 
 resources:
   enabled: false
@@ -165,7 +163,7 @@ resources:
 route:
   enabled: false
   path: /
-  host: 
+  host:
   timeout:
     enabled: false # defaults to 30s by openshift
     duration: 60s # supported units (us, ms, s, m, h, d)
