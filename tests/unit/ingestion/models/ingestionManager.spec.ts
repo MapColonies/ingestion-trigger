@@ -10,7 +10,6 @@ import { ChecksumError, FileNotFoundError, UnsupportedEntityError } from '../../
 import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
 import { ProductManager } from '../../../../src/ingestion/models/productManager';
 import { GeoValidator } from '../../../../src/ingestion/validators/geoValidator';
-import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { CatalogClient } from '../../../../src/serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
@@ -26,12 +25,6 @@ describe('IngestionManager', () => {
     validateGpkgsSources: jest.fn(),
     validateShapefiles: jest.fn(),
   } satisfies Partial<ValidateManager>;
-
-  const mockSourceValidator = {
-    validateFilesExist: jest.fn(),
-    validateGdalInfo: jest.fn(),
-    validateGpkgFiles: jest.fn(),
-  } satisfies Partial<SourceValidator>;
 
   const mockProductManager = { read: jest.fn() } satisfies Partial<ProductManager>;
 
@@ -77,7 +70,6 @@ describe('IngestionManager', () => {
       configMock,
       testTracer,
       mockValidateManager as unknown as ValidateManager,
-      mockSourceValidator as unknown as SourceValidator,
       mockInfoManager as unknown as InfoManager,
       mockGeoValidator as unknown as GeoValidator,
       catalogClient,
@@ -124,6 +116,7 @@ describe('IngestionManager', () => {
       const layerRequest = generateNewLayerRequest();
       const expectedErrorMessage = 'error message';
       mockValidateManager.validateShapefiles.mockRejectedValue(new FileNotFoundError(expectedErrorMessage));
+      mockValidateManager.validateShapefiles.mockRejectedValue(new FileNotFoundError(expectedErrorMessage));
 
       const promise = ingestionManager.newLayer(layerRequest);
 
@@ -136,6 +129,8 @@ describe('IngestionManager', () => {
       const expectedErrorMessage = 'errror message';
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockRejectedValue(new Error(expectedErrorMessage));
+      mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
+      mockValidateManager.validateGpkgsSources.mockRejectedValue(new Error(expectedErrorMessage));
 
       const promise = ingestionManager.newLayer(layerRequest);
 
@@ -145,6 +140,9 @@ describe('IngestionManager', () => {
 
     it('should throw an error when fails to read gpkg info', async () => {
       const layerRequest = generateNewLayerRequest();
+      mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
+      mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
+      mockInfoManager.getGpkgsInformation.mockRejectedValue(new Error());
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockRejectedValue(new Error());
