@@ -53,7 +53,7 @@
     "@map-colonies/mc-priority-queue": "^8.1.0",
     "@map-colonies/mc-utils": "^3.5.1",
     "@map-colonies/openapi-express-viewer": "^3.0.0",
-    "@map-colonies/raster-shared": "^7.3.0-alpha.1",
+    "@map-colonies/raster-shared": "v7.6.0-alpha.1",
     "@map-colonies/read-pkg": "0.0.1",
     "@map-colonies/storage-explorer-middleware": "^1.3.0",
     "@map-colonies/telemetry": "^6.1.0",
