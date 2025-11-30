@@ -39,7 +39,7 @@ export class Checksum {
       checksumProcessor.reset?.();
 
       const { checksum } = await this.fromStream(stream, checksumProcessor);
-      this.logger.info({ msg: 'calculated checksum', filePath, algorithm: 'XXH64', checksum, logContext: logCtx });
+      this.logger.debug({ msg: 'calculated checksum', filePath, algorithm: 'XXH64', checksum, logContext: logCtx });
       return { algorithm: 'XXH64', checksum, fileName: filePath };
     } catch (err) {
       this.logger.error({ msg: 'error calculating checksum', err, logContext: logCtx });

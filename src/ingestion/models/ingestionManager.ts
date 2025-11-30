@@ -280,7 +280,7 @@ export class IngestionManager {
       logContext: logCtx,
       jobId,
       taskId: validationTask.id,
-      updatedChecksumItems: newChecksums.length,
+      updatedChecksumItems: updatedChecksums.length,
     });
 
     await this.resetJobAndTask(validationTask.jobId, validationTask.id, updatedParameters, logCtx);
@@ -610,7 +610,7 @@ export class IngestionManager {
     activeSpan?.updateName('ingestionManager.getFileChecksum');
     const logCtx: LogContext = { ...this.logContext, function: this.getFileChecksum.name };
 
-    this.logger.info({ msg: `calucalting checksum for: ${filePath}`, logContext: logCtx });
+    this.logger.debug({ msg: `calculating checksum for: ${filePath}`, logContext: logCtx });
 
     try {
       // eslint-disable-next-line @typescript-eslint/await-thenable
