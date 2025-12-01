@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { join, relative } from 'node:path';
 import { faker } from '@faker-js/faker';
 import { OperationStatus, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { CORE_VALIDATIONS, getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
@@ -34,6 +35,7 @@ describe('Ingestion', () => {
   let jobManagerURL: string;
   let mapProxyApiServiceUrl: string;
   let catalogServiceURL: string;
+  let polygonPartsManagerURL: string;
   let jobResponse: ICreateJobResponse;
   let requestSender: IngestionRequestSender;
 
@@ -49,6 +51,7 @@ describe('Ingestion', () => {
     jobManagerURL = configMock.get<string>('services.jobManagerURL');
     mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
     catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
+    polygonPartsManagerURL = configMock.get<string>('services.polygonPartsManagerURL');
 
     requestSender = new IngestionRequestSender(app);
   });
@@ -1545,6 +1548,587 @@ describe('Ingestion', () => {
           .reply(httpStatusCodes.OK);
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+      });
+    });
+  });
+
+  describe('PUT /ingestion/:jobId/retry', () => {
+    describe('Happy Path', () => {
+      it('should return 200 status code when validation is valid and job is FAILED - reset job', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: validInputFiles.inputFiles,
+          },
+        };
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: true,
+            checksums: validInputFiles.checksums,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate', { productType, productId }).reply(httpStatusCodes.NO_CONTENT);
+        nock(jobManagerURL)
+          .patch(
+            `/jobs/${jobId}/tasks/${taskId}`,
+            matches({
+              status: OperationStatus.PENDING,
+              attempts: 0,
+              parameters: validationTask.parameters,
+            })
+          )
+          .reply(httpStatusCodes.OK);
+        nock(jobManagerURL).patch(`/jobs/${jobId}`, { status: OperationStatus.PENDING }).reply(httpStatusCodes.OK);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
+
+      it('should return 200 status code when validation is valid and job is SUSPENDED - reset job', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.SUSPENDED,
+          parameters: {
+            inputFiles: validInputFiles.inputFiles,
+          },
+        };
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: true,
+            checksums: validInputFiles.checksums,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate', { productType, productId }).reply(httpStatusCodes.NO_CONTENT);
+        nock(jobManagerURL)
+          .patch(
+            `/jobs/${jobId}/tasks/${taskId}`,
+            matches({
+              status: OperationStatus.PENDING,
+              attempts: 0,
+              parameters: validationTask.parameters,
+            })
+          )
+          .reply(httpStatusCodes.OK);
+        nock(jobManagerURL).patch(`/jobs/${jobId}`, { status: OperationStatus.PENDING }).reply(httpStatusCodes.OK);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
+
+      it('should return 200 status code when validation is invalid with changed checksums - update and reset job', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: {
+              gpkgFilesPath: [relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.gpkgFilesPath[0]))],
+              metadataShapefilePath: relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.metadataShapefilePath)),
+              productShapefilePath: relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.productShapefilePath)),
+            },
+          },
+        };
+        // Simulate old state with fewer checksums (3 items) - new files were added
+        const oldChecksums = validInputFiles.checksums.slice(0, 3);
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: false,
+            checksums: oldChecksums,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate', { productType, productId }).reply(httpStatusCodes.NO_CONTENT);
+        nock(jobManagerURL)
+          .patch(
+            `/jobs/${jobId}/tasks/${taskId}`,
+            matches((body: { parameters?: { checksums?: unknown[] } }) => {
+              // Verify checksums array length increased by 2 (from 3 to 5)
+              return body.parameters?.checksums?.length === validInputFiles.checksums.length;
+            })
+          )
+          .reply(httpStatusCodes.OK);
+        nock(jobManagerURL).patch(`/jobs/${jobId}`, { status: OperationStatus.PENDING }).reply(httpStatusCodes.OK);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
+    });
+
+    describe('Bad Path', () => {
+      it('should return 400 status code when job is in PENDING status', async () => {
+        const jobId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.PENDING,
+          parameters: {
+            inputFiles: validInputFiles.inputFiles,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when job is in IN_PROGRESS status', async () => {
+        const jobId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.IN_PROGRESS,
+          parameters: {
+            inputFiles: validInputFiles.inputFiles,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when job is in COMPLETED status', async () => {
+        const jobId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            inputFiles: validInputFiles.inputFiles,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when job is in EXPIRED status', async () => {
+        const jobId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.EXPIRED,
+          parameters: {
+            inputFiles: validInputFiles.inputFiles,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 status code when job is in ABORTED status', async () => {
+        const jobId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.ABORTED,
+          parameters: {
+            inputFiles: validInputFiles.inputFiles,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+    });
+
+    describe('Sad Path', () => {
+      it('should return 404 status code when validation task does not exist', async () => {
+        const jobId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: validInputFiles.inputFiles,
+          },
+        };
+        const otherTask = {
+          id: faker.string.uuid(),
+          jobId,
+          type: 'some-other-task-type',
+          status: OperationStatus.COMPLETED,
+          parameters: {},
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [otherTask]);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+      });
+
+      it('should return 404 status code when no tasks exist for the job', async () => {
+        const jobId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: validInputFiles.inputFiles,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, []);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+      });
+
+      it('should return 409 status code when validation is invalid and checksums have not changed', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: {
+              gpkgFilesPath: [relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.gpkgFilesPath[0]))],
+              metadataShapefilePath: relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.metadataShapefilePath)),
+              productShapefilePath: relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.productShapefilePath)),
+            },
+          },
+        };
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: false,
+            checksums: validInputFiles.checksums, // Same checksums - no change
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+      });
+
+      it('should return 422 status code when validation task has invalid parameters schema', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: validInputFiles.inputFiles,
+          },
+        };
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            // Missing required fields like isValid and checksums
+            invalidField: 'invalid',
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+      });
+
+      it('should return 422 status code when validation is invalid and input files have invalid schema', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: {
+              // Invalid structure - missing required fields
+              invalidField: 'invalid',
+            },
+          },
+        };
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: false,
+            checksums: validInputFiles.checksums,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+      });
+
+      it('should return 500 status code when job manager fails to get job', async () => {
+        const jobId = faker.string.uuid();
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+      });
+
+      it('should return 500 status code when job manager fails to get tasks', async () => {
+        const jobId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: validInputFiles.inputFiles,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+      });
+
+      it('should return 500 status code when job manager fails to update task', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: validInputFiles.inputFiles,
+          },
+        };
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: true,
+            checksums: validInputFiles.checksums,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(jobManagerURL).patch(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+      });
+
+      it('should return 500 status code when job manager fails to update job', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: validInputFiles.inputFiles,
+          },
+        };
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: true,
+            checksums: validInputFiles.checksums,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(jobManagerURL)
+          .patch(
+            `/jobs/${jobId}/tasks/${taskId}`,
+            matches({
+              status: OperationStatus.PENDING,
+              attempts: 0,
+              parameters: validationTask.parameters,
+            })
+          )
+          .reply(httpStatusCodes.OK);
+        nock(jobManagerURL).patch(`/jobs/${jobId}`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+      });
+
+      it('should return 500 status code when calculating checksums fails for changed files', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: {
+              gpkgFilesPath: [relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.gpkgFilesPath[0]))],
+              metadataShapefilePath: relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.metadataShapefilePath)),
+              productShapefilePath: relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.productShapefilePath)),
+            },
+          },
+        };
+        // Simulate old state with fewer checksums (3 items) - new files were added
+        const oldChecksums = validInputFiles.checksums.slice(0, 3);
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: false,
+            checksums: oldChecksums,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        jest.spyOn(Checksum.prototype, 'calculate').mockRejectedValueOnce(new Error('Checksum calculation failed'));
+
+        const response = await requestSender.retryIngestion(jobId);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
