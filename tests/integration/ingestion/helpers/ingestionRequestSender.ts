@@ -3,7 +3,7 @@ import type { IngestionNewLayer } from '../../../../src/ingestion/schemas/newLay
 import type { IngestionUpdateLayer } from '../../../../src/ingestion/schemas/updateLayerSchema';
 
 export class IngestionRequestSender {
-  public constructor(private readonly app: Express.Application) { }
+  public constructor(private readonly app: Express.Application) {}
 
   public async ingestNewLayer(body: IngestionNewLayer): Promise<supertest.Response> {
     return supertest.agent(this.app).post('/ingestion').set('Content-Type', 'application/json').send(body);

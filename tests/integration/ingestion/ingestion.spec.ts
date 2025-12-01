@@ -1703,7 +1703,7 @@ describe('Ingestion', () => {
     });
 
     describe('Bad Path', () => {
-      it('should return 400 status code when job is in PENDING status', async () => {
+      it('should return 400 BAD_REQUEST status code when job is in PENDING status', async () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
@@ -1725,7 +1725,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when job is in IN_PROGRESS status', async () => {
+      it('should return 400 BAD_REQUEST status code when job is in IN_PROGRESS status', async () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
@@ -1747,7 +1747,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when job is in COMPLETED status', async () => {
+      it('should return 400 BAD_REQUEST status code when job is in COMPLETED status', async () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
@@ -1769,7 +1769,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when job is in EXPIRED status', async () => {
+      it('should return 400 BAD_REQUEST status code when job is in EXPIRED status', async () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
@@ -1791,7 +1791,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 400 status code when job is in ABORTED status', async () => {
+      it('should return 400 BAD_REQUEST status code when job is in ABORTED status', async () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
@@ -1815,7 +1815,7 @@ describe('Ingestion', () => {
     });
 
     describe('Sad Path', () => {
-      it('should return 404 status code when validation task does not exist', async () => {
+      it('should return 404 NOT_FOUND status code when validation task does not exist', async () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
@@ -1845,7 +1845,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
       });
 
-      it('should return 404 status code when no tasks exist for the job', async () => {
+      it('should return 404 NOT_FOUND status code when no tasks exist for the job', async () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
@@ -1868,7 +1868,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
       });
 
-      it('should return 409 status code when validation is invalid and checksums have not changed', async () => {
+      it('should return 409 CONFLICT status code when validation is invalid and checksums have not changed', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
@@ -1907,7 +1907,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.CONFLICT);
       });
 
-      it('should return 422 status code when validation task has invalid parameters schema', async () => {
+      it('should return 422 UNPROCESSABLE_ENTITY status code when validation task has invalid parameters schema', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
@@ -1941,7 +1941,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
       });
 
-      it('should return 422 status code when validation is invalid and input files have invalid schema', async () => {
+      it('should return 422 UNPROCESSABLE_ENTITY status code when validation is invalid and input files have invalid schema', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
@@ -1978,7 +1978,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
       });
 
-      it('should return 500 status code when job manager fails to get job', async () => {
+      it('should return 500 INTERNAL_SERVER_ERROR status code when job manager fails to get job', async () => {
         const jobId = faker.string.uuid();
 
         nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
@@ -1989,7 +1989,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
       });
 
-      it('should return 500 status code when job manager fails to get tasks', async () => {
+      it('should return 500 INTERNAL_SERVER_ERROR status code when job manager fails to get tasks', async () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
@@ -2012,7 +2012,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
       });
 
-      it('should return 500 status code when job manager fails to update task', async () => {
+      it('should return 500 INTERNAL_SERVER_ERROR status code when job manager fails to update task', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
@@ -2047,7 +2047,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
       });
 
-      it('should return 500 status code when job manager fails to update job', async () => {
+      it('should return 500 INTERNAL_SERVER_ERROR status code when job manager fails to update job', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
@@ -2092,7 +2092,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
       });
 
-      it('should return 500 status code when calculating checksums fails for changed files', async () => {
+      it('should return 500 INTERNAL_SERVER_ERROR status code when calculating checksums fails for changed files', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
