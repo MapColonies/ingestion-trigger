@@ -732,7 +732,7 @@ describe('IngestionManager', () => {
         id: taskId,
         jobId,
         type: 'validation',
-        status: OperationStatus.FAILED,
+        status: OperationStatus.COMPLETED,
         parameters: {
           isValid: false,
           checksums: [existingChecksum],
