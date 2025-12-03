@@ -30,7 +30,7 @@ import { getShapefileFiles } from '../../utils/shapefile';
 import { ZodValidator } from '../../utils/validation/zodValidator';
 import { ValidateManager } from '../../validate/models/validateManager';
 import { ChecksumError, throwInvalidJobStatusError } from '../errors/ingestionErrors';
-import type { ChecksumValidationParameters, ResponseId, ValidationTaskParameters } from '../interfaces';
+import type { ChecksumValidationParameters, ResponseId, ValidationTaskParameters, TaskValidationParametersPartial } from '../interfaces';
 import { validationTaskParametersSchema } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
@@ -197,22 +197,26 @@ export class IngestionManager {
       throwInvalidJobStatusError(jobId, retryJob.status, this.logger, activeSpan);
     }
 
-    const validationTask = await this.getValidationTask(jobId, logCtx);
-    await this.zodValidator.validate(validationTaskParametersSchema, validationTask.parameters);
-
-    const parsedProductType = rasterProductTypeSchema.parse(retryJob.productType);
-    await this.polygonPartsManagerClient.deleteValidationEntity(retryJob.resourceId, parsedProductType);
-
-    if (validationTask.parameters.isValid) {
-      await this.handleRetryWithoutErrors(jobId, validationTask, logCtx);
+    const validationTask: ITaskResponse<TaskValidationParametersPartial> = await this.getValidationTask(jobId, logCtx);
+    if (validationTask.parameters.isValid === undefined) {
+      await this.softReset(jobId, logCtx);
+      return;
     } else {
-      await this.handleRetryWithErrors(jobId, retryJob, validationTask, logCtx);
+      await this.zodValidator.validate(validationTaskParametersSchema, validationTask.parameters);
+      const parsedProductType = rasterProductTypeSchema.parse(retryJob.productType);
+      await this.polygonPartsManagerClient.deleteValidationEntity(retryJob.resourceId, parsedProductType);
+
+      if (validationTask.parameters.isValid && validationTask.status === OperationStatus.COMPLETED) {
+        await this.softReset(jobId, logCtx);
+      } else {
+        await this.hardReset(jobId, retryJob, validationTask as ITaskResponse<ValidationTaskParameters>, logCtx);
+      }
     }
   }
 
   @withSpanAsyncV4
-  private async getValidationTask(jobId: string, logCtx: LogContext): Promise<ITaskResponse<ValidationTaskParameters>> {
-    const tasks = await this.jobManagerWrapper.getTasksForJob<ValidationTaskParameters>(jobId);
+  private async getValidationTask(jobId: string, logCtx: LogContext): Promise<ITaskResponse<TaskValidationParametersPartial>> {
+    const tasks = await this.jobManagerWrapper.getTasksForJob<TaskValidationParametersPartial>(jobId);
 
     const validationTask = tasks.find((task) => task.type === this.validationTaskType);
 
@@ -228,15 +232,15 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async handleRetryWithoutErrors(jobId: string, validationTask: ITaskResponse<ValidationTaskParameters>, logCtx: LogContext): Promise<void> {
-    this.logger.info({ msg: 'validation completed without errors, resetting job', logContext: logCtx, jobId, taskId: validationTask.id });
-    await this.resetJobAndTask(jobId, validationTask.id, validationTask.parameters, logCtx);
+  private async softReset(jobId: string, logCtx: LogContext): Promise<void> {
+    this.logger.info({ msg: 'soft resetting job via rest jobManager API', logContext: logCtx, jobId });
+    await this.jobManagerWrapper.resetJob(jobId);
     trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.retryIngestion.success', { retryType: 'reset', jobId });
-    this.logger.info({ msg: 'job and task reset successfully', logContext: logCtx, jobId, taskId: validationTask.id });
+    this.logger.info({ msg: 'job reset successfully', logContext: logCtx, jobId });
   }
 
   @withSpanAsyncV4
-  private async handleRetryWithErrors(
+  private async hardReset(
     jobId: string,
     retryJob: { parameters: z.infer<typeof ingestionBaseJobParamsSchema> },
     validationTask: ITaskResponse<ValidationTaskParameters>,
@@ -283,7 +287,7 @@ export class IngestionManager {
       updatedChecksumItems: updatedChecksums.length,
     });
 
-    await this.resetJobAndTask(validationTask.jobId, validationTask.id, updatedParameters, logCtx);
+    await this.forceResetJobAndTask(validationTask.jobId, validationTask.id, updatedParameters, logCtx);
     trace
       .getActiveSpan()
       ?.setStatus({ code: SpanStatusCode.OK })
@@ -321,7 +325,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async resetJobAndTask(jobId: string, taskId: string, parameters: ValidationTaskParameters, logCtx: LogContext): Promise<void> {
+  private async forceResetJobAndTask(jobId: string, taskId: string, parameters: ValidationTaskParameters, logCtx: LogContext): Promise<void> {
     this.logger.debug({ msg: 'updating validation task status and resetting job status to PENDING', logContext: logCtx, jobId, taskId });
 
     const taskParameters: IUpdateTaskBody<ValidationTaskParameters> = {
