@@ -61,6 +61,10 @@ export interface ChecksumValidationParameters {
 
 export interface ValidationTaskParameters extends BaseValidationTaskParams, ChecksumValidationParameters {}
 
+export interface ValidationTaskParametersPartial extends Omit<ValidationTaskParameters, 'isValid'> {
+  isValid?: boolean;
+}
+
 export const validationTaskParametersSchema = ingestionValidationTaskParamsSchema.extend({
   checksums: z.array(checksumSchema),
 });

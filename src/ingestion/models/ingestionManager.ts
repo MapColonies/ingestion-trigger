@@ -30,8 +30,8 @@ import { getShapefileFiles } from '../../utils/shapefile';
 import { ZodValidator } from '../../utils/validation/zodValidator';
 import { ValidateManager } from '../../validate/models/validateManager';
 import { ChecksumError, throwInvalidJobStatusError } from '../errors/ingestionErrors';
-import type { ChecksumValidationParameters, ResponseId, ValidationTaskParameters, TaskValidationParametersPartial } from '../interfaces';
-import { validationTaskParametersSchema } from '../interfaces';
+import type { ChecksumValidationParameters, ResponseId, TaskValidationParametersPartial, ValidationTaskParametersPartial } from '../interfaces';
+import { validationTaskParametersSchemaPartial } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
@@ -198,19 +198,15 @@ export class IngestionManager {
     }
 
     const validationTask: ITaskResponse<TaskValidationParametersPartial> = await this.getValidationTask(jobId, logCtx);
-    if (validationTask.parameters.isValid === undefined) {
-      await this.softReset(jobId, logCtx);
-      return;
-    } else {
-      await this.zodValidator.validate(validationTaskParametersSchema, validationTask.parameters);
-      const parsedProductType = rasterProductTypeSchema.parse(retryJob.productType);
-      await this.polygonPartsManagerClient.deleteValidationEntity(retryJob.resourceId, parsedProductType);
+    const parsedProductType = rasterProductTypeSchema.parse(retryJob.productType);
+    await this.zodValidator.validate(validationTaskParametersSchemaPartial, validationTask.parameters);
+    await this.polygonPartsManagerClient.deleteValidationEntity(retryJob.resourceId, parsedProductType);
 
-      if (validationTask.parameters.isValid && validationTask.status === OperationStatus.COMPLETED) {
-        await this.softReset(jobId, logCtx);
-      } else {
-        await this.hardReset(jobId, retryJob, validationTask as ITaskResponse<ValidationTaskParameters>, logCtx);
-      }
+    if (validationTask.parameters.isValid === true) {
+      await this.softReset(jobId, logCtx);
+    } else {
+      const shouldConsiderChecksumChanges = validationTask.status === OperationStatus.COMPLETED;
+      await this.hardReset(jobId, retryJob, validationTask, shouldConsiderChecksumChanges, logCtx);
     }
   }
 
@@ -243,7 +239,8 @@ export class IngestionManager {
   private async hardReset(
     jobId: string,
     retryJob: { parameters: z.infer<typeof ingestionBaseJobParamsSchema> },
-    validationTask: ITaskResponse<ValidationTaskParameters>,
+    validationTask: ITaskResponse<TaskValidationParametersPartial>,
+    shouldConsiderChecksumChanges: boolean,
     logCtx: LogContext
   ): Promise<void> {
     this.logger.info({ msg: 'validation has errors, checking for shapefile changes', logContext: logCtx, jobId, taskId: validationTask.id });
@@ -253,18 +250,22 @@ export class IngestionManager {
 
     const newChecksums = await this.getFilesChecksum(metadataShapefilePath);
 
-    if (!this.isChecksumChanged(validationTask.parameters.checksums, newChecksums)) {
-      const message = `job id: ${jobId} could not be retried, due to the detection that not a single metadata shapefile has been changed.`;
-      this.logger.error({ msg: message, logContext: logCtx, jobId, taskId: validationTask.id });
-      const error = new ConflictError(message);
-      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
-      throw error;
+    let updatedChecksums = validationTask.parameters.checksums;
+
+    if (shouldConsiderChecksumChanges) {
+      if (!this.isChecksumChanged(validationTask.parameters.checksums, newChecksums)) {
+        const message = `job id: ${jobId} could not be retried, due to the detection that not a single metadata shapefile has been changed.`;
+        this.logger.error({ msg: message, logContext: logCtx, jobId, taskId: validationTask.id });
+        const error = new ConflictError(message);
+        trace.getActiveSpan()?.setAttribute('exception.type', error.status);
+        throw error;
+      }
+      updatedChecksums = this.buildUpdatedChecksums(validationTask.parameters.checksums, newChecksums, logCtx);
     }
 
-    const updatedChecksums = this.buildUpdatedChecksums(validationTask.parameters.checksums, newChecksums, logCtx);
+    const linksToSet: FileMetadata | undefined = validationTask.parameters.link ? validationTask.parameters.link : undefined;
 
-    const linksToSet = validationTask.parameters.link ? (validationTask.parameters.link as FileMetadata) : undefined;
-    const updatedParameters: ValidationTaskParameters = {
+    const updatedParameters: ValidationTaskParametersPartial = {
       isValid: validationTask.parameters.isValid,
       link: linksToSet,
       checksums: updatedChecksums,
@@ -333,17 +334,17 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async manualResetJobAndTask(jobId: string, taskId: string, parameters: ValidationTaskParameters, logCtx: LogContext): Promise<void> {
+  private async manualResetJobAndTask(jobId: string, taskId: string, parameters: ValidationTaskParametersPartial, logCtx: LogContext): Promise<void> {
     this.logger.debug({ msg: 'updating validation task status and resetting job status to PENDING', logContext: logCtx, jobId, taskId });
 
-    const taskParameters: IUpdateTaskBody<ValidationTaskParameters> = {
+    const taskParameters: IUpdateTaskBody<ValidationTaskParametersPartial> = {
       parameters,
       status: OperationStatus.PENDING,
       attempts: 0,
       percentage: 0,
     };
 
-    await this.jobManagerWrapper.updateTask<ValidationTaskParameters>(jobId, taskId, taskParameters);
+    await this.jobManagerWrapper.updateTask<ValidationTaskParametersPartial>(jobId, taskId, taskParameters);
     await this.jobManagerWrapper.updateJob(jobId, { status: OperationStatus.PENDING });
     this.logger.debug({ msg: 'validation task updated and job status reset to PENDING successfully', logContext: logCtx, jobId, taskId });
   }
