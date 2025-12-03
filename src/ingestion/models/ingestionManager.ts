@@ -132,7 +132,7 @@ export class IngestionManager {
     };
 
     await this.newLayerValidations(newLayerLocal);
-    this.logger.info({ msg: `finished validation of new layer. all checks have passed`, logContext: logCtx });
+    this.logger.info({ msg: `finished validation of new layer, all checks passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
     const createJobRequest = await this.newLayerJobPayload(newLayerLocal);
@@ -140,8 +140,10 @@ export class IngestionManager {
     const taskId = taskIds[0];
 
     this.logger.info({
-      msg: `new ingestion job and validation task were created. jobId: ${jobId}, taskId: ${taskId}`,
+      msg: `new ingestion job and validation task created successfully`,
       logContext: logCtx,
+      jobId,
+      taskId,
     });
     activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.newLayer.success', { triggerSuccess: true, jobId, taskId });
 
@@ -178,7 +180,7 @@ export class IngestionManager {
     };
 
     await this.updateLayerValidations(rasterLayerMetadata, updateLayerLocal);
-    this.logger.info({ msg: `finished validation of update layer. all checks have passed`, logContext: logCtx });
+    this.logger.info({ msg: `finished validation of update layer, all checks passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
 
     const createJobRequest = await this.updateLayerJobPayload(rasterLayerMetadata, updateLayerLocal);
@@ -186,8 +188,10 @@ export class IngestionManager {
     const taskId = taskIds[0];
 
     this.logger.info({
-      msg: `new update job and validation task were created. jobId: ${jobId}, taskId: ${taskId} `,
+      msg: `update job and validation task created successfully`,
       logContext: logCtx,
+      jobId,
+      taskId,
     });
     activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId });
 
@@ -200,7 +204,7 @@ export class IngestionManager {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('ingestionManager.retryIngestion');
 
-    this.logger.info({ msg: 'starting retry layer process', logContext: logCtx, jobId });
+    this.logger.info({ msg: 'starting retry ingestion process', logContext: logCtx, jobId });
 
     const retryJob: IJobResponse<IngestionBaseJobParams, unknown> = await this.jobManagerWrapper.getJob<IngestionBaseJobParams, unknown>(jobId);
 
@@ -240,10 +244,13 @@ export class IngestionManager {
 
   @withSpanAsyncV4
   private async softReset(jobId: string, logCtx: LogContext): Promise<void> {
-    this.logger.info({ msg: 'soft resetting job via rest jobManager API', logContext: logCtx, jobId });
+    this.logger.info({ msg: 'performing soft reset: validation passed, resetting job via jobManager API', logContext: logCtx, jobId });
     await this.jobManagerWrapper.resetJob(jobId);
-    trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.retryIngestion.success', { retryType: 'reset', jobId });
-    this.logger.info({ msg: 'job reset successfully', logContext: logCtx, jobId });
+    trace
+      .getActiveSpan()
+      ?.setStatus({ code: SpanStatusCode.OK })
+      .addEvent('ingestionManager.retryIngestion.success', { retryType: 'softReset', jobId });
+    this.logger.info({ msg: 'soft reset completed successfully', logContext: logCtx, jobId });
   }
 
   @withSpanAsyncV4
@@ -254,10 +261,11 @@ export class IngestionManager {
     logCtx: LogContext
   ): Promise<void> {
     this.logger.info({
-      msg: 'validation has errors, checking for shapefile changes',
+      msg: 'performing hard reset: validation has errors, checking for shapefile changes',
       logContext: logCtx,
-      jodId: retryJob.id,
+      jobId: retryJob.id,
       taskId: validationTask.id,
+      shouldConsiderChecksumChanges,
     });
 
     const absoluteInputFilesPaths = await this.validateAndGetAbsoluteInputFiles(retryJob.parameters.inputFiles);
@@ -270,7 +278,7 @@ export class IngestionManager {
     if (shouldConsiderChecksumChanges) {
       if (!this.isChecksumChanged(validationTask.parameters.checksums, newChecksums)) {
         const message = `job id: ${retryJob.id} could not be retried, due to the detection that not a single metadata shapefile has been changed.`;
-        this.logger.error({ msg: message, logContext: logCtx, jobid: retryJob.id, taskId: validationTask.id });
+        this.logger.error({ msg: message, logContext: logCtx, jobId: retryJob.id, taskId: validationTask.id });
         const error = new ConflictError(message);
         trace.getActiveSpan()?.setAttribute('exception.type', error.status);
         throw error;
@@ -287,19 +295,21 @@ export class IngestionManager {
     };
 
     this.logger.info({
-      msg: 'resetting job and task to PENDING status with updated validation task parameters',
+      msg: 'resetting validation task and job to PENDING status with updated parameters',
       logContext: logCtx,
       jobId: retryJob.id,
       taskId: validationTask.id,
       updatedChecksumItems: updatedChecksums.length,
+      shouldConsiderChecksumChanges,
     });
+
+    await this.manualResetJobAndTask(validationTask.jobId, validationTask.id, updatedParameters, logCtx);
 
     trace
       .getActiveSpan()
       ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.retryIngestion.success', { retryType: 'withChanges', jobId: retryJob.id });
-    this.logger.info({ msg: 'hard reset retry request completed successfully', logContext: logCtx, jobId: retryJob.id, taskId: validationTask.id });
-    await this.manualResetJobAndTask(validationTask.jobId, validationTask.id, updatedParameters, logCtx);
+      .addEvent('ingestionManager.retryIngestion.success', { retryType: 'hardReset', jobId: retryJob.id });
+    this.logger.info({ msg: 'hard reset completed successfully', logContext: logCtx, jobId: retryJob.id, taskId: validationTask.id });
   }
 
   @withSpanAsyncV4
@@ -350,7 +360,7 @@ export class IngestionManager {
 
   @withSpanAsyncV4
   private async manualResetJobAndTask(jobId: string, taskId: string, parameters: ValidationTaskParametersPartial, logCtx: LogContext): Promise<void> {
-    this.logger.debug({ msg: 'updating validation task status and resetting job status to PENDING', logContext: logCtx, jobId, taskId });
+    this.logger.debug({ msg: 'manually updating validation task and job status to PENDING', logContext: logCtx, jobId, taskId });
 
     const taskParameters: IUpdateTaskBody<ValidationTaskParametersPartial> = {
       parameters,
@@ -362,7 +372,7 @@ export class IngestionManager {
 
     await this.jobManagerWrapper.updateTask<ValidationTaskParametersPartial>(jobId, taskId, taskParameters);
     await this.jobManagerWrapper.updateJob(jobId, { status: OperationStatus.PENDING, reason: '' });
-    this.logger.debug({ msg: 'validation task updated and job status reset to PENDING successfully', logContext: logCtx, jobId, taskId });
+    this.logger.debug({ msg: 'validation task and job status updated to PENDING successfully', logContext: logCtx, jobId, taskId });
   }
 
   @withSpanAsyncV4
@@ -393,7 +403,7 @@ export class IngestionManager {
     const layerName = getMapServingLayerName(productId, productType);
     await this.validateLayerExistsInMapProxy(layerName);
     await this.validateNoParallelJobs(productId, productType);
-    this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
+    this.logger.info({ msg: 'validation against catalog, job-manager, and mapproxy passed', logContext: logCtx });
   }
 
   @withSpanAsyncV4
@@ -420,7 +430,7 @@ export class IngestionManager {
     await this.validateLayerDoesntExistInMapProxy(layerName);
     await this.validateLayerDoesntExistInCatalog(metadata.productId, metadata.productType);
     await this.validateNoParallelJobs(metadata.productId, metadata.productType);
-    this.logger.info({ msg: 'validation in catalog, job-manager and mapproxy passed', logContext: logCtx });
+    this.logger.info({ msg: 'validation against catalog, job-manager, and mapproxy passed', logContext: logCtx });
   }
 
   @withSpanAsyncV4
