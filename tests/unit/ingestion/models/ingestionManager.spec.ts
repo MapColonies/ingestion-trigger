@@ -520,22 +520,13 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
-      updateTaskSpy.mockResolvedValue(undefined);
-      updateJobSpy.mockResolvedValue(undefined);
+      resetJobSpy.mockResolvedValue(undefined);
       zodValidator.validate.mockResolvedValue(undefined);
       mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
       await ingestionManager.retryIngestion(jobId);
 
-      expect(updateTaskSpy).toHaveBeenCalledWith(
-        jobId,
-        taskId,
-        expect.objectContaining({
-          status: OperationStatus.PENDING,
-          attempts: 0,
-        })
-      );
-      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING });
+      expect(resetJobSpy).toHaveBeenCalledWith(jobId);
     });
 
     it('should reset job when job status is SUSPENDED and validation passed', async () => {
@@ -567,22 +558,13 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
-      updateTaskSpy.mockResolvedValue(undefined);
-      updateJobSpy.mockResolvedValue(undefined);
+      resetJobSpy.mockResolvedValue(undefined);
       zodValidator.validate.mockResolvedValue(undefined);
       mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
       await ingestionManager.retryIngestion(jobId);
 
-      expect(updateTaskSpy).toHaveBeenCalledWith(
-        jobId,
-        taskId,
-        expect.objectContaining({
-          status: OperationStatus.PENDING,
-          attempts: 0,
-        })
-      );
-      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING });
+      expect(resetJobSpy).toHaveBeenCalledWith(jobId);
     });
 
     it('should update task with new checksums when shapefile has changed and job is SUSPENDED', async () => {
@@ -906,22 +888,13 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue(mockTasks);
-      updateTaskSpy.mockResolvedValue(undefined);
-      updateJobSpy.mockResolvedValue(undefined);
+      resetJobSpy.mockResolvedValue(undefined);
       zodValidator.validate.mockResolvedValue(undefined);
       mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
       await ingestionManager.retryIngestion(jobId);
 
-      expect(updateTaskSpy).toHaveBeenCalledWith(
-        jobId,
-        taskId,
-        expect.objectContaining({
-          status: OperationStatus.PENDING,
-          attempts: 0,
-        })
-      );
-      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING });
+      expect(resetJobSpy).toHaveBeenCalledWith(jobId);
     });
   });
 });
