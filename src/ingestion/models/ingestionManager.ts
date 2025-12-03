@@ -248,17 +248,8 @@ export class IngestionManager {
   ): Promise<void> {
     this.logger.info({ msg: 'validation has errors, checking for shapefile changes', logContext: logCtx, jobId, taskId: validationTask.id });
 
-    await this.zodValidator.validate(inputFilesSchema, retryJob.parameters.inputFiles);
-
-    const absoluteInputFilesPaths = getAbsolutePathInputFiles({
-      inputFiles: retryJob.parameters.inputFiles,
-      sourceMount: this.sourceMount,
-    });
-    const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = absoluteInputFilesPaths.inputFiles;
-
-    // Validate that all input files exist
-    const combinedInputFiles = [...gpkgFilesPath, ...getShapefileFiles(metadataShapefilePath), ...getShapefileFiles(productShapefilePath)];
-    await this.sourceValidator.validateFilesExist(combinedInputFiles);
+    const absoluteInputFilesPaths = await this.validateAndGetAbsoluteInputFiles(retryJob.parameters.inputFiles);
+    const { metadataShapefilePath } = absoluteInputFilesPaths;
 
     const newChecksums = await this.getFilesChecksum(metadataShapefilePath);
 
@@ -287,12 +278,29 @@ export class IngestionManager {
       updatedChecksumItems: updatedChecksums.length,
     });
 
-    await this.forceResetJobAndTask(validationTask.jobId, validationTask.id, updatedParameters, logCtx);
     trace
       .getActiveSpan()
       ?.setStatus({ code: SpanStatusCode.OK })
       .addEvent('ingestionManager.retryIngestion.success', { retryType: 'withChanges', jobId });
-    this.logger.info({ msg: 'retry layer completed successfully', logContext: logCtx, jobId, taskId: validationTask.id });
+    this.logger.info({ msg: 'hard reset retry request completed successfully', logContext: logCtx, jobId, taskId: validationTask.id });
+    await this.manualResetJobAndTask(validationTask.jobId, validationTask.id, updatedParameters, logCtx);
+  }
+
+  @withSpanAsyncV4
+  private async validateAndGetAbsoluteInputFiles(inputFiles: InputFiles): Promise<InputFiles> {
+    await this.zodValidator.validate(inputFilesSchema, inputFiles);
+
+    const absoluteInputFilesPaths = getAbsolutePathInputFiles({
+      inputFiles,
+      sourceMount: this.sourceMount,
+    });
+    const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = absoluteInputFilesPaths.inputFiles;
+
+    // Validate that all input files exist
+    const combinedInputFiles = [...gpkgFilesPath, ...getShapefileFiles(metadataShapefilePath), ...getShapefileFiles(productShapefilePath)];
+    await this.sourceValidator.validateFilesExist(combinedInputFiles);
+
+    return absoluteInputFilesPaths.inputFiles;
   }
 
   @withSpanV4
@@ -325,13 +333,14 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async forceResetJobAndTask(jobId: string, taskId: string, parameters: ValidationTaskParameters, logCtx: LogContext): Promise<void> {
+  private async manualResetJobAndTask(jobId: string, taskId: string, parameters: ValidationTaskParameters, logCtx: LogContext): Promise<void> {
     this.logger.debug({ msg: 'updating validation task status and resetting job status to PENDING', logContext: logCtx, jobId, taskId });
 
     const taskParameters: IUpdateTaskBody<ValidationTaskParameters> = {
       parameters,
       status: OperationStatus.PENDING,
       attempts: 0,
+      percentage: 0
     };
 
     await this.jobManagerWrapper.updateTask<ValidationTaskParameters>(jobId, taskId, taskParameters);
