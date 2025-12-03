@@ -635,7 +635,7 @@ describe('IngestionManager', () => {
       expect(Array.isArray(calledParams.parameters.checksums)).toBe(true);
       expect(calledParams.parameters.checksums.length).toBeGreaterThan(0);
 
-      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING });
+      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING, reason: '' });
       expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
@@ -706,7 +706,7 @@ describe('IngestionManager', () => {
       expect(Array.isArray(calledParams.parameters.checksums)).toBe(true);
       expect(calledParams.parameters.checksums.length).toBeGreaterThan(0);
 
-      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING });
+      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING, reason: '' });
       expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
