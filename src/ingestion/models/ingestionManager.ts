@@ -1,6 +1,13 @@
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
-import { IFindJobsByCriteriaBody, IUpdateTaskBody, OperationStatus, type ICreateJobBody, type ITaskResponse } from '@map-colonies/mc-priority-queue';
+import {
+  IFindJobsByCriteriaBody,
+  IJobResponse,
+  IUpdateTaskBody,
+  OperationStatus,
+  type ICreateJobBody,
+  type ITaskResponse,
+} from '@map-colonies/mc-priority-queue';
 import {
   getMapServingLayerName,
   inputFilesSchema,
@@ -11,12 +18,10 @@ import {
   type IngestionUpdateJobParams,
   type InputFiles,
   type RasterProductTypes,
-  type ingestionBaseJobParamsSchema,
 } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { container, inject, injectable } from 'tsyringe';
-import z from 'zod';
 import { SERVICES } from '../../common/constants';
 import { IConfig, ISupportedIngestionSwapTypes, LogContext } from '../../common/interfaces';
 import { InfoManager } from '../../info/models/infoManager';
@@ -30,7 +35,13 @@ import { getShapefileFiles } from '../../utils/shapefile';
 import { ZodValidator } from '../../utils/validation/zodValidator';
 import { ValidateManager } from '../../validate/models/validateManager';
 import { ChecksumError, throwInvalidJobStatusError } from '../errors/ingestionErrors';
-import type { ChecksumValidationParameters, ResponseId, TaskValidationParametersPartial, ValidationTaskParametersPartial } from '../interfaces';
+import type {
+  ChecksumValidationParameters,
+  IngestionBaseJobParams,
+  ResponseId,
+  TaskValidationParametersPartial,
+  ValidationTaskParametersPartial,
+} from '../interfaces';
 import { validationTaskParametersSchemaPartial } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
@@ -191,7 +202,7 @@ export class IngestionManager {
 
     this.logger.info({ msg: 'starting retry layer process', logContext: logCtx, jobId });
 
-    const retryJob = await this.jobManagerWrapper.getJob<z.infer<typeof ingestionBaseJobParamsSchema>, unknown>(jobId);
+    const retryJob: IJobResponse<IngestionBaseJobParams, unknown> = await this.jobManagerWrapper.getJob<IngestionBaseJobParams, unknown>(jobId);
 
     if (!this.isJobRetryable(retryJob.status)) {
       throwInvalidJobStatusError(jobId, retryJob.status, this.logger, activeSpan);
@@ -206,7 +217,7 @@ export class IngestionManager {
       await this.softReset(jobId, logCtx);
     } else {
       const shouldConsiderChecksumChanges = validationTask.status === OperationStatus.COMPLETED;
-      await this.hardReset(jobId, retryJob, validationTask, shouldConsiderChecksumChanges, logCtx);
+      await this.hardReset(retryJob, validationTask, shouldConsiderChecksumChanges, logCtx);
     }
   }
 
@@ -237,13 +248,17 @@ export class IngestionManager {
 
   @withSpanAsyncV4
   private async hardReset(
-    jobId: string,
-    retryJob: { parameters: z.infer<typeof ingestionBaseJobParamsSchema> },
+    retryJob: IJobResponse<IngestionBaseJobParams, unknown>,
     validationTask: ITaskResponse<TaskValidationParametersPartial>,
     shouldConsiderChecksumChanges: boolean,
     logCtx: LogContext
   ): Promise<void> {
-    this.logger.info({ msg: 'validation has errors, checking for shapefile changes', logContext: logCtx, jobId, taskId: validationTask.id });
+    this.logger.info({
+      msg: 'validation has errors, checking for shapefile changes',
+      logContext: logCtx,
+      jodId: retryJob.id,
+      taskId: validationTask.id,
+    });
 
     const absoluteInputFilesPaths = await this.validateAndGetAbsoluteInputFiles(retryJob.parameters.inputFiles);
     const { metadataShapefilePath } = absoluteInputFilesPaths;
@@ -254,8 +269,8 @@ export class IngestionManager {
 
     if (shouldConsiderChecksumChanges) {
       if (!this.isChecksumChanged(validationTask.parameters.checksums, newChecksums)) {
-        const message = `job id: ${jobId} could not be retried, due to the detection that not a single metadata shapefile has been changed.`;
-        this.logger.error({ msg: message, logContext: logCtx, jobId, taskId: validationTask.id });
+        const message = `job id: ${retryJob.id} could not be retried, due to the detection that not a single metadata shapefile has been changed.`;
+        this.logger.error({ msg: message, logContext: logCtx, jobid: retryJob.id, taskId: validationTask.id });
         const error = new ConflictError(message);
         trace.getActiveSpan()?.setAttribute('exception.type', error.status);
         throw error;
@@ -274,7 +289,7 @@ export class IngestionManager {
     this.logger.info({
       msg: 'resetting job and task to PENDING status with updated validation task parameters',
       logContext: logCtx,
-      jobId,
+      jobId: retryJob.id,
       taskId: validationTask.id,
       updatedChecksumItems: updatedChecksums.length,
     });
@@ -282,8 +297,8 @@ export class IngestionManager {
     trace
       .getActiveSpan()
       ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.retryIngestion.success', { retryType: 'withChanges', jobId });
-    this.logger.info({ msg: 'hard reset retry request completed successfully', logContext: logCtx, jobId, taskId: validationTask.id });
+      .addEvent('ingestionManager.retryIngestion.success', { retryType: 'withChanges', jobId: retryJob.id });
+    this.logger.info({ msg: 'hard reset retry request completed successfully', logContext: logCtx, jobId: retryJob.id, taskId: validationTask.id });
     await this.manualResetJobAndTask(validationTask.jobId, validationTask.id, updatedParameters, logCtx);
   }
 
@@ -342,10 +357,11 @@ export class IngestionManager {
       status: OperationStatus.PENDING,
       attempts: 0,
       percentage: 0,
+      reason: '',
     };
 
     await this.jobManagerWrapper.updateTask<ValidationTaskParametersPartial>(jobId, taskId, taskParameters);
-    await this.jobManagerWrapper.updateJob(jobId, { status: OperationStatus.PENDING });
+    await this.jobManagerWrapper.updateJob(jobId, { status: OperationStatus.PENDING, reason: '' });
     this.logger.debug({ msg: 'validation task updated and job status reset to PENDING successfully', logContext: logCtx, jobId, taskId });
   }
 

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { ICreateJobResponse } from '@map-colonies/mc-priority-queue';
-import { ingestionValidationTaskParamsSchema } from '@map-colonies/raster-shared';
+import { ingestionBaseJobParamsSchema, ingestionValidationTaskParamsSchema } from '@map-colonies/raster-shared';
 import z from 'zod';
 import { checksumSchema, type Checksum } from '../utils/hash/interfaces';
 
@@ -52,6 +52,8 @@ export interface TileSize {
   width: number;
   height: number;
 }
+
+export type IngestionBaseJobParams = z.infer<typeof ingestionBaseJobParamsSchema>;
 
 export type BaseValidationTaskParams = z.infer<typeof ingestionValidationTaskParamsSchema>;
 
