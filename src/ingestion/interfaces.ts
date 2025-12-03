@@ -59,7 +59,7 @@ export interface ChecksumValidationParameters {
   checksums: Checksum[];
 }
 
-export interface ValidationTaskParameters extends BaseValidationTaskParams, ChecksumValidationParameters { }
+export interface ValidationTaskParameters extends BaseValidationTaskParams, ChecksumValidationParameters {}
 
 export const validationTaskParametersSchema = ingestionValidationTaskParamsSchema.extend({
   checksums: z.array(checksumSchema),

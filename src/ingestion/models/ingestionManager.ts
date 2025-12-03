@@ -340,7 +340,7 @@ export class IngestionManager {
       parameters,
       status: OperationStatus.PENDING,
       attempts: 0,
-      percentage: 0
+      percentage: 0,
     };
 
     await this.jobManagerWrapper.updateTask<ValidationTaskParameters>(jobId, taskId, taskParameters);
