@@ -633,8 +633,12 @@ describe('IngestionManager', () => {
       expect(taskCalledTaskId).toBe(taskId);
       expect(taskCalledParams).toEqual(
         expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          parameters: { isValid: false, checksums: expect.any(Array), report: undefined },
           status: OperationStatus.PENDING,
           attempts: 0,
+          percentage: 0,
+          reason: '',
         })
       );
       expect(taskCalledParams.parameters.isValid).toBe(false);
@@ -704,8 +708,12 @@ describe('IngestionManager', () => {
       expect(taskCalledTaskId).toBe(taskId);
       expect(taskCalledParams).toEqual(
         expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          parameters: { isValid: false, checksums: expect.any(Array), report: undefined },
           status: OperationStatus.PENDING,
           attempts: 0,
+          percentage: 0,
+          reason: '',
         })
       );
       expect(taskCalledParams.parameters.isValid).toBe(false);
