@@ -257,10 +257,7 @@ export class IngestionManager {
   private async softReset(jobId: string, logCtx: LogContext): Promise<void> {
     this.logger.info({ msg: 'performing soft reset: validation passed, resetting job via jobManager API', logContext: logCtx, jobId });
     await this.jobManagerWrapper.resetJob(jobId);
-    trace
-      .getActiveSpan()
-      ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.softReset.success', { retryType: 'softReset', jobId });
+    trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.softReset.success', { retryType: 'softReset', jobId });
     this.logger.info({ msg: 'soft reset completed successfully', logContext: logCtx, jobId });
   }
 
