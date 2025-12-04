@@ -294,11 +294,11 @@ export class IngestionManager {
       updatedChecksums = this.buildUpdatedChecksums(validationTask.parameters.checksums, newChecksums, logCtx);
     }
 
-    const linksToSet: FileMetadata | undefined = validationTask.parameters.link ?? undefined;
+    const reportToSet: FileMetadata | undefined = validationTask.parameters.report ?? undefined;
 
     const updatedParameters: ValidationTaskParametersPartial = {
       isValid: validationTask.parameters.isValid,
-      link: linksToSet,
+      report: reportToSet,
       checksums: updatedChecksums,
     };
 
