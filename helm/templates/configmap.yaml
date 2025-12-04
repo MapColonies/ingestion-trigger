@@ -22,6 +22,7 @@ data:
   MAP_PROXY_API_SERVICE_URL: {{ $serviceUrls.mapproxyApi | quote }}
   CATALOG_SERVICE_URL: {{ $serviceUrls.catalogManager | quote }}
   JOB_TRACKER_SERVICE_URL: {{ $serviceUrls.jobTracker | quote }}
+  POLYGON_PARTS_MANAGER_URL: {{ $serviceUrls.polygonPartsManager | quote }}
   STORAGE_EXPLORER_DISPLAY_NAME_DIR: {{ .Values.env.storageExplorer.displayNameDir | quote }}
   STORAGE_EXPLORER_LAYER_SOURCE_DIR: {{ .Values.env.storageExplorer.layerSourceDir | quote }}
   STORAGE_EXPLORER_WATCH_DIRECTORY: {{ .Values.env.storageExplorer.watchDirectory | quote }}
