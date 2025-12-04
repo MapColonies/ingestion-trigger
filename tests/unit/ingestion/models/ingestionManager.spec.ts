@@ -19,7 +19,13 @@ import { Checksum } from '../../../../src/utils/hash/checksum';
 import { ZodValidator } from '../../../../src/utils/validation/zodValidator';
 import { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
-import { generateCatalogLayerResponse, generateChecksum, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
+import {
+  generateCatalogLayerResponse,
+  generateChecksum,
+  generateNewLayerRequest,
+  generateUpdateLayerRequest,
+  rasterLayerMetadataGenerators,
+} from '../../../mocks/mockFactory';
 import { ChecksumProcessor } from '../../../../src/utils/hash/interfaces';
 import { CHECKSUM_PROCESSOR } from '../../../../src/utils/hash/constants';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
@@ -498,7 +504,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.FAILED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -536,7 +542,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.SUSPENDED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -577,7 +583,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.SUSPENDED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -649,7 +655,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.FAILED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -719,7 +725,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.FAILED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -758,7 +764,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.FAILED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -791,7 +797,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.PENDING,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -813,7 +819,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.IN_PROGRESS,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -834,7 +840,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.FAILED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -857,7 +863,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.FAILED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],

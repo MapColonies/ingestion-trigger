@@ -12,6 +12,7 @@ import {
   getMapServingLayerName,
   inputFilesSchema,
   rasterProductTypeSchema,
+  resourceIdSchema,
   type FileMetadata,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
@@ -213,9 +214,9 @@ export class IngestionManager {
     }
 
     const validationTask: ITaskResponse<TaskValidationParametersPartial> = await this.getValidationTask(jobId, logCtx);
-    const parsedProductType = rasterProductTypeSchema.parse(retryJob.productType);
+    const { resourceId, productType } = this.parseAndValidateJobIdentifiers(retryJob.resourceId, retryJob.productType);
     await this.zodValidator.validate(validationTaskParametersSchemaPartial, validationTask.parameters);
-    await this.polygonPartsManagerClient.deleteValidationEntity(retryJob.resourceId, parsedProductType);
+    await this.polygonPartsManagerClient.deleteValidationEntity(resourceId, productType);
 
     if (validationTask.parameters.isValid === true) {
       await this.softReset(jobId, logCtx);
@@ -223,6 +224,16 @@ export class IngestionManager {
       const shouldConsiderChecksumChanges = validationTask.status === OperationStatus.COMPLETED;
       await this.hardReset(retryJob, validationTask, shouldConsiderChecksumChanges, logCtx);
     }
+  }
+
+  @withSpanV4
+  private parseAndValidateJobIdentifiers(
+    resourceId: string | undefined,
+    productType: string | undefined
+  ): { resourceId: string; productType: RasterProductTypes } {
+    const parsedResourceId = resourceIdSchema.parse(resourceId);
+    const parsedProductType = rasterProductTypeSchema.parse(productType);
+    return { resourceId: parsedResourceId, productType: parsedProductType };
   }
 
   @withSpanAsyncV4
