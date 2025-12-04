@@ -19,7 +19,13 @@ import { Checksum } from '../../../../src/utils/hash/checksum';
 import { ZodValidator } from '../../../../src/utils/validation/zodValidator';
 import { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
-import { generateCatalogLayerResponse, generateChecksum, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
+import {
+  generateCatalogLayerResponse,
+  generateChecksum,
+  generateNewLayerRequest,
+  generateUpdateLayerRequest,
+  rasterLayerMetadataGenerators,
+} from '../../../mocks/mockFactory';
 import { ChecksumProcessor } from '../../../../src/utils/hash/interfaces';
 import { CHECKSUM_PROCESSOR } from '../../../../src/utils/hash/constants';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
@@ -498,7 +504,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.FAILED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -520,22 +526,14 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
-      updateTaskSpy.mockResolvedValue(undefined);
-      updateJobSpy.mockResolvedValue(undefined);
+      resetJobSpy.mockResolvedValue(undefined);
       zodValidator.validate.mockResolvedValue(undefined);
       mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-      await ingestionManager.retryIngestion(jobId);
+      const action = ingestionManager.retryIngestion(jobId);
 
-      expect(updateTaskSpy).toHaveBeenCalledWith(
-        jobId,
-        taskId,
-        expect.objectContaining({
-          status: OperationStatus.PENDING,
-          attempts: 0,
-        })
-      );
-      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING });
+      await expect(action).resolves.not.toThrow();
+      expect(resetJobSpy).toHaveBeenCalledWith(jobId);
     });
 
     it('should reset job when job status is SUSPENDED and validation passed', async () => {
@@ -545,7 +543,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.SUSPENDED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -567,22 +565,14 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
-      updateTaskSpy.mockResolvedValue(undefined);
-      updateJobSpy.mockResolvedValue(undefined);
+      resetJobSpy.mockResolvedValue(undefined);
       zodValidator.validate.mockResolvedValue(undefined);
       mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-      await ingestionManager.retryIngestion(jobId);
+      const action = ingestionManager.retryIngestion(jobId);
 
-      expect(updateTaskSpy).toHaveBeenCalledWith(
-        jobId,
-        taskId,
-        expect.objectContaining({
-          status: OperationStatus.PENDING,
-          attempts: 0,
-        })
-      );
-      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING });
+      await expect(action).resolves.not.toThrow();
+      expect(resetJobSpy).toHaveBeenCalledWith(jobId);
     });
 
     it('should update task with new checksums when shapefile has changed and job is SUSPENDED', async () => {
@@ -595,7 +585,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.SUSPENDED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -617,43 +607,46 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
-      // Mock calculateChecksum to return unique filenames based on the input path
-      calcualteChecksumSpy.mockImplementation(async (filePath: string) =>
-        Promise.resolve({
-          fileName: filePath,
-          checksum: newChecksum,
-        })
-      );
+      calcualteChecksumSpy.mockResolvedValue({
+        fileName: 'metadata.shp',
+        checksum: newChecksum,
+      });
       updateTaskSpy.mockResolvedValue(undefined);
       updateJobSpy.mockResolvedValue(undefined);
       zodValidator.validate.mockResolvedValue(undefined);
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
       mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-      await ingestionManager.retryIngestion(jobId);
+      const action = ingestionManager.retryIngestion(jobId);
 
+      await expect(action).resolves.not.toThrow();
       expect(updateTaskSpy).toHaveBeenCalledTimes(1);
 
-      const callArgs = updateTaskSpy.mock.calls[0] as [
+      const taskCallArgs = updateTaskSpy.mock.calls[0] as [
         string,
         string,
         { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } }
       ];
-      const [calledJobId, calledTaskId, calledParams] = callArgs;
+      const [taskCalledJobId, taskCalledTaskId, taskCalledParams] = taskCallArgs;
 
-      expect(calledJobId).toBe(jobId);
-      expect(calledTaskId).toBe(taskId);
-      expect(calledParams).toEqual(
+      expect(taskCalledJobId).toBe(jobId);
+      expect(taskCalledTaskId).toBe(taskId);
+      expect(taskCalledParams).toEqual(
         expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          parameters: { isValid: false, checksums: expect.any(Array), report: undefined },
           status: OperationStatus.PENDING,
           attempts: 0,
+          percentage: 0,
+          reason: '',
         })
       );
-      expect(calledParams.parameters.isValid).toBe(false);
-      expect(Array.isArray(calledParams.parameters.checksums)).toBe(true);
-      expect(calledParams.parameters.checksums.length).toBeGreaterThan(0);
+      expect(taskCalledParams.parameters.isValid).toBe(false);
+      expect(Array.isArray(taskCalledParams.parameters.checksums)).toBe(true);
+      // Old checksum (1) + new changed checksums (5 shapefile components: .shp, .shx, .dbf, .prj, .cpg)
+      expect(taskCalledParams.parameters.checksums).toHaveLength(6);
 
-      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING });
+      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING, reason: '' });
       expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
@@ -667,7 +660,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.FAILED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -689,42 +682,46 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
-      calcualteChecksumSpy.mockImplementation(async (filePath: string) =>
-        Promise.resolve({
-          fileName: filePath,
-          checksum: newChecksum,
-        })
-      );
+      calcualteChecksumSpy.mockResolvedValue({
+        fileName: 'metadata.shp',
+        checksum: newChecksum,
+      });
       updateTaskSpy.mockResolvedValue(undefined);
       updateJobSpy.mockResolvedValue(undefined);
       zodValidator.validate.mockResolvedValue(undefined);
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
       mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-      await ingestionManager.retryIngestion(jobId);
+      const action = ingestionManager.retryIngestion(jobId);
 
+      await expect(action).resolves.not.toThrow();
       expect(updateTaskSpy).toHaveBeenCalledTimes(1);
 
-      const callArgs = updateTaskSpy.mock.calls[0] as [
+      const taskCallArgs = updateTaskSpy.mock.calls[0] as [
         string,
         string,
         { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } }
       ];
-      const [calledJobId, calledTaskId, calledParams] = callArgs;
+      const [taskCalledJobId, taskCalledTaskId, taskCalledParams] = taskCallArgs;
 
-      expect(calledJobId).toBe(jobId);
-      expect(calledTaskId).toBe(taskId);
-      expect(calledParams).toEqual(
+      expect(taskCalledJobId).toBe(jobId);
+      expect(taskCalledTaskId).toBe(taskId);
+      expect(taskCalledParams).toEqual(
         expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          parameters: { isValid: false, checksums: expect.any(Array), report: undefined },
           status: OperationStatus.PENDING,
           attempts: 0,
+          percentage: 0,
+          reason: '',
         })
       );
-      expect(calledParams.parameters.isValid).toBe(false);
-      expect(Array.isArray(calledParams.parameters.checksums)).toBe(true);
-      expect(calledParams.parameters.checksums.length).toBeGreaterThan(0);
+      expect(taskCalledParams.parameters.isValid).toBe(false);
+      expect(Array.isArray(taskCalledParams.parameters.checksums)).toBe(true);
+      // Old checksum (1) kept as-is since status is FAILED (no checksum consideration)
+      expect(taskCalledParams.parameters.checksums).toHaveLength(1);
 
-      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING });
+      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING, reason: '' });
       expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
@@ -737,7 +734,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.FAILED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -750,7 +747,7 @@ describe('IngestionManager', () => {
         id: taskId,
         jobId,
         type: 'validation',
-        status: OperationStatus.FAILED,
+        status: OperationStatus.COMPLETED,
         parameters: {
           isValid: false,
           checksums: [existingChecksum],
@@ -776,7 +773,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.FAILED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -801,6 +798,9 @@ describe('IngestionManager', () => {
       zodValidator.validate.mockRejectedValue(new BadRequestError('Validation failed'));
 
       await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
+
+      expect(updateTaskSpy).not.toHaveBeenCalled();
+      expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestError when job status is PENDING', async () => {
@@ -809,7 +809,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.PENDING,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -823,6 +823,8 @@ describe('IngestionManager', () => {
 
       await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
       expect(getTasksForJobSpy).not.toHaveBeenCalled();
+      expect(updateTaskSpy).not.toHaveBeenCalled();
+      expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestError when job status is IN_PROGRESS', async () => {
@@ -831,7 +833,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.IN_PROGRESS,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -844,6 +846,8 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
 
       await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
+      expect(updateTaskSpy).not.toHaveBeenCalled();
+      expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundError when validation task is not found', async () => {
@@ -852,7 +856,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.FAILED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -866,6 +870,8 @@ describe('IngestionManager', () => {
       getTasksForJobSpy.mockResolvedValue([]);
 
       await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(NotFoundError);
+      expect(updateTaskSpy).not.toHaveBeenCalled();
+      expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
     it('should find validation task among multiple tasks', async () => {
@@ -875,7 +881,7 @@ describe('IngestionManager', () => {
         id: jobId,
         status: OperationStatus.FAILED,
         productType: 'Orthophoto',
-        resourceId: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -906,22 +912,14 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue(mockTasks);
-      updateTaskSpy.mockResolvedValue(undefined);
-      updateJobSpy.mockResolvedValue(undefined);
+      resetJobSpy.mockResolvedValue(undefined);
       zodValidator.validate.mockResolvedValue(undefined);
       mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-      await ingestionManager.retryIngestion(jobId);
+      const action = ingestionManager.retryIngestion(jobId);
 
-      expect(updateTaskSpy).toHaveBeenCalledWith(
-        jobId,
-        taskId,
-        expect.objectContaining({
-          status: OperationStatus.PENDING,
-          attempts: 0,
-        })
-      );
-      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING });
+      await expect(action).resolves.not.toThrow();
+      expect(resetJobSpy).toHaveBeenCalledWith(jobId);
     });
   });
 });
