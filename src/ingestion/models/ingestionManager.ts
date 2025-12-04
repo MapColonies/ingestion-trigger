@@ -182,7 +182,7 @@ export class IngestionManager {
 
     await this.updateLayerValidations(rasterLayerMetadata, updateLayerLocal);
     this.logger.info({ msg: `finished validation of update layer, all checks passed`, logContext: logCtx });
-    activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
+    activeSpan?.addEvent('ingestionManager.updateLayerValidations.success', { validationSuccess: true });
 
     const createJobRequest = await this.updateLayerJobPayload(rasterLayerMetadata, updateLayerLocal);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
@@ -260,7 +260,7 @@ export class IngestionManager {
     trace
       .getActiveSpan()
       ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.retryIngestion.success', { retryType: 'softReset', jobId });
+      .addEvent('ingestionManager.softReset.success', { retryType: 'softReset', jobId });
     this.logger.info({ msg: 'soft reset completed successfully', logContext: logCtx, jobId });
   }
 
@@ -297,7 +297,7 @@ export class IngestionManager {
       updatedChecksums = this.buildUpdatedChecksums(validationTask.parameters.checksums, newChecksums, logCtx);
     }
 
-    const linksToSet: FileMetadata | undefined = validationTask.parameters.link ? validationTask.parameters.link : undefined;
+    const linksToSet: FileMetadata | undefined = validationTask.parameters.link ?? undefined;
 
     const updatedParameters: ValidationTaskParametersPartial = {
       isValid: validationTask.parameters.isValid,
@@ -319,7 +319,7 @@ export class IngestionManager {
     trace
       .getActiveSpan()
       ?.setStatus({ code: SpanStatusCode.OK })
-      .addEvent('ingestionManager.retryIngestion.success', { retryType: 'hardReset', jobId: retryJob.id });
+      .addEvent('ingestionManager.hardReset.success', { retryType: 'hardReset', jobId: retryJob.id });
     this.logger.info({ msg: 'hard reset completed successfully', logContext: logCtx, jobId: retryJob.id, taskId: validationTask.id });
   }
 
