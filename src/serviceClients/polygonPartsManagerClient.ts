@@ -28,9 +28,9 @@ export class PolygonPartsManagerClient extends HttpClient {
   public async deleteValidationEntity(productId: string, productType: RasterProductTypes): Promise<void> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('polygonPartsManagerClient.deleteValidationEntity');
-    const saveMetadataUrl = `/polygonParts/validate`;
+    const validatePolygonPartsPath = `/polygonParts/validate`;
     try {
-      await this.delete(saveMetadataUrl, { productType, productId });
+      await this.delete(validatePolygonPartsPath, { productType, productId });
     } catch (err) {
       if (err instanceof NotFoundError) {
         return;

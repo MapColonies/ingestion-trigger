@@ -530,8 +530,9 @@ describe('IngestionManager', () => {
       zodValidator.validate.mockResolvedValue(undefined);
       mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-      await ingestionManager.retryIngestion(jobId);
+      const action = ingestionManager.retryIngestion(jobId);
 
+      await expect(action).resolves.not.toThrow();
       expect(resetJobSpy).toHaveBeenCalledWith(jobId);
     });
 
@@ -568,8 +569,9 @@ describe('IngestionManager', () => {
       zodValidator.validate.mockResolvedValue(undefined);
       mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-      await ingestionManager.retryIngestion(jobId);
+      const action = ingestionManager.retryIngestion(jobId);
 
+      await expect(action).resolves.not.toThrow();
       expect(resetJobSpy).toHaveBeenCalledWith(jobId);
     });
 
@@ -605,41 +607,40 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
-      // Mock calculateChecksum to return unique filenames based on the input path
-      calcualteChecksumSpy.mockImplementation(async (filePath: string) =>
-        Promise.resolve({
-          fileName: filePath,
-          checksum: newChecksum,
-        })
-      );
+      calcualteChecksumSpy.mockResolvedValue({
+        fileName: 'metadata.shp',
+        checksum: newChecksum,
+      });
       updateTaskSpy.mockResolvedValue(undefined);
       updateJobSpy.mockResolvedValue(undefined);
       zodValidator.validate.mockResolvedValue(undefined);
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
       mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-      await ingestionManager.retryIngestion(jobId);
+      const action = ingestionManager.retryIngestion(jobId);
 
+      await expect(action).resolves.not.toThrow();
       expect(updateTaskSpy).toHaveBeenCalledTimes(1);
 
-      const callArgs = updateTaskSpy.mock.calls[0] as [
+      const taskCallArgs = updateTaskSpy.mock.calls[0] as [
         string,
         string,
         { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } }
       ];
-      const [calledJobId, calledTaskId, calledParams] = callArgs;
+      const [taskCalledJobId, taskCalledTaskId, taskCalledParams] = taskCallArgs;
 
-      expect(calledJobId).toBe(jobId);
-      expect(calledTaskId).toBe(taskId);
-      expect(calledParams).toEqual(
+      expect(taskCalledJobId).toBe(jobId);
+      expect(taskCalledTaskId).toBe(taskId);
+      expect(taskCalledParams).toEqual(
         expect.objectContaining({
           status: OperationStatus.PENDING,
           attempts: 0,
         })
       );
-      expect(calledParams.parameters.isValid).toBe(false);
-      expect(Array.isArray(calledParams.parameters.checksums)).toBe(true);
-      expect(calledParams.parameters.checksums.length).toBeGreaterThan(0);
+      expect(taskCalledParams.parameters.isValid).toBe(false);
+      expect(Array.isArray(taskCalledParams.parameters.checksums)).toBe(true);
+      // Old checksum (1) + new changed checksums (5 shapefile components: .shp, .shx, .dbf, .prj, .cpg)
+      expect(taskCalledParams.parameters.checksums).toHaveLength(6);
 
       expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING, reason: '' });
       expect(resetJobSpy).not.toHaveBeenCalled();
@@ -677,40 +678,40 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
-      calcualteChecksumSpy.mockImplementation(async (filePath: string) =>
-        Promise.resolve({
-          fileName: filePath,
-          checksum: newChecksum,
-        })
-      );
+      calcualteChecksumSpy.mockResolvedValue({
+        fileName: 'metadata.shp',
+        checksum: newChecksum,
+      });
       updateTaskSpy.mockResolvedValue(undefined);
       updateJobSpy.mockResolvedValue(undefined);
       zodValidator.validate.mockResolvedValue(undefined);
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
       mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-      await ingestionManager.retryIngestion(jobId);
+      const action = ingestionManager.retryIngestion(jobId);
 
+      await expect(action).resolves.not.toThrow();
       expect(updateTaskSpy).toHaveBeenCalledTimes(1);
 
-      const callArgs = updateTaskSpy.mock.calls[0] as [
+      const taskCallArgs = updateTaskSpy.mock.calls[0] as [
         string,
         string,
         { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } }
       ];
-      const [calledJobId, calledTaskId, calledParams] = callArgs;
+      const [taskCalledJobId, taskCalledTaskId, taskCalledParams] = taskCallArgs;
 
-      expect(calledJobId).toBe(jobId);
-      expect(calledTaskId).toBe(taskId);
-      expect(calledParams).toEqual(
+      expect(taskCalledJobId).toBe(jobId);
+      expect(taskCalledTaskId).toBe(taskId);
+      expect(taskCalledParams).toEqual(
         expect.objectContaining({
           status: OperationStatus.PENDING,
           attempts: 0,
         })
       );
-      expect(calledParams.parameters.isValid).toBe(false);
-      expect(Array.isArray(calledParams.parameters.checksums)).toBe(true);
-      expect(calledParams.parameters.checksums.length).toBeGreaterThan(0);
+      expect(taskCalledParams.parameters.isValid).toBe(false);
+      expect(Array.isArray(taskCalledParams.parameters.checksums)).toBe(true);
+      // Old checksum (1) kept as-is since status is FAILED (no checksum consideration)
+      expect(taskCalledParams.parameters.checksums).toHaveLength(1);
 
       expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING, reason: '' });
       expect(resetJobSpy).not.toHaveBeenCalled();
@@ -789,6 +790,9 @@ describe('IngestionManager', () => {
       zodValidator.validate.mockRejectedValue(new BadRequestError('Validation failed'));
 
       await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
+
+      expect(updateTaskSpy).not.toHaveBeenCalled();
+      expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestError when job status is PENDING', async () => {
@@ -811,6 +815,8 @@ describe('IngestionManager', () => {
 
       await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
       expect(getTasksForJobSpy).not.toHaveBeenCalled();
+      expect(updateTaskSpy).not.toHaveBeenCalled();
+      expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestError when job status is IN_PROGRESS', async () => {
@@ -832,6 +838,8 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
 
       await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
+      expect(updateTaskSpy).not.toHaveBeenCalled();
+      expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundError when validation task is not found', async () => {
@@ -854,6 +862,8 @@ describe('IngestionManager', () => {
       getTasksForJobSpy.mockResolvedValue([]);
 
       await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(NotFoundError);
+      expect(updateTaskSpy).not.toHaveBeenCalled();
+      expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
     it('should find validation task among multiple tasks', async () => {
@@ -898,8 +908,9 @@ describe('IngestionManager', () => {
       zodValidator.validate.mockResolvedValue(undefined);
       mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-      await ingestionManager.retryIngestion(jobId);
+      const action = ingestionManager.retryIngestion(jobId);
 
+      await expect(action).resolves.not.toThrow();
       expect(resetJobSpy).toHaveBeenCalledWith(jobId);
     });
   });
