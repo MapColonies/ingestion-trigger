@@ -21,7 +21,6 @@ import type { ChecksumProcessor } from '../../../../src/utils/hash/interfaces';
 import type { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { generateCatalogLayerResponse, generateChecksum, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
-import { uuid } from 'zod/v4';
 
 describe('IngestionManager', () => {
   let ingestionManager: IngestionManager;
