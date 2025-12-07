@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import { IFindJobsByCriteriaBody, OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
@@ -373,6 +374,7 @@ export class IngestionManager {
     const createJobRequest = {
       resourceId: newLayerRelative.metadata.productId,
       version: initialProductVersion,
+      internalId: randomUUID(),
       type: this.ingestionNewJobType,
       status: OperationStatus.PENDING,
       parameters: ingestionNewJobParams,
