@@ -334,6 +334,7 @@ describe('Checksum', () => {
                 expect.objectContaining({
                     msg: 'error processing checksum for a chunk',
                     err: chunkError,
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                     logContext: expect.objectContaining({
                         fileName: expect.any(String) as string,
                         class: expect.any(String) as string,
@@ -368,6 +369,7 @@ describe('Checksum', () => {
                 expect.objectContaining({
                     msg: 'error processing checksum result',
                     err: digestError,
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                     logContext: expect.objectContaining({
                         fileName: expect.any(String) as string,
                         class: expect.any(String) as string,
