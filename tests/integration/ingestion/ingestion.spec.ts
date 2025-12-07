@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import { join, relative } from 'node:path';
 import { faker } from '@faker-js/faker';
 import { OperationStatus, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { CORE_VALIDATIONS, getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
@@ -1556,6 +1555,13 @@ describe('Ingestion', () => {
   });
 
   describe('PUT /ingestion/:jobId/retry', () => {
+    // Format input files paths for storage (as they would appear in stored job parameters)
+    const storedInputFiles = {
+      gpkgFilesPath: [`gpkg/${validInputFiles.inputFiles.gpkgFilesPath[0]}`],
+      metadataShapefilePath: `metadata/${validInputFiles.inputFiles.metadataShapefilePath}/ShapeMetadata.shp`,
+      productShapefilePath: `product/${validInputFiles.inputFiles.productShapefilePath}/Product.shp`,
+    };
+
     describe('Happy Path', () => {
       it('should return 200 status code when validation is valid and job is FAILED - reset job', async () => {
         const jobId = faker.string.uuid();
@@ -1568,7 +1574,7 @@ describe('Ingestion', () => {
           productType,
           status: OperationStatus.FAILED,
           parameters: {
-            inputFiles: validInputFiles.inputFiles,
+            inputFiles: storedInputFiles,
           },
         };
         const validationTask = {
@@ -1582,20 +1588,10 @@ describe('Ingestion', () => {
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
-        nock(polygonPartsManagerURL).delete('/polygonParts/validate', { productType, productId }).reply(httpStatusCodes.NO_CONTENT);
-        nock(jobManagerURL)
-          .patch(
-            `/jobs/${jobId}/tasks/${taskId}`,
-            matches({
-              status: OperationStatus.PENDING,
-              attempts: 0,
-              parameters: validationTask.parameters,
-            })
-          )
-          .reply(httpStatusCodes.OK);
-        nock(jobManagerURL).patch(`/jobs/${jobId}`, { status: OperationStatus.PENDING }).reply(httpStatusCodes.OK);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
+        nock(jobManagerURL).post(`/jobs/${jobId}/reset`).reply(httpStatusCodes.OK);
 
         const response = await requestSender.retryIngestion(jobId);
 
@@ -1614,7 +1610,7 @@ describe('Ingestion', () => {
           productType,
           status: OperationStatus.SUSPENDED,
           parameters: {
-            inputFiles: validInputFiles.inputFiles,
+            inputFiles: storedInputFiles,
           },
         };
         const validationTask = {
@@ -1628,20 +1624,10 @@ describe('Ingestion', () => {
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
-        nock(polygonPartsManagerURL).delete('/polygonParts/validate', { productType, productId }).reply(httpStatusCodes.NO_CONTENT);
-        nock(jobManagerURL)
-          .patch(
-            `/jobs/${jobId}/tasks/${taskId}`,
-            matches({
-              status: OperationStatus.PENDING,
-              attempts: 0,
-              parameters: validationTask.parameters,
-            })
-          )
-          .reply(httpStatusCodes.OK);
-        nock(jobManagerURL).patch(`/jobs/${jobId}`, { status: OperationStatus.PENDING }).reply(httpStatusCodes.OK);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
+        nock(jobManagerURL).post(`/jobs/${jobId}/reset`).reply(httpStatusCodes.OK);
 
         const response = await requestSender.retryIngestion(jobId);
 
@@ -1654,18 +1640,13 @@ describe('Ingestion', () => {
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
         const retryJob = {
           id: jobId,
           resourceId: productId,
           productType,
           status: OperationStatus.FAILED,
           parameters: {
-            inputFiles: {
-              gpkgFilesPath: [relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.gpkgFilesPath[0]))],
-              metadataShapefilePath: relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.metadataShapefilePath)),
-              productShapefilePath: relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.productShapefilePath)),
-            },
+            inputFiles: storedInputFiles,
           },
         };
         // Simulate old state with fewer checksums (3 items) - new files were added
@@ -1680,20 +1661,26 @@ describe('Ingestion', () => {
             checksums: oldChecksums,
           },
         };
+        const requestBodyForTaskRessting = {
+          parameters: { isValid: false, checksums: validInputFiles.checksums },
+          status: OperationStatus.PENDING,
+          attempts: 0,
+          percentage: 0,
+          reason: '',
+        };
+        const requestBodyForJobRessting = { status: OperationStatus.PENDING, reason: '' };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
-        nock(polygonPartsManagerURL).delete('/polygonParts/validate', { productType, productId }).reply(httpStatusCodes.NO_CONTENT);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
+        nock(jobManagerURL).patch(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.OK);
+        nock(jobManagerURL).patch(`/jobs/${jobId}`).reply(httpStatusCodes.OK);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
         nock(jobManagerURL)
-          .patch(
-            `/jobs/${jobId}/tasks/${taskId}`,
-            matches((body: { parameters?: { checksums?: unknown[] } }) => {
-              // Verify checksums array length increased by 2 (from 3 to 5)
-              return body.parameters?.checksums?.length === validInputFiles.checksums.length;
-            })
-          )
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+          .put(`/jobs/${jobId}/tasks/${taskId}`, requestBodyForTaskRessting as any)
           .reply(httpStatusCodes.OK);
-        nock(jobManagerURL).patch(`/jobs/${jobId}`, { status: OperationStatus.PENDING }).reply(httpStatusCodes.OK);
+        nock(jobManagerURL).put(`/jobs/${jobId}`, requestBodyForJobRessting).reply(httpStatusCodes.OK);
 
         const response = await requestSender.retryIngestion(jobId);
 
@@ -1713,11 +1700,11 @@ describe('Ingestion', () => {
           productType,
           status: OperationStatus.PENDING,
           parameters: {
-            inputFiles: validInputFiles.inputFiles,
+            inputFiles: storedInputFiles,
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
 
         const response = await requestSender.retryIngestion(jobId);
 
@@ -1735,11 +1722,11 @@ describe('Ingestion', () => {
           productType,
           status: OperationStatus.IN_PROGRESS,
           parameters: {
-            inputFiles: validInputFiles.inputFiles,
+            inputFiles: storedInputFiles,
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
 
         const response = await requestSender.retryIngestion(jobId);
 
@@ -1757,11 +1744,11 @@ describe('Ingestion', () => {
           productType,
           status: OperationStatus.COMPLETED,
           parameters: {
-            inputFiles: validInputFiles.inputFiles,
+            inputFiles: storedInputFiles,
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
 
         const response = await requestSender.retryIngestion(jobId);
 
@@ -1779,11 +1766,11 @@ describe('Ingestion', () => {
           productType,
           status: OperationStatus.EXPIRED,
           parameters: {
-            inputFiles: validInputFiles.inputFiles,
+            inputFiles: storedInputFiles,
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
 
         const response = await requestSender.retryIngestion(jobId);
 
@@ -1801,11 +1788,11 @@ describe('Ingestion', () => {
           productType,
           status: OperationStatus.ABORTED,
           parameters: {
-            inputFiles: validInputFiles.inputFiles,
+            inputFiles: storedInputFiles,
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
 
         const response = await requestSender.retryIngestion(jobId);
 
@@ -1825,7 +1812,7 @@ describe('Ingestion', () => {
           productType,
           status: OperationStatus.FAILED,
           parameters: {
-            inputFiles: validInputFiles.inputFiles,
+            inputFiles: storedInputFiles,
           },
         };
         const otherTask = {
@@ -1836,7 +1823,7 @@ describe('Ingestion', () => {
           parameters: {},
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [otherTask]);
 
         const response = await requestSender.retryIngestion(jobId);
@@ -1855,11 +1842,11 @@ describe('Ingestion', () => {
           productType,
           status: OperationStatus.FAILED,
           parameters: {
-            inputFiles: validInputFiles.inputFiles,
+            inputFiles: storedInputFiles,
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, []);
 
         const response = await requestSender.retryIngestion(jobId);
@@ -1873,18 +1860,13 @@ describe('Ingestion', () => {
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
         const retryJob = {
           id: jobId,
           resourceId: productId,
           productType,
           status: OperationStatus.FAILED,
           parameters: {
-            inputFiles: {
-              gpkgFilesPath: [relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.gpkgFilesPath[0]))],
-              metadataShapefilePath: relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.metadataShapefilePath)),
-              productShapefilePath: relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.productShapefilePath)),
-            },
+            inputFiles: storedInputFiles,
           },
         };
         const validationTask = {
@@ -1898,8 +1880,9 @@ describe('Ingestion', () => {
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
 
         const response = await requestSender.retryIngestion(jobId);
 
@@ -1907,7 +1890,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.CONFLICT);
       });
 
-      it('should return 422 UNPROCESSABLE_ENTITY status code when validation task has invalid parameters schema', async () => {
+      it('should return 400 BAD_REQUEST status code when validation task has invalid parameters schema', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
@@ -1918,7 +1901,7 @@ describe('Ingestion', () => {
           productType,
           status: OperationStatus.FAILED,
           parameters: {
-            inputFiles: validInputFiles.inputFiles,
+            inputFiles: storedInputFiles,
           },
         };
         const validationTask = {
@@ -1932,16 +1915,16 @@ describe('Ingestion', () => {
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
 
         const response = await requestSender.retryIngestion(jobId);
 
         expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
-      it('should return 422 UNPROCESSABLE_ENTITY status code when validation is invalid and input files have invalid schema', async () => {
+      it('should return 400 BAD_REQUEST status code when validation is invalid and input files have invalid schema', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
@@ -1969,19 +1952,20 @@ describe('Ingestion', () => {
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
 
         const response = await requestSender.retryIngestion(jobId);
 
         expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
       });
 
       it('should return 500 INTERNAL_SERVER_ERROR status code when job manager fails to get job', async () => {
         const jobId = faker.string.uuid();
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
 
         const response = await requestSender.retryIngestion(jobId);
 
@@ -1999,11 +1983,11 @@ describe('Ingestion', () => {
           productType,
           status: OperationStatus.FAILED,
           parameters: {
-            inputFiles: validInputFiles.inputFiles,
+            inputFiles: storedInputFiles,
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
 
         const response = await requestSender.retryIngestion(jobId);
@@ -2023,22 +2007,24 @@ describe('Ingestion', () => {
           productType,
           status: OperationStatus.FAILED,
           parameters: {
-            inputFiles: validInputFiles.inputFiles,
+            inputFiles: storedInputFiles,
           },
         };
+        const oldChecksums = validInputFiles.checksums.slice(0, 3);
         const validationTask = {
           id: taskId,
           jobId,
           type: configMock.get<string>('jobManager.validationTaskType'),
           status: OperationStatus.COMPLETED,
           parameters: {
-            isValid: true,
-            checksums: validInputFiles.checksums,
+            isValid: false,
+            checksums: oldChecksums,
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
         nock(jobManagerURL).patch(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
 
         const response = await requestSender.retryIngestion(jobId);
@@ -2058,29 +2044,35 @@ describe('Ingestion', () => {
           productType,
           status: OperationStatus.FAILED,
           parameters: {
-            inputFiles: validInputFiles.inputFiles,
+            inputFiles: storedInputFiles,
           },
         };
+        const oldChecksums = validInputFiles.checksums.slice(0, 3);
         const validationTask = {
           id: taskId,
           jobId,
           type: configMock.get<string>('jobManager.validationTaskType'),
           status: OperationStatus.COMPLETED,
           parameters: {
-            isValid: true,
-            checksums: validInputFiles.checksums,
+            isValid: false,
+            checksums: oldChecksums,
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
         nock(jobManagerURL)
           .patch(
             `/jobs/${jobId}/tasks/${taskId}`,
-            matches({
-              status: OperationStatus.PENDING,
-              attempts: 0,
-              parameters: validationTask.parameters,
+            matches((body: { parameters?: { checksums?: unknown[]; isValid?: boolean; report?: unknown } }) => {
+              return (
+                body.parameters?.checksums?.length === validInputFiles.checksums.length &&
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                body.parameters?.isValid === false &&
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                body.parameters?.report === undefined
+              );
             })
           )
           .reply(httpStatusCodes.OK);
@@ -2097,18 +2089,13 @@ describe('Ingestion', () => {
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
         const retryJob = {
           id: jobId,
           resourceId: productId,
           productType,
           status: OperationStatus.FAILED,
           parameters: {
-            inputFiles: {
-              gpkgFilesPath: [relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.gpkgFilesPath[0]))],
-              metadataShapefilePath: relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.metadataShapefilePath)),
-              productShapefilePath: relative(sourceMount, join(sourceMount, validInputFiles.inputFiles.productShapefilePath)),
-            },
+            inputFiles: storedInputFiles,
           },
         };
         // Simulate old state with fewer checksums (3 items) - new files were added
@@ -2124,8 +2111,9 @@ describe('Ingestion', () => {
           },
         };
 
-        nock(jobManagerURL).get(`/jobs/${jobId}`).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
         jest.spyOn(Checksum.prototype, 'calculate').mockRejectedValueOnce(new Error('Checksum calculation failed'));
 
         const response = await requestSender.retryIngestion(jobId);

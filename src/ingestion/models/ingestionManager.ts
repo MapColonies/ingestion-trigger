@@ -1,3 +1,4 @@
+import { relative } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import {
@@ -279,7 +280,8 @@ export class IngestionManager {
     const absoluteInputFilesPaths = await this.validateAndGetAbsoluteInputFiles(retryJob.parameters.inputFiles);
     const { metadataShapefilePath } = absoluteInputFilesPaths;
 
-    const newChecksums = await this.getFilesChecksum(metadataShapefilePath);
+    const newChecksumsAbsolute = await this.getFilesChecksum(metadataShapefilePath);
+    const newChecksums = this.convertChecksumsToRelativePaths(newChecksumsAbsolute);
 
     let updatedChecksums = validationTask.parameters.checksums;
 
@@ -684,5 +686,12 @@ export class IngestionManager {
   private isJobRetryable(status: OperationStatus): boolean {
     const validStatuses = [OperationStatus.FAILED, OperationStatus.SUSPENDED];
     return validStatuses.includes(status);
+  }
+
+  private convertChecksumsToRelativePaths(checksums: IChecksum[]): IChecksum[] {
+    return checksums.map((checksum) => ({
+      ...checksum,
+      fileName: relative(this.sourceMount, checksum.fileName),
+    }));
   }
 }
