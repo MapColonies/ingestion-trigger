@@ -14,6 +14,7 @@ import {
   inputFilesSchema,
   rasterProductTypeSchema,
   resourceIdSchema,
+  type Checksum as IChecksum,
   type FileMetadata,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
@@ -31,20 +32,13 @@ import { CatalogClient } from '../../serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
 import { Checksum } from '../../utils/hash/checksum';
-import { Checksum as IChecksum } from '../../utils/hash/interfaces';
 import { getAbsolutePathInputFiles } from '../../utils/paths';
 import { getShapefileFiles } from '../../utils/shapefile';
 import { ZodValidator } from '../../utils/validation/zodValidator';
 import { ValidateManager } from '../../validate/models/validateManager';
 import { ChecksumError, throwInvalidJobStatusError } from '../errors/ingestionErrors';
-import type {
-  ChecksumValidationParameters,
-  IngestionBaseJobParams,
-  ResponseId,
-  TaskValidationParametersPartial,
-  ValidationTaskParametersPartial,
-} from '../interfaces';
-import { validationTaskParametersSchemaPartial } from '../interfaces';
+import type { BaseValidationTaskParams, ChecksumValidationParameters, IngestionBaseJobParams, ResponseId } from '../interfaces';
+import { validationTaskParametersSchema } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
@@ -214,9 +208,9 @@ export class IngestionManager {
       throwInvalidJobStatusError(jobId, retryJob.status, this.logger, activeSpan);
     }
 
-    const validationTask: ITaskResponse<TaskValidationParametersPartial> = await this.getValidationTask(jobId, logCtx);
+    const validationTask: ITaskResponse<BaseValidationTaskParams> = await this.getValidationTask(jobId, logCtx);
     const { resourceId, productType } = this.parseAndValidateJobIdentifiers(retryJob.resourceId, retryJob.productType);
-    await this.zodValidator.validate(validationTaskParametersSchemaPartial, validationTask.parameters);
+    await this.zodValidator.validate(validationTaskParametersSchema, validationTask.parameters);
     await this.polygonPartsManagerClient.deleteValidationEntity(resourceId, productType);
 
     if (validationTask.parameters.isValid === true) {
@@ -238,8 +232,8 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async getValidationTask(jobId: string, logCtx: LogContext): Promise<ITaskResponse<TaskValidationParametersPartial>> {
-    const tasks = await this.jobManagerWrapper.getTasksForJob<TaskValidationParametersPartial>(jobId);
+  private async getValidationTask(jobId: string, logCtx: LogContext): Promise<ITaskResponse<BaseValidationTaskParams>> {
+    const tasks = await this.jobManagerWrapper.getTasksForJob<BaseValidationTaskParams>(jobId);
 
     const validationTask = tasks.find((task) => task.type === this.validationTaskType);
 
@@ -265,7 +259,7 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async hardReset(
     retryJob: IJobResponse<IngestionBaseJobParams, unknown>,
-    validationTask: ITaskResponse<TaskValidationParametersPartial>,
+    validationTask: ITaskResponse<BaseValidationTaskParams>,
     shouldConsiderChecksumChanges: boolean,
     logCtx: LogContext
   ): Promise<void> {
@@ -298,7 +292,7 @@ export class IngestionManager {
 
     const reportToSet: FileMetadata | undefined = validationTask.parameters.report ?? undefined;
 
-    const updatedParameters: ValidationTaskParametersPartial = {
+    const updatedParameters: BaseValidationTaskParams = {
       isValid: validationTask.parameters.isValid,
       report: reportToSet,
       checksums: updatedChecksums,
@@ -369,10 +363,10 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async manualResetJobAndTask(jobId: string, taskId: string, parameters: ValidationTaskParametersPartial, logCtx: LogContext): Promise<void> {
+  private async manualResetJobAndTask(jobId: string, taskId: string, parameters: BaseValidationTaskParams, logCtx: LogContext): Promise<void> {
     this.logger.debug({ msg: 'manually updating validation task and job status to PENDING', logContext: logCtx, jobId, taskId });
 
-    const taskParameters: IUpdateTaskBody<ValidationTaskParametersPartial> = {
+    const taskParameters: IUpdateTaskBody<BaseValidationTaskParams> = {
       parameters,
       status: OperationStatus.PENDING,
       attempts: 0,
@@ -380,7 +374,7 @@ export class IngestionManager {
       reason: '',
     };
 
-    await this.jobManagerWrapper.updateTask<ValidationTaskParametersPartial>(jobId, taskId, taskParameters);
+    await this.jobManagerWrapper.updateTask<BaseValidationTaskParams>(jobId, taskId, taskParameters);
     await this.jobManagerWrapper.updateJob(jobId, { status: OperationStatus.PENDING, reason: '' });
     this.logger.debug({ msg: 'validation task and job status updated to PENDING successfully', logContext: logCtx, jobId, taskId });
   }
