@@ -1563,7 +1563,7 @@ describe('Ingestion', () => {
     };
 
     describe('Happy Path', () => {
-      it('should return 200 status code when validation is valid and job is FAILED - reset job', async () => {
+      it('should return 200 status code when validation is valid and job is FAILED - easy reset job', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
@@ -1599,7 +1599,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.OK);
       });
 
-      it('should return 200 status code when validation is valid and job is SUSPENDED - reset job', async () => {
+      it('should return 200 status code when validation is valid and job is SUSPENDED - easy reset job', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
@@ -1635,7 +1635,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.OK);
       });
 
-      it('should return 200 status code when validation is invalid with changed checksums - update and reset job', async () => {
+      it('should return 200 status code when validation is invalid with changed checksums - hard reset job', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
