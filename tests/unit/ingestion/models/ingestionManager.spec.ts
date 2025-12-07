@@ -21,6 +21,7 @@ import type { ChecksumProcessor } from '../../../../src/utils/hash/interfaces';
 import type { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { generateCatalogLayerResponse, generateChecksum, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
+import { uuid } from 'zod/v4';
 
 describe('IngestionManager', () => {
   let ingestionManager: IngestionManager;
@@ -124,6 +125,33 @@ describe('IngestionManager', () => {
 
       expect(response).toStrictEqual(expectedResponse);
       expect(createIngestionJobSpy).toHaveBeenCalledWith(expect.objectContaining({ type: ingestionNewJobType }));
+    });
+
+    it('should not throw any errors when the request is valid and create ingestion new job and that internalID is set', async () => {
+      const layerRequest = generateNewLayerRequest();
+      const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] };
+      mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
+      mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
+      mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
+      productManager.read.mockResolvedValue(undefined);
+      mockGeoValidator.validate.mockResolvedValue(undefined);
+      existsMapproxySpy.mockResolvedValue(false);
+      existsCatalogSpy.mockResolvedValue(false);
+      findJobsSpy.mockResolvedValue([]);
+      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
+      createIngestionJobSpy.mockResolvedValue(createJobResponse);
+      const expectedResponse = { jobId: createJobResponse.id, taskId: createJobResponse.taskIds[0] };
+
+      const response = await ingestionManager.newLayer(layerRequest);
+
+      expect(response).toStrictEqual(expectedResponse);
+      expect(createIngestionJobSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: ingestionNewJobType,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          internalId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i),
+        })
+      );
     });
 
     it('should throw unsupported entity error when shapefile not found error', async () => {
