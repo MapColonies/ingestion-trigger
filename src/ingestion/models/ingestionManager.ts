@@ -280,8 +280,7 @@ export class IngestionManager {
     const absoluteInputFilesPaths = await this.validateAndGetAbsoluteInputFiles(retryJob.parameters.inputFiles);
     const { metadataShapefilePath } = absoluteInputFilesPaths;
 
-    const newChecksumsAbsolute = await this.getFilesChecksum(metadataShapefilePath);
-    const newChecksums = this.convertChecksumsToRelativePaths(newChecksumsAbsolute);
+    const newChecksums = await this.getFilesChecksum(metadataShapefilePath);
 
     let updatedChecksums = validationTask.parameters.checksums;
 
@@ -293,7 +292,7 @@ export class IngestionManager {
         trace.getActiveSpan()?.setAttribute('exception.type', error.status);
         throw error;
       }
-      updatedChecksums = this.buildUpdatedChecksums(validationTask.parameters.checksums, newChecksums, logCtx);
+      updatedChecksums = this.buildUpdatedChecksums(validationTask.parameters.checksums, this.convertChecksumsToRelativePaths(newChecksums), logCtx);
     }
 
     const reportToSet: FileMetadata | undefined = validationTask.parameters.report ?? undefined;
@@ -568,7 +567,8 @@ export class IngestionManager {
     newLayer: EnhancedIngestionNewLayer
   ): Promise<ICreateJobBody<IngestionNewJobParams, ChecksumValidationParameters>> {
     const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath.absolute);
-    const taskParameters: ChecksumValidationParameters = { checksums };
+    const relativeChecksums = this.convertChecksumsToRelativePaths(checksums);
+    const taskParameters: ChecksumValidationParameters = { checksums: relativeChecksums };
 
     const newLayerRelative = {
       ...newLayer,
@@ -612,7 +612,8 @@ export class IngestionManager {
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
 
     const checksums = await this.getFilesChecksum(updateLayer.inputFiles.metadataShapefilePath.absolute);
-    const taskParameters: ChecksumValidationParameters = { checksums };
+    const relativeChecksums = this.convertChecksumsToRelativePaths(checksums);
+    const taskParameters: ChecksumValidationParameters = { checksums: relativeChecksums };
 
     const updateLayerRelative = {
       ...updateLayer,
