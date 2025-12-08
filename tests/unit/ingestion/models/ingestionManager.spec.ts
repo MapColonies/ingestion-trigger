@@ -144,11 +144,16 @@ describe('IngestionManager', () => {
       const response = await ingestionManager.newLayer(layerRequest);
 
       expect(response).toStrictEqual(expectedResponse);
+      expect(createIngestionJobSpy).toHaveBeenCalledTimes(1);
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      const actualInternalId = createIngestionJobSpy.mock.calls[0][0].internalId; //[0][0] - first call, first argument
+      expect(actualInternalId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
       expect(createIngestionJobSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           type: ingestionNewJobType,
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          internalId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i),
+          internalId: actualInternalId,
         })
       );
     });
