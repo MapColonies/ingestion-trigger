@@ -22,6 +22,7 @@ import { clear as clearConfig, configMock, registerDefaultConfig } from '../../.
 import {
   generateCatalogLayerResponse,
   generateChecksum,
+  generateFullChecksum,
   generateNewLayerRequest,
   generateUpdateLayerRequest,
   rasterLayerMetadataGenerators,
@@ -142,7 +143,7 @@ describe('IngestionManager', () => {
       existsMapproxySpy.mockResolvedValue(false);
       existsCatalogSpy.mockResolvedValue(false);
       findJobsSpy.mockResolvedValue([]);
-      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
+      calcualteChecksumSpy.mockResolvedValue(generateFullChecksum());
       createIngestionJobSpy.mockResolvedValue(createJobResponse);
       const expectedResponse = { jobId: createJobResponse.id, taskId: createJobResponse.taskIds[0] };
 
@@ -346,7 +347,7 @@ describe('IngestionManager', () => {
       existsMapproxySpy.mockResolvedValue(false);
       existsCatalogSpy.mockResolvedValue(false);
       findJobsSpy.mockResolvedValue([]);
-      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
+      calcualteChecksumSpy.mockResolvedValue(generateFullChecksum());
       createIngestionJobSpy.mockRejectedValue(new Error());
 
       const promise = ingestionManager.newLayer(layerRequest);
@@ -380,7 +381,7 @@ describe('IngestionManager', () => {
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(true);
       findJobsSpy.mockResolvedValue([]);
-      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
+      calcualteChecksumSpy.mockResolvedValue(generateFullChecksum());
       createIngestionJobSpy.mockResolvedValue(createJobResponse);
       const expectedResponse = { jobId: createJobResponse.id, taskId: createJobResponse.taskIds[0] };
 
@@ -408,7 +409,7 @@ describe('IngestionManager', () => {
       productManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(true);
-      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
+      calcualteChecksumSpy.mockResolvedValue(generateFullChecksum());
       findJobsSpy.mockResolvedValue([]);
       createIngestionJobSpy.mockResolvedValue(createJobResponse);
       const expectedResponse = { jobId: createJobResponse.id, taskId: createJobResponse.taskIds[0] };

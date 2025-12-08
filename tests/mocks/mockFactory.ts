@@ -4,6 +4,7 @@ import { faker } from '@faker-js/faker';
 import { RecordType, TileOutputFormat } from '@map-colonies/mc-model-types';
 import { OperationStatus, type ICreateJobBody, type IFindJobsByCriteriaBody } from '@map-colonies/mc-priority-queue';
 import {
+  Checksum,
   CORE_VALIDATIONS,
   INGESTION_VALIDATIONS,
   IngestionNewJobParams,
@@ -214,6 +215,13 @@ export const rasterLayerInputFilesGenerators: IngestionLayerInputFilesProperties
 };
 
 export const generateChecksum = (): string => faker.string.hexadecimal({ length: 64, casing: 'lower', prefix: '' });
+export const generateFullChecksum = (): Checksum => {
+  return {
+    algorithm: 'XXH64' as const,
+    checksum: generateChecksum(),
+    fileName: join(faker.system.directoryPath(), faker.system.fileName()),
+  };
+};
 
 export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] =>
   faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
