@@ -139,7 +139,7 @@ const generateCatalogLayerMetadata = ({ productId, productType }: { productId: s
     minHorizontalAccuracyCE90,
     maxHorizontalAccuracyCE90,
     sensors: faker.helpers.multiple(() => rasterLayerMetadataGenerators.sensor(), { count: faker.number.int({ min: 1, max: 10 }) }),
-    region: faker.helpers.multiple(() => rasterLayerMetadataGenerators.region(), { count: faker.number.int({ min: 1, max: 100 }) }),
+    region: faker.helpers.multiple(() => rasterLayerMetadataGenerators.region(), { count: faker.number.int({ min: 1, max: 5 }) }),
     productId,
     productVersion: rasterLayerMetadataGenerators.productVersion(),
     productType,
@@ -169,7 +169,7 @@ const generateNewLayerMetadata = (): NewRasterLayerMetadata => {
     productId: rasterLayerMetadataGenerators.productId(),
     productName: rasterLayerMetadataGenerators.productName(),
     productType: rasterLayerMetadataGenerators.productType(),
-    region: faker.helpers.multiple(() => rasterLayerMetadataGenerators.region(), { count: faker.number.int({ min: 1, max: 100 }) }),
+    region: faker.helpers.multiple(() => rasterLayerMetadataGenerators.region(), { count: faker.number.int({ min: 1, max: 5 }) }),
     srs: rasterLayerMetadataGenerators.srs(),
     srsName: rasterLayerMetadataGenerators.srsName(),
     transparency: rasterLayerMetadataGenerators.transparency(),
@@ -200,7 +200,7 @@ const getInputFilesLocalPath = (inputFiles: InputFiles): InputFiles => {
  */
 export const generateInputFiles = (): InputFiles => {
   return {
-    gpkgFilesPath: [join(faker.system.directoryPath(), generateHebrewCommonFileName('gpkg', { min: 1, max: 100 }))],
+    gpkgFilesPath: [join(faker.system.directoryPath(), generateHebrewCommonFileName('gpkg', { min: 1, max: 1 }))],
     metadataShapefilePath: join(faker.system.directoryPath(), 'ShapeMetadata.shp'),
     productShapefilePath: join(faker.system.directoryPath(), 'Product.shp'),
   };
@@ -209,7 +209,7 @@ export const generateInputFiles = (): InputFiles => {
 export const getGpkgsFilesLocalPath = (gpkgFilesPath: string[]): string[] => gpkgFilesPath.map((gpkgFilePath) => join('gpkg', gpkgFilePath));
 
 export const rasterLayerInputFilesGenerators: IngestionLayerInputFilesPropertiesGenerators = {
-  gpkgFilesPath: () => getGpkgsFilesLocalPath([generateHebrewCommonFileName('gpkg', { min: 1, max: 100 })]),
+  gpkgFilesPath: () => getGpkgsFilesLocalPath([generateHebrewCommonFileName('gpkg', { min: 1, max: 5 })]),
   metadataShapefilePath: () => join('metadata', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'ShapeMetadata.shp'),
   productShapefilePath: () => join('product', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'Product.shp'),
 };
@@ -335,7 +335,7 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, C
         productName,
         classification: rasterLayerMetadataGenerators.classification(),
         productType,
-        region: faker.helpers.multiple(() => rasterLayerMetadataGenerators.region(), { count: faker.number.int({ min: 1, max: 100 }) }),
+        region: faker.helpers.multiple(() => rasterLayerMetadataGenerators.region(), { count: faker.number.int({ min: 1, max: 5 }) }),
         srs: rasterLayerMetadataGenerators.srs(),
         srsName: rasterLayerMetadataGenerators.srsName(),
         transparency: rasterLayerMetadataGenerators.transparency(),
@@ -510,7 +510,7 @@ export const createUpdateJobRequest = (
         type: validationTaskType,
         parameters: {
           checksums: checksums.map((checksum) => {
-            return { ...checksum, fileName: join(sourceMount, checksum.fileName) };
+            return { ...checksum, fileName: checksum.fileName };
           }),
         },
       },
@@ -556,7 +556,7 @@ export const createNewJobRequest = ({
         type: validationTaskType,
         parameters: {
           checksums: checksums.map((checksum) => {
-            return { ...checksum, fileName: join(sourceMount, checksum.fileName) };
+            return { ...checksum, fileName: checksum.fileName };
           }),
         },
       },
