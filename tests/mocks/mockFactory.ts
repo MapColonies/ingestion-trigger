@@ -10,6 +10,7 @@ import {
   IngestionNewJobParams,
   RasterProductTypes,
   Transparency,
+  type IngestionValidationTaskParams,
   type CallbackUrlsTargetArray,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
@@ -22,7 +23,6 @@ import { randomPolygon } from '@turf/turf';
 import type { BBox, Polygon } from 'geojson';
 import merge from 'lodash.merge';
 import { randexp } from 'randexp';
-import type { ChecksumValidationParameters } from '../../src/ingestion/interfaces';
 import type { RasterLayersCatalog } from '../../src/ingestion/schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../../src/ingestion/schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
@@ -295,7 +295,7 @@ export const generateUpdateLayerRequest = (): IngestionUpdateLayer => {
   };
 };
 
-export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, ChecksumValidationParameters> => {
+export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, IngestionValidationTaskParams> => {
   const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
   const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
   const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
@@ -363,7 +363,7 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, C
 
 export const generateUpdateJobRequest = (
   isSwapUpdate = false
-): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ChecksumValidationParameters> => {
+): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, IngestionValidationTaskParams> => {
   const ingestionUpdateJobType = configMock.get<string>('jobManager.ingestionUpdateJobType');
   const ingestionSwapUpdateJobType = configMock.get<string>('jobManager.ingestionSwapUpdateJobType');
   const jobTrackerServiceUrl = configMock.get<string>('services.jobTrackerServiceURL');
@@ -460,9 +460,9 @@ export const createUpdateJobRequest = (
     ingestionUpdateLayer,
     rasterLayerMetadata,
     checksums,
-  }: { ingestionUpdateLayer: IngestionUpdateLayer; rasterLayerMetadata: RasterLayerMetadata } & ChecksumValidationParameters,
+  }: { ingestionUpdateLayer: IngestionUpdateLayer; rasterLayerMetadata: RasterLayerMetadata } & IngestionValidationTaskParams,
   isSwapUpdate = false
-): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ChecksumValidationParameters> => {
+): ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, IngestionValidationTaskParams> => {
   const domain = configMock.get<string>('jobManager.jobDomain');
   const updateJobType = configMock.get<string>('jobManager.ingestionUpdateJobType');
   const swapUpdateJobType = configMock.get<string>('jobManager.ingestionSwapUpdateJobType');
@@ -521,7 +521,10 @@ export const createUpdateJobRequest = (
 export const createNewJobRequest = ({
   ingestionNewLayer,
   checksums,
-}: { ingestionNewLayer: IngestionNewLayer } & ChecksumValidationParameters): ICreateJobBody<IngestionNewJobParams, ChecksumValidationParameters> => {
+}: { ingestionNewLayer: IngestionNewLayer } & IngestionValidationTaskParams): ICreateJobBody<
+  IngestionNewJobParams,
+  IngestionValidationTaskParams
+> => {
   const domain = configMock.get<string>('jobManager.jobDomain');
   const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
   const validationTaskType = configMock.get<string>('jobManager.validationTaskType');

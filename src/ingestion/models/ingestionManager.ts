@@ -15,6 +15,7 @@ import {
   rasterProductTypeSchema,
   resourceIdSchema,
   ingestionValidationTaskParamsSchema,
+  type IngestionValidationTaskParams,
   type Checksum as IChecksum,
   type FileMetadata,
   type IngestionNewJobParams,
@@ -38,7 +39,7 @@ import { getShapefileFiles } from '../../utils/shapefile';
 import { ZodValidator } from '../../utils/validation/zodValidator';
 import { ValidateManager } from '../../validate/models/validateManager';
 import { ChecksumError, throwInvalidJobStatusError } from '../errors/ingestionErrors';
-import type { BaseValidationTaskParams, ChecksumValidationParameters, IngestionBaseJobParams, ResponseId } from '../interfaces';
+import type { IngestionBaseJobParams, ResponseId } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
@@ -208,7 +209,7 @@ export class IngestionManager {
       throwInvalidJobStatusError(jobId, retryJob.status, this.logger, activeSpan);
     }
 
-    const validationTask: ITaskResponse<BaseValidationTaskParams> = await this.getValidationTask(jobId, logCtx);
+    const validationTask: ITaskResponse<IngestionValidationTaskParams> = await this.getValidationTask(jobId, logCtx);
     const { resourceId, productType } = this.parseAndValidateJobIdentifiers(retryJob.resourceId, retryJob.productType);
     await this.zodValidator.validate(ingestionValidationTaskParamsSchema, validationTask.parameters);
     await this.polygonPartsManagerClient.deleteValidationEntity(resourceId, productType);
@@ -232,8 +233,8 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async getValidationTask(jobId: string, logCtx: LogContext): Promise<ITaskResponse<BaseValidationTaskParams>> {
-    const tasks = await this.jobManagerWrapper.getTasksForJob<BaseValidationTaskParams>(jobId);
+  private async getValidationTask(jobId: string, logCtx: LogContext): Promise<ITaskResponse<IngestionValidationTaskParams>> {
+    const tasks = await this.jobManagerWrapper.getTasksForJob<IngestionValidationTaskParams>(jobId);
 
     const validationTask = tasks.find((task) => task.type === this.validationTaskType);
 
@@ -259,7 +260,7 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async hardReset(
     retryJob: IJobResponse<IngestionBaseJobParams, unknown>,
-    validationTask: ITaskResponse<BaseValidationTaskParams>,
+    validationTask: ITaskResponse<IngestionValidationTaskParams>,
     shouldConsiderChecksumChanges: boolean,
     logCtx: LogContext
   ): Promise<void> {
@@ -291,7 +292,7 @@ export class IngestionManager {
 
     const reportToSet: FileMetadata | undefined = validationTask.parameters.report ?? undefined;
 
-    const updatedParameters: BaseValidationTaskParams = {
+    const updatedParameters: IngestionValidationTaskParams = {
       isValid: validationTask.parameters.isValid,
       report: reportToSet,
       checksums: updatedChecksums,
@@ -362,10 +363,10 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async manualResetJobAndTask(jobId: string, taskId: string, parameters: BaseValidationTaskParams, logCtx: LogContext): Promise<void> {
+  private async manualResetJobAndTask(jobId: string, taskId: string, parameters: IngestionValidationTaskParams, logCtx: LogContext): Promise<void> {
     this.logger.debug({ msg: 'manually updating validation task and job status to PENDING', logContext: logCtx, jobId, taskId });
 
-    const taskParameters: IUpdateTaskBody<BaseValidationTaskParams> = {
+    const taskParameters: IUpdateTaskBody<IngestionValidationTaskParams> = {
       parameters,
       status: OperationStatus.PENDING,
       attempts: 0,
@@ -373,7 +374,7 @@ export class IngestionManager {
       reason: '',
     };
 
-    await this.jobManagerWrapper.updateTask<BaseValidationTaskParams>(jobId, taskId, taskParameters);
+    await this.jobManagerWrapper.updateTask<IngestionValidationTaskParams>(jobId, taskId, taskParameters);
     await this.jobManagerWrapper.updateJob(jobId, { status: OperationStatus.PENDING, reason: '' });
     this.logger.debug({ msg: 'validation task and job status updated to PENDING successfully', logContext: logCtx, jobId, taskId });
   }
@@ -559,10 +560,10 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async newLayerJobPayload(
     newLayer: EnhancedIngestionNewLayer
-  ): Promise<ICreateJobBody<IngestionNewJobParams, ChecksumValidationParameters>> {
+  ): Promise<ICreateJobBody<IngestionNewJobParams, IngestionValidationTaskParams>> {
     const checksums = await this.getChecksum(newLayer.inputFiles.metadataShapefilePath.absolute);
     const relativeChecksums = this.convertChecksumsToRelativePaths(checksums);
-    const taskParameters: ChecksumValidationParameters = { checksums: relativeChecksums };
+    const taskParameters: IngestionValidationTaskParams = { checksums: relativeChecksums };
 
     const newLayerRelative = {
       ...newLayer,
@@ -598,7 +599,7 @@ export class IngestionManager {
   private async updateLayerJobPayload(
     rasterLayerMetadata: RasterLayerMetadata,
     updateLayer: EnhancedIngestionUpdateLayer
-  ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ChecksumValidationParameters>> {
+  ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, IngestionValidationTaskParams>> {
     const { displayPath, id, productId, productType, productVersion, tileOutputFormat, productName, productSubType } = rasterLayerMetadata;
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === productType && supportedSwapObj.productSubType === productSubType;
@@ -607,7 +608,7 @@ export class IngestionManager {
 
     const checksums = await this.getChecksum(updateLayer.inputFiles.metadataShapefilePath.absolute);
     const relativeChecksums = this.convertChecksumsToRelativePaths(checksums);
-    const taskParameters: ChecksumValidationParameters = { checksums: relativeChecksums };
+    const taskParameters: IngestionValidationTaskParams = { checksums: relativeChecksums };
 
     const updateLayerRelative = {
       ...updateLayer,
