@@ -14,6 +14,7 @@ import {
   inputFilesSchema,
   rasterProductTypeSchema,
   resourceIdSchema,
+  ingestionValidationTaskParamsSchema,
   type Checksum as IChecksum,
   type FileMetadata,
   type IngestionNewJobParams,
@@ -38,7 +39,6 @@ import { ZodValidator } from '../../utils/validation/zodValidator';
 import { ValidateManager } from '../../validate/models/validateManager';
 import { ChecksumError, throwInvalidJobStatusError } from '../errors/ingestionErrors';
 import type { BaseValidationTaskParams, ChecksumValidationParameters, IngestionBaseJobParams, ResponseId } from '../interfaces';
-import { validationTaskParametersSchema } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
@@ -210,7 +210,7 @@ export class IngestionManager {
 
     const validationTask: ITaskResponse<BaseValidationTaskParams> = await this.getValidationTask(jobId, logCtx);
     const { resourceId, productType } = this.parseAndValidateJobIdentifiers(retryJob.resourceId, retryJob.productType);
-    await this.zodValidator.validate(validationTaskParametersSchema, validationTask.parameters);
+    await this.zodValidator.validate(ingestionValidationTaskParamsSchema, validationTask.parameters);
     await this.polygonPartsManagerClient.deleteValidationEntity(resourceId, productType);
 
     if (validationTask.parameters.isValid === true) {
