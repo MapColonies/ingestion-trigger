@@ -21,7 +21,6 @@ import { ValidateManager } from '../../../../src/validate/models/validateManager
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import {
   generateCatalogLayerResponse,
-  generateChecksum,
   generateFullChecksum,
   generateNewLayerRequest,
   generateUpdateLayerRequest,
