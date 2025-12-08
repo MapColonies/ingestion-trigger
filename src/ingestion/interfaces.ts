@@ -53,4 +53,3 @@ export interface TileSize {
 }
 
 export type IngestionBaseJobParams = z.infer<typeof ingestionBaseJobParamsSchema>;
-
