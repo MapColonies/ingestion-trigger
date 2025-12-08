@@ -274,7 +274,7 @@ export class IngestionManager {
     const absoluteInputFilesPaths = await this.validateAndGetAbsoluteInputFiles(retryJob.parameters.inputFiles);
     const { metadataShapefilePath } = absoluteInputFilesPaths;
 
-    const newChecksums = await this.getFilesChecksum(metadataShapefilePath);
+    const newChecksums = await this.getChecksum(metadataShapefilePath);
 
     let updatedChecksums = validationTask.parameters.checksums;
 
@@ -560,7 +560,7 @@ export class IngestionManager {
   private async newLayerJobPayload(
     newLayer: EnhancedIngestionNewLayer
   ): Promise<ICreateJobBody<IngestionNewJobParams, ChecksumValidationParameters>> {
-    const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath.absolute);
+    const checksums = await this.getChecksum(newLayer.inputFiles.metadataShapefilePath.absolute);
     const relativeChecksums = this.convertChecksumsToRelativePaths(checksums);
     const taskParameters: ChecksumValidationParameters = { checksums: relativeChecksums };
 
@@ -605,7 +605,7 @@ export class IngestionManager {
     });
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
 
-    const checksums = await this.getFilesChecksum(updateLayer.inputFiles.metadataShapefilePath.absolute);
+    const checksums = await this.getChecksum(updateLayer.inputFiles.metadataShapefilePath.absolute);
     const relativeChecksums = this.convertChecksumsToRelativePaths(checksums);
     const taskParameters: ChecksumValidationParameters = { checksums: relativeChecksums };
 
@@ -644,7 +644,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async getFilesChecksum(shapefilePath: string): Promise<IChecksum[]> {
+  private async getChecksum(shapefilePath: string): Promise<IChecksum[]> {
     const checksums = await Promise.all(getShapefileFiles(shapefilePath).map(async (fileName) => this.getFileChecksum(fileName)));
     return checksums;
   }
