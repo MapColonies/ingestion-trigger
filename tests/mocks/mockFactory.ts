@@ -23,6 +23,7 @@ import { randomPolygon } from '@turf/turf';
 import type { BBox, Polygon } from 'geojson';
 import merge from 'lodash.merge';
 import { randexp } from 'randexp';
+import { trace } from '@opentelemetry/api';
 import type { RasterLayersCatalog } from '../../src/ingestion/schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../../src/ingestion/schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
@@ -213,12 +214,13 @@ export const rasterLayerInputFilesGenerators: IngestionLayerInputFilesProperties
   metadataShapefilePath: () => join('metadata', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'ShapeMetadata.shp'),
   productShapefilePath: () => join('product', faker.string.alphanumeric({ length: { min: 1, max: 10 } }), 'Product.shp'),
 };
+export const tracerMock = trace.getTracer('test');
 
-export const generateChecksum = (): string => faker.string.hexadecimal({ length: 64, casing: 'lower', prefix: '' });
-export const generateFullChecksum = (): Checksum => {
+export const generateHash = (): string => faker.string.hexadecimal({ length: 64, casing: 'lower', prefix: '' });
+export const generateChecksum = (): Checksum => {
   return {
     algorithm: 'XXH64' as const,
-    checksum: generateChecksum(),
+    checksum: generateHash(),
     fileName: join(faker.system.directoryPath(), faker.system.fileName()),
   };
 };
@@ -315,7 +317,7 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, I
   ].map((fileName) => {
     return {
       algorithm: 'XXH64' as const,
-      checksum: generateChecksum(),
+      checksum: generateHash(),
       fileName,
     };
   });
@@ -385,7 +387,7 @@ export const generateUpdateJobRequest = (
   ].map((fileName) => {
     return {
       algorithm: 'XXH64' as const,
-      checksum: generateChecksum(),
+      checksum: generateHash(),
       fileName,
     };
   });

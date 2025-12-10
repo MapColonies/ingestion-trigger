@@ -2135,6 +2135,92 @@ describe('Ingestion', () => {
         expect(response.body).toHaveProperty('message');
         expect((response.body as { message: string }).message).toContain('Checksum calculation failed');
       });
+
+      it('should return 404 NOT_FOUND status code when metadata shapefile does not exist during hard reset', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const nonExistentInputFiles = {
+          gpkgFilesPath: [`gpkg/${validInputFiles.inputFiles.gpkgFilesPath[0]}`],
+          metadataShapefilePath: 'metadata/nonexistent-shapefile/ShapeMetadata.shp',
+          productShapefilePath: `product/${validInputFiles.inputFiles.productShapefilePath}/Product.shp`,
+        };
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: nonExistentInputFiles,
+          },
+        };
+        const oldChecksums = validInputFiles.checksums.slice(0, 3);
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: false,
+            checksums: oldChecksums,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+        expect(response.body).toHaveProperty('message');
+        expect((response.body as { message: string }).message).toContain('ShapeMetadata.shp');
+      });
+
+      it('should return 404 NOT_FOUND status code when GPKG file does not exist during hard reset', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const nonExistentInputFiles = {
+          gpkgFilesPath: ['gpkg/nonexistent-file.gpkg'],
+          metadataShapefilePath: `metadata/${validInputFiles.inputFiles.metadataShapefilePath}/ShapeMetadata.shp`,
+          productShapefilePath: `product/${validInputFiles.inputFiles.productShapefilePath}/Product.shp`,
+        };
+        const retryJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.FAILED,
+          parameters: {
+            inputFiles: nonExistentInputFiles,
+          },
+        };
+        const oldChecksums = validInputFiles.checksums.slice(0, 3);
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: false,
+            checksums: oldChecksums,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+        expect(response.body).toHaveProperty('message');
+        expect((response.body as { message: string }).message).toContain('nonexistent-file.gpkg');
+      }, 1000000);
     });
   });
 });

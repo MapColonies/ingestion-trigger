@@ -21,7 +21,7 @@ import { ValidateManager } from '../../../../src/validate/models/validateManager
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import {
   generateCatalogLayerResponse,
-  generateFullChecksum,
+  generateChecksum,
   generateNewLayerRequest,
   generateUpdateLayerRequest,
   rasterLayerMetadataGenerators,
@@ -142,7 +142,7 @@ describe('IngestionManager', () => {
       existsMapproxySpy.mockResolvedValue(false);
       existsCatalogSpy.mockResolvedValue(false);
       findJobsSpy.mockResolvedValue([]);
-      calcualteChecksumSpy.mockResolvedValue(generateFullChecksum());
+      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
       createIngestionJobSpy.mockResolvedValue(createJobResponse);
       const expectedResponse = { jobId: createJobResponse.id, taskId: createJobResponse.taskIds[0] };
 
@@ -346,7 +346,7 @@ describe('IngestionManager', () => {
       existsMapproxySpy.mockResolvedValue(false);
       existsCatalogSpy.mockResolvedValue(false);
       findJobsSpy.mockResolvedValue([]);
-      calcualteChecksumSpy.mockResolvedValue(generateFullChecksum());
+      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
       createIngestionJobSpy.mockRejectedValue(new Error());
 
       const promise = ingestionManager.newLayer(layerRequest);
@@ -380,7 +380,7 @@ describe('IngestionManager', () => {
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(true);
       findJobsSpy.mockResolvedValue([]);
-      calcualteChecksumSpy.mockResolvedValue(generateFullChecksum());
+      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
       createIngestionJobSpy.mockResolvedValue(createJobResponse);
       const expectedResponse = { jobId: createJobResponse.id, taskId: createJobResponse.taskIds[0] };
 
@@ -408,7 +408,7 @@ describe('IngestionManager', () => {
       productManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(true);
-      calcualteChecksumSpy.mockResolvedValue(generateFullChecksum());
+      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
       findJobsSpy.mockResolvedValue([]);
       createIngestionJobSpy.mockResolvedValue(createJobResponse);
       const expectedResponse = { jobId: createJobResponse.id, taskId: createJobResponse.taskIds[0] };

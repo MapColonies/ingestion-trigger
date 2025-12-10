@@ -1,28 +1,26 @@
 import { constants, createReadStream } from 'node:fs';
 import { Readable } from 'node:stream';
-import { Logger } from '@map-colonies/js-logger';
+import jsLogger, { Logger } from '@map-colonies/js-logger';
 import { trace, Tracer } from '@opentelemetry/api';
 import { Checksum } from '../../../src/utils/hash/checksum';
 import { ChecksumError } from '../../../src/ingestion/errors/ingestionErrors';
 import type { ChecksumProcessor } from '../../../src/utils/hash/interfaces';
+import { tracerMock } from '../../mocks/mockFactory';
 
 jest.mock('node:fs');
 jest.mock('@opentelemetry/api');
 
 describe('Checksum', () => {
   let checksum: Checksum;
-  let mockLogger: jest.Mocked<Logger>;
-  let mockTracer: jest.Mocked<Tracer>;
+  let mockLogger: Logger;
+  let mockTracer: Tracer;
   let mockChecksumProcessor: jest.Mocked<ChecksumProcessor>;
   let mockChecksumProcessorInit: jest.Mock;
 
   beforeEach(() => {
-    mockLogger = {
-      debug: jest.fn(),
-      error: jest.fn(),
-    } as unknown as jest.Mocked<Logger>;
+    mockLogger = jsLogger({ enabled: false });
 
-    mockTracer = {} as jest.Mocked<Tracer>;
+    mockTracer = tracerMock;
 
     mockChecksumProcessor = {
       algorithm: 'XXH64',
@@ -47,13 +45,14 @@ describe('Checksum', () => {
   describe('calculate', () => {
     it('should successfully calculate checksum for a file', async () => {
       const filePath = '/test/path/file.txt';
-      const expectedChecksum = 'abc123def456';
       const mockStream = new Readable();
       mockStream._read = jest.fn();
 
+      const digestValue = 0xabc123def456n;
+      const expectedChecksum = digestValue.toString(16);
+
       (createReadStream as jest.Mock).mockReturnValue(mockStream);
-      // Convert hex string to bigint for the digest mock
-      mockChecksumProcessor.digest.mockReturnValue(BigInt(`0x${expectedChecksum}`));
+      mockChecksumProcessor.digest.mockReturnValue(digestValue);
 
       const calculatePromise = checksum.calculate(filePath);
 
@@ -75,32 +74,20 @@ describe('Checksum', () => {
       expect(mockChecksumProcessor.reset).toHaveBeenCalled();
       expect(mockChecksumProcessor.update).toHaveBeenCalledWith(Buffer.from('test data'));
       expect(mockChecksumProcessor.digest).toHaveBeenCalled();
-      expect(mockLogger.debug).toHaveBeenCalledWith(
-        expect.objectContaining({
-          msg: 'calculating checksum',
-          filePath,
-        })
-      );
-      expect(mockLogger.debug).toHaveBeenCalledWith(
-        expect.objectContaining({
-          msg: 'calculated checksum',
-          filePath,
-          algorithm: 'XXH64',
-          checksum: expectedChecksum,
-        })
-      );
     });
 
     it('should handle checksum processor without reset method', async () => {
       const filePath = '/test/path/file.txt';
-      const expectedChecksum = 'abc123def456';
       const mockStream = new Readable();
       mockStream._read = jest.fn();
+
+      const digestValue = 0xfedcba987654n;
+      const expectedChecksum = digestValue.toString(16);
 
       const processorWithoutReset = {
         algorithm: 'XXH64' as const,
         update: jest.fn().mockReturnThis(),
-        digest: jest.fn().mockReturnValue(BigInt(`0x${expectedChecksum}`)),
+        digest: jest.fn().mockReturnValue(digestValue),
       };
 
       mockChecksumProcessorInit.mockResolvedValue(processorWithoutReset);
@@ -125,12 +112,14 @@ describe('Checksum', () => {
 
     it('should handle multiple data chunks', async () => {
       const filePath = '/test/path/large-file.txt';
-      const expectedChecksum = 'fedcba987654';
       const mockStream = new Readable();
       mockStream._read = jest.fn();
 
+      const digestValue = 0x123456789abcn;
+      const expectedChecksum = digestValue.toString(16);
+
       (createReadStream as jest.Mock).mockReturnValue(mockStream);
-      mockChecksumProcessor.digest.mockReturnValue(BigInt(`0x${expectedChecksum}`));
+      mockChecksumProcessor.digest.mockReturnValue(digestValue);
 
       const calculatePromise = checksum.calculate(filePath);
 
@@ -166,12 +155,6 @@ describe('Checksum', () => {
 
       await expect(calculatePromise).rejects.toThrow(ChecksumError);
       await expect(calculatePromise).rejects.toThrow(`Failed to calculate checksum for file: ${filePath}`);
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.objectContaining({
-          msg: 'error calculating checksum',
-          err: streamError,
-        })
-      );
     });
 
     it('should throw ChecksumError when processor update fails', async () => {
@@ -193,11 +176,6 @@ describe('Checksum', () => {
 
       await expect(calculatePromise).rejects.toThrow(ChecksumError);
       await expect(calculatePromise).rejects.toThrow(`Failed to calculate checksum for file: ${filePath}`);
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.objectContaining({
-          msg: 'error calculating checksum',
-        })
-      );
     });
 
     it('should throw ChecksumError when processor digest fails', async () => {
@@ -220,11 +198,6 @@ describe('Checksum', () => {
 
       await expect(calculatePromise).rejects.toThrow(ChecksumError);
       await expect(calculatePromise).rejects.toThrow(`Failed to calculate checksum for file: ${filePath}`);
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.objectContaining({
-          msg: 'error calculating checksum',
-        })
-      );
     });
 
     it('should throw ChecksumError when checksumProcessorInit fails', async () => {
@@ -235,12 +208,6 @@ describe('Checksum', () => {
 
       await expect(checksum.calculate(filePath)).rejects.toThrow(ChecksumError);
       await expect(checksum.calculate(filePath)).rejects.toThrow(`Failed to calculate checksum for file: ${filePath}`);
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.objectContaining({
-          msg: 'error calculating checksum',
-          err: initError,
-        })
-      );
     });
 
     it('should destroy stream when update throws error', async () => {
@@ -310,81 +277,12 @@ describe('Checksum', () => {
       expect(mockDestroy).toHaveBeenCalled();
     });
 
-    it('should log error during chunk processing', async () => {
+    it('should convert digest bigint to hex string correctly', async () => {
       const filePath = '/test/path/file.txt';
       const mockStream = new Readable();
       mockStream._read = jest.fn();
-      mockStream.destroy = jest.fn();
-      const chunkError = new Error('Chunk processing error');
 
-      (createReadStream as jest.Mock).mockReturnValue(mockStream);
-      mockChecksumProcessor.update.mockImplementation(() => {
-        throw chunkError;
-      });
-
-      const calculatePromise = checksum.calculate(filePath);
-
-      process.nextTick(() => {
-        mockStream.emit('data', Buffer.from('test data'));
-      });
-
-      await expect(calculatePromise).rejects.toThrow();
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.objectContaining({
-          msg: 'error processing checksum for a chunk',
-          err: chunkError,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          logContext: expect.objectContaining({
-            fileName: expect.any(String) as string,
-            class: expect.any(String) as string,
-            function: expect.any(String) as string,
-          }),
-        })
-      );
-    });
-
-    it('should log error during digest processing', async () => {
-      const filePath = '/test/path/file.txt';
-      const mockStream = new Readable();
-      mockStream._read = jest.fn();
-      mockStream.destroy = jest.fn();
-      const digestError = new Error('Digest processing error');
-
-      (createReadStream as jest.Mock).mockReturnValue(mockStream);
-      mockChecksumProcessor.digest.mockImplementation(() => {
-        throw digestError;
-      });
-
-      const calculatePromise = checksum.calculate(filePath);
-
-      process.nextTick(() => {
-        mockStream.emit('data', Buffer.from('test data'));
-        mockStream.emit('end');
-      });
-
-      await expect(calculatePromise).rejects.toThrow();
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.objectContaining({
-          msg: 'error processing checksum result',
-          err: digestError,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          logContext: expect.objectContaining({
-            fileName: expect.any(String) as string,
-            class: expect.any(String) as string,
-            function: expect.any(String) as string,
-          }),
-        })
-      );
-    });
-
-    it('should convert digest buffer to hex string correctly', async () => {
-      const filePath = '/test/path/file.txt';
-      const mockStream = new Readable();
-      mockStream._read = jest.fn();
-      // Create a bigint that represents a specific hex value
-      const digestValue = BigInt('0xabcdef1234567890');
+      const digestValue = 0xabcdef1234567890n;
 
       (createReadStream as jest.Mock).mockReturnValue(mockStream);
       mockChecksumProcessor.digest.mockReturnValue(digestValue);

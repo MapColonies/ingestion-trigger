@@ -1,6 +1,6 @@
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
 import { Logger } from '@map-colonies/js-logger';
-import { BadRequestError } from '@map-colonies/error-types';
+import { BadRequestError, NotFoundError } from '@map-colonies/error-types';
 import { Span } from '@opentelemetry/api';
 
 export class UnsupportedEntityError extends Error {
@@ -8,7 +8,7 @@ export class UnsupportedEntityError extends Error {
     super(message);
   }
 }
-export class FileNotFoundError extends UnsupportedEntityError {
+export class FileNotFoundError extends NotFoundError {
   public constructor(fileName: string);
   public constructor(fileName: string[]);
   public constructor(fileName: string, path: string);
