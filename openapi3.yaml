@@ -3,8 +3,9 @@ security: []
 info:
   title: ingestion-trigger
   description: >-
-    Service that designed to validate and trigger ingestion of new layers from raw data and update existing layers
-  version: 4.0.0-alpha.2
+    Service that designed to validate and trigger ingestion of new layers from
+    raw data and update existing layers
+  version: 4.0.0-alpha.3
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
