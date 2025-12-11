@@ -17,6 +17,7 @@ module.exports = {
     '!<rootDir>/src/ingestion/schemas/constants.ts',
     '!<rootDir>/src/**/interfaces.ts',
     '!<rootDir>/src/utils/hash/constants.ts',
+    '!<rootDir>/src/ingestion/schemas/layerCatalogSchema.ts', // currently unused - to be covered once we will start using it
   ],
   coverageDirectory: '<rootDir>/coverage',
   rootDir: '../../../.',
@@ -35,10 +36,10 @@ module.exports = {
   testEnvironment: 'node',
   coverageThreshold: {
     global: {
-      branches: 73,
+      branches: 75,
       functions: 80,
       lines: 80,
-      statements: -46,
+      statements: -27,
     },
   },
 };

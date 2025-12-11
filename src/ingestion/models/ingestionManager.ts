@@ -1,3 +1,4 @@
+import { relative } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import {
@@ -13,6 +14,9 @@ import {
   inputFilesSchema,
   rasterProductTypeSchema,
   resourceIdSchema,
+  ingestionValidationTaskParamsSchema,
+  type IngestionValidationTaskParams,
+  type Checksum as IChecksum,
   type FileMetadata,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
@@ -30,20 +34,12 @@ import { CatalogClient } from '../../serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
 import { Checksum } from '../../utils/hash/checksum';
-import { Checksum as IChecksum } from '../../utils/hash/interfaces';
 import { getAbsolutePathInputFiles } from '../../utils/paths';
 import { getShapefileFiles } from '../../utils/shapefile';
 import { ZodValidator } from '../../utils/validation/zodValidator';
 import { ValidateManager } from '../../validate/models/validateManager';
 import { ChecksumError, throwInvalidJobStatusError } from '../errors/ingestionErrors';
-import type {
-  ChecksumValidationParameters,
-  IngestionBaseJobParams,
-  ResponseId,
-  TaskValidationParametersPartial,
-  ValidationTaskParametersPartial,
-} from '../interfaces';
-import { validationTaskParametersSchemaPartial } from '../interfaces';
+import type { IngestionBaseJobParams, ResponseId } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
@@ -213,9 +209,9 @@ export class IngestionManager {
       throwInvalidJobStatusError(jobId, retryJob.status, this.logger, activeSpan);
     }
 
-    const validationTask: ITaskResponse<TaskValidationParametersPartial> = await this.getValidationTask(jobId, logCtx);
+    const validationTask: ITaskResponse<IngestionValidationTaskParams> = await this.getValidationTask(jobId, logCtx);
     const { resourceId, productType } = this.parseAndValidateJobIdentifiers(retryJob.resourceId, retryJob.productType);
-    await this.zodValidator.validate(validationTaskParametersSchemaPartial, validationTask.parameters);
+    await this.zodValidator.validate(ingestionValidationTaskParamsSchema, validationTask.parameters);
     await this.polygonPartsManagerClient.deleteValidationEntity(resourceId, productType);
 
     if (validationTask.parameters.isValid === true) {
@@ -237,8 +233,8 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async getValidationTask(jobId: string, logCtx: LogContext): Promise<ITaskResponse<TaskValidationParametersPartial>> {
-    const tasks = await this.jobManagerWrapper.getTasksForJob<TaskValidationParametersPartial>(jobId);
+  private async getValidationTask(jobId: string, logCtx: LogContext): Promise<ITaskResponse<IngestionValidationTaskParams>> {
+    const tasks = await this.jobManagerWrapper.getTasksForJob<IngestionValidationTaskParams>(jobId);
 
     const validationTask = tasks.find((task) => task.type === this.validationTaskType);
 
@@ -264,7 +260,7 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async hardReset(
     retryJob: IJobResponse<IngestionBaseJobParams, unknown>,
-    validationTask: ITaskResponse<TaskValidationParametersPartial>,
+    validationTask: ITaskResponse<IngestionValidationTaskParams>,
     shouldConsiderChecksumChanges: boolean,
     logCtx: LogContext
   ): Promise<void> {
@@ -279,7 +275,7 @@ export class IngestionManager {
     const absoluteInputFilesPaths = await this.validateAndGetAbsoluteInputFiles(retryJob.parameters.inputFiles);
     const { metadataShapefilePath } = absoluteInputFilesPaths;
 
-    const newChecksums = await this.getFilesChecksum(metadataShapefilePath);
+    const newChecksums = await this.getChecksum(metadataShapefilePath);
 
     let updatedChecksums = validationTask.parameters.checksums;
 
@@ -291,12 +287,12 @@ export class IngestionManager {
         trace.getActiveSpan()?.setAttribute('exception.type', error.status);
         throw error;
       }
-      updatedChecksums = this.buildUpdatedChecksums(validationTask.parameters.checksums, newChecksums, logCtx);
+      updatedChecksums = this.buildUpdatedChecksums(validationTask.parameters.checksums, this.convertChecksumsToRelativePaths(newChecksums), logCtx);
     }
 
     const reportToSet: FileMetadata | undefined = validationTask.parameters.report ?? undefined;
 
-    const updatedParameters: ValidationTaskParametersPartial = {
+    const updatedParameters: IngestionValidationTaskParams = {
       isValid: validationTask.parameters.isValid,
       report: reportToSet,
       checksums: updatedChecksums,
@@ -367,10 +363,10 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async manualResetJobAndTask(jobId: string, taskId: string, parameters: ValidationTaskParametersPartial, logCtx: LogContext): Promise<void> {
+  private async manualResetJobAndTask(jobId: string, taskId: string, parameters: IngestionValidationTaskParams, logCtx: LogContext): Promise<void> {
     this.logger.debug({ msg: 'manually updating validation task and job status to PENDING', logContext: logCtx, jobId, taskId });
 
-    const taskParameters: IUpdateTaskBody<ValidationTaskParametersPartial> = {
+    const taskParameters: IUpdateTaskBody<IngestionValidationTaskParams> = {
       parameters,
       status: OperationStatus.PENDING,
       attempts: 0,
@@ -378,7 +374,7 @@ export class IngestionManager {
       reason: '',
     };
 
-    await this.jobManagerWrapper.updateTask<ValidationTaskParametersPartial>(jobId, taskId, taskParameters);
+    await this.jobManagerWrapper.updateTask<IngestionValidationTaskParams>(jobId, taskId, taskParameters);
     await this.jobManagerWrapper.updateJob(jobId, { status: OperationStatus.PENDING, reason: '' });
     this.logger.debug({ msg: 'validation task and job status updated to PENDING successfully', logContext: logCtx, jobId, taskId });
   }
@@ -564,9 +560,10 @@ export class IngestionManager {
   @withSpanAsyncV4
   private async newLayerJobPayload(
     newLayer: EnhancedIngestionNewLayer
-  ): Promise<ICreateJobBody<IngestionNewJobParams, ChecksumValidationParameters>> {
-    const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath.absolute);
-    const taskParameters: ChecksumValidationParameters = { checksums };
+  ): Promise<ICreateJobBody<IngestionNewJobParams, IngestionValidationTaskParams>> {
+    const checksums = await this.getChecksum(newLayer.inputFiles.metadataShapefilePath.absolute);
+    const relativeChecksums = this.convertChecksumsToRelativePaths(checksums);
+    const taskParameters: IngestionValidationTaskParams = { checksums: relativeChecksums };
 
     const newLayerRelative = {
       ...newLayer,
@@ -602,15 +599,16 @@ export class IngestionManager {
   private async updateLayerJobPayload(
     rasterLayerMetadata: RasterLayerMetadata,
     updateLayer: EnhancedIngestionUpdateLayer
-  ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ChecksumValidationParameters>> {
+  ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, IngestionValidationTaskParams>> {
     const { displayPath, id, productId, productType, productVersion, tileOutputFormat, productName, productSubType } = rasterLayerMetadata;
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === productType && supportedSwapObj.productSubType === productSubType;
     });
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
 
-    const checksums = await this.getFilesChecksum(updateLayer.inputFiles.metadataShapefilePath.absolute);
-    const taskParameters: ChecksumValidationParameters = { checksums };
+    const checksums = await this.getChecksum(updateLayer.inputFiles.metadataShapefilePath.absolute);
+    const relativeChecksums = this.convertChecksumsToRelativePaths(checksums);
+    const taskParameters: IngestionValidationTaskParams = { checksums: relativeChecksums };
 
     const updateLayerRelative = {
       ...updateLayer,
@@ -647,7 +645,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async getFilesChecksum(shapefilePath: string): Promise<IChecksum[]> {
+  private async getChecksum(shapefilePath: string): Promise<IChecksum[]> {
     const checksums = await Promise.all(getShapefileFiles(shapefilePath).map(async (fileName) => this.getFileChecksum(fileName)));
     return checksums;
   }
@@ -684,5 +682,12 @@ export class IngestionManager {
   private isJobRetryable(status: OperationStatus): boolean {
     const validStatuses = [OperationStatus.FAILED, OperationStatus.SUSPENDED];
     return validStatuses.includes(status);
+  }
+
+  private convertChecksumsToRelativePaths(checksums: IChecksum[]): IChecksum[] {
+    return checksums.map((checksum) => ({
+      ...checksum,
+      fileName: relative(this.sourceMount, checksum.fileName),
+    }));
   }
 }

@@ -1,8 +1,8 @@
 import { constants as fsConstants, promises as fsp } from 'node:fs';
 import jsLogger from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
+import { NotFoundError } from '@map-colonies/error-types';
 import { GdalInfoManager } from '../../../../src/info/models/gdalInfoManager';
-import { FileNotFoundError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { configMock } from '../../../mocks/configMock';
@@ -44,13 +44,13 @@ describe('SourceValidator', () => {
       });
     });
 
-    it('should throw FileNotFoundError when a file does not exist', async () => {
+    it('should throw NotFoundError when a file does not exist', async () => {
       fspAccessSpy.mockImplementation(async () => Promise.reject());
       const { gpkgFilesPath } = generateInputFiles();
 
       const promise = sourceValidator.validateFilesExist(gpkgFilesPath);
 
-      await expect(promise).rejects.toThrow(FileNotFoundError);
+      await expect(promise).rejects.toThrow(NotFoundError);
       expect(fspAccessSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
       gpkgFilesPath.forEach((filePath) => {
         expect(fspAccessSpy).toHaveBeenNthCalledWith(1, filePath, fsConstants.F_OK);

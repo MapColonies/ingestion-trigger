@@ -1,5 +1,4 @@
-import z from 'zod';
-import { HASH_ALGORITHMS } from './constants';
+import { HashAlgorithm } from '@map-colonies/raster-shared';
 
 /**
  * Interface describing a hash processor instance.
@@ -24,20 +23,6 @@ interface HashProcessor {
    */
   reset?: () => void;
 }
-
-export type HashAlgorithm = (typeof HASH_ALGORITHMS)[number];
-
-export interface Checksum {
-  algorithm: HashAlgorithm;
-  checksum: string;
-  fileName: string;
-}
-
-export const checksumSchema = z.object({
-  algorithm: z.enum(HASH_ALGORITHMS),
-  checksum: z.string(),
-  fileName: z.string(),
-});
 
 /**
  * Interface describing a checksum processor instance.
