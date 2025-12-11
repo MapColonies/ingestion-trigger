@@ -1,4 +1,4 @@
-import { callbackUrlsArraySchema, ingestionResolutionSchema, inputFilesSchema, updateRasterLayerMetadataSchema } from '@map-colonies/raster-shared';
+import { urlsArraySchema, ingestionResolutionSchema, inputFilesSchema, updateRasterLayerMetadataSchema } from '@map-colonies/raster-shared';
 import { z } from 'zod';
 
 export type IngestionUpdateLayerRequest = z.infer<typeof updateLayerSchema>;
@@ -9,7 +9,7 @@ export const updateLayerSchema = z.object({
     metadata: updateRasterLayerMetadataSchema,
     inputFiles: inputFilesSchema,
     ingestionResolution: ingestionResolutionSchema,
-    callbackUrls: callbackUrlsArraySchema.optional(),
+    callbackUrls: urlsArraySchema.optional(),
   }),
   paramsId: z.string().uuid(),
 });

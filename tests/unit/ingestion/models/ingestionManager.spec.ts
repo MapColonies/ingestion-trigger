@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
 import jsLogger from '@map-colonies/js-logger';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { getMapServingLayerName } from '@map-colonies/raster-shared';
@@ -16,11 +16,20 @@ import { CatalogClient } from '../../../../src/serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 import { Checksum } from '../../../../src/utils/hash/checksum';
-import { CHECKSUM_PROCESSOR } from '../../../../src/utils/hash/constants';
-import type { ChecksumProcessor } from '../../../../src/utils/hash/interfaces';
-import type { ValidateManager } from '../../../../src/validate/models/validateManager';
+import { ZodValidator } from '../../../../src/utils/validation/zodValidator';
+import { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
-import { generateCatalogLayerResponse, generateChecksum, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
+import {
+  generateCatalogLayerResponse,
+  generateChecksum,
+  generateNewLayerRequest,
+  generateUpdateLayerRequest,
+  rasterLayerMetadataGenerators,
+} from '../../../mocks/mockFactory';
+import { ChecksumProcessor } from '../../../../src/utils/hash/interfaces';
+import { CHECKSUM_PROCESSOR } from '../../../../src/utils/hash/constants';
+import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
+import { PolygonPartsManagerClient } from '../../../../src/serviceClients/polygonPartsManagerClient';
 
 describe('IngestionManager', () => {
   let ingestionManager: IngestionManager;
@@ -29,6 +38,12 @@ describe('IngestionManager', () => {
     validateGpkgsSources: jest.fn(),
     validateShapefiles: jest.fn(),
   } satisfies Partial<ValidateManager>;
+
+  const sourceValidator = {
+    validateFilesExist: jest.fn(),
+    validateGdalInfo: jest.fn(),
+    validateGpkgFiles: jest.fn(),
+  } satisfies Partial<SourceValidator>;
 
   const productManager = { read: jest.fn() } satisfies Partial<ProductManager>;
 
@@ -39,6 +54,14 @@ describe('IngestionManager', () => {
   const mockGeoValidator = {
     validate: jest.fn(),
   };
+
+  const zodValidator = {
+    validate: jest.fn(),
+  } satisfies Partial<ZodValidator>;
+
+  const mockPolygonPartsManagerClient = {
+    deleteValidationEntity: jest.fn(),
+  } satisfies Partial<PolygonPartsManagerClient>;
 
   let createIngestionJobSpy: jest.SpyInstance;
   let findJobsSpy: jest.SpyInstance;
@@ -84,12 +107,15 @@ describe('IngestionManager', () => {
       configMock,
       testTracer,
       mockValidateManager as unknown as ValidateManager,
+      sourceValidator as unknown as SourceValidator,
+      mockPolygonPartsManagerClient as unknown as PolygonPartsManagerClient,
       mockInfoManager as unknown as InfoManager,
       mockGeoValidator as unknown as GeoValidator,
       catalogClient,
       jobManagerWrapper,
       mapProxyClient,
-      productManager as unknown as ProductManager
+      productManager as unknown as ProductManager,
+      zodValidator as unknown as ZodValidator
     );
   });
 
@@ -485,6 +511,447 @@ describe('IngestionManager', () => {
 
       await expect(promise).rejects.toThrow(new ConflictError(expectedErrorMessage));
       expect(createIngestionJobSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('retryIngestion', () => {
+    let getJobSpy: jest.SpyInstance;
+    let getTasksForJobSpy: jest.SpyInstance;
+    let resetJobSpy: jest.SpyInstance;
+    let updateTaskSpy: jest.SpyInstance;
+    let updateJobSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      getJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'getJob');
+      getTasksForJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'getTasksForJob');
+      resetJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'resetJob');
+      updateTaskSpy = jest.spyOn(JobManagerWrapper.prototype, 'updateTask');
+      updateJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'updateJob');
+    });
+
+    it('should reset job when validation task has no errors and job is Failed', async () => {
+      const jobId = faker.string.uuid();
+      const taskId = faker.string.uuid();
+      const mockJob = {
+        id: jobId,
+        status: OperationStatus.FAILED,
+        productType: 'Orthophoto',
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        parameters: {
+          inputFiles: {
+            gpkgFilesPath: ['/path/to/file.gpkg'],
+            metadataShapefilePath: '/path/to/metadata.shp',
+            productShapefilePath: '/path/to/product.shp',
+          },
+        },
+      };
+      const mockValidationTask = {
+        id: taskId,
+        jobId,
+        type: 'validation',
+        status: OperationStatus.COMPLETED,
+        parameters: {
+          isValid: true,
+          checksums: [],
+        },
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
+      resetJobSpy.mockResolvedValue(undefined);
+      zodValidator.validate.mockResolvedValue(undefined);
+      mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
+
+      const action = ingestionManager.retryIngestion(jobId);
+
+      await expect(action).resolves.not.toThrow();
+      expect(resetJobSpy).toHaveBeenCalledWith(jobId);
+    });
+
+    it('should reset job when job status is SUSPENDED and validation passed', async () => {
+      const jobId = faker.string.uuid();
+      const taskId = faker.string.uuid();
+      const mockJob = {
+        id: jobId,
+        status: OperationStatus.SUSPENDED,
+        productType: 'Orthophoto',
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        parameters: {
+          inputFiles: {
+            gpkgFilesPath: ['/path/to/file.gpkg'],
+            metadataShapefilePath: '/path/to/metadata.shp',
+            productShapefilePath: '/path/to/product.shp',
+          },
+        },
+      };
+      const mockValidationTask = {
+        id: taskId,
+        jobId,
+        type: 'validation',
+        status: OperationStatus.COMPLETED,
+        parameters: {
+          isValid: true,
+          checksums: [],
+        },
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
+      resetJobSpy.mockResolvedValue(undefined);
+      zodValidator.validate.mockResolvedValue(undefined);
+      mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
+
+      const action = ingestionManager.retryIngestion(jobId);
+
+      await expect(action).resolves.not.toThrow();
+      expect(resetJobSpy).toHaveBeenCalledWith(jobId);
+    });
+
+    it('should update task with new checksums when shapefile has changed and job is SUSPENDED', async () => {
+      const jobId = faker.string.uuid();
+      const taskId = faker.string.uuid();
+      const oldChecksum = 'oldChecksum123';
+      const newChecksum = 'newChecksum456';
+
+      const mockJob = {
+        id: jobId,
+        status: OperationStatus.SUSPENDED,
+        productType: 'Orthophoto',
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        parameters: {
+          inputFiles: {
+            gpkgFilesPath: ['/path/to/file.gpkg'],
+            metadataShapefilePath: 'metadata.shp',
+            productShapefilePath: '/path/to/product.shp',
+          },
+        },
+      };
+      const mockValidationTask = {
+        id: taskId,
+        jobId,
+        type: 'validation',
+        status: OperationStatus.COMPLETED,
+        parameters: {
+          isValid: false,
+          checksums: [{ fileName: 'metadata.shp', checksum: oldChecksum }],
+        },
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
+      calcualteChecksumSpy.mockResolvedValue({
+        fileName: 'metadata.shp',
+        checksum: newChecksum,
+      });
+      updateTaskSpy.mockResolvedValue(undefined);
+      updateJobSpy.mockResolvedValue(undefined);
+      zodValidator.validate.mockResolvedValue(undefined);
+      sourceValidator.validateFilesExist.mockResolvedValue(undefined);
+      mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
+
+      const action = ingestionManager.retryIngestion(jobId);
+
+      await expect(action).resolves.not.toThrow();
+      expect(updateTaskSpy).toHaveBeenCalledTimes(1);
+
+      const taskCallArgs = updateTaskSpy.mock.calls[0] as [
+        string,
+        string,
+        { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } }
+      ];
+      const [taskCalledJobId, taskCalledTaskId, taskCalledParams] = taskCallArgs;
+
+      expect(taskCalledJobId).toBe(jobId);
+      expect(taskCalledTaskId).toBe(taskId);
+      expect(taskCalledParams).toEqual(
+        expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          parameters: { isValid: false, checksums: expect.any(Array), report: undefined },
+          status: OperationStatus.PENDING,
+          attempts: 0,
+          percentage: 0,
+          reason: '',
+        })
+      );
+      expect(taskCalledParams.parameters.isValid).toBe(false);
+      expect(Array.isArray(taskCalledParams.parameters.checksums)).toBe(true);
+      // Old checksum (1) + new changed checksums (5 shapefile components: .shp, .shx, .dbf, .prj, .cpg)
+      expect(taskCalledParams.parameters.checksums).toHaveLength(6);
+
+      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING, reason: '' });
+      expect(resetJobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should update task with new checksums when shapefile has changed and job is FAILED', async () => {
+      const jobId = faker.string.uuid();
+      const taskId = faker.string.uuid();
+      const oldChecksum = 'oldChecksum123';
+      const newChecksum = 'newChecksum456';
+
+      const mockJob = {
+        id: jobId,
+        status: OperationStatus.FAILED,
+        productType: 'Orthophoto',
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        parameters: {
+          inputFiles: {
+            gpkgFilesPath: ['/path/to/file.gpkg'],
+            metadataShapefilePath: 'metadata.shp',
+            productShapefilePath: '/path/to/product.shp',
+          },
+        },
+      };
+      const mockValidationTask = {
+        id: taskId,
+        jobId,
+        type: 'validation',
+        status: OperationStatus.FAILED,
+        parameters: {
+          isValid: false,
+          checksums: [{ fileName: 'metadata.shp', checksum: oldChecksum }],
+        },
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
+      calcualteChecksumSpy.mockResolvedValue({
+        fileName: 'metadata.shp',
+        checksum: newChecksum,
+      });
+      updateTaskSpy.mockResolvedValue(undefined);
+      updateJobSpy.mockResolvedValue(undefined);
+      zodValidator.validate.mockResolvedValue(undefined);
+      sourceValidator.validateFilesExist.mockResolvedValue(undefined);
+      mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
+
+      const action = ingestionManager.retryIngestion(jobId);
+
+      await expect(action).resolves.not.toThrow();
+      expect(updateTaskSpy).toHaveBeenCalledTimes(1);
+
+      const taskCallArgs = updateTaskSpy.mock.calls[0] as [
+        string,
+        string,
+        { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } }
+      ];
+      const [taskCalledJobId, taskCalledTaskId, taskCalledParams] = taskCallArgs;
+
+      expect(taskCalledJobId).toBe(jobId);
+      expect(taskCalledTaskId).toBe(taskId);
+      expect(taskCalledParams).toEqual(
+        expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          parameters: { isValid: false, checksums: expect.any(Array), report: undefined },
+          status: OperationStatus.PENDING,
+          attempts: 0,
+          percentage: 0,
+          reason: '',
+        })
+      );
+      expect(taskCalledParams.parameters.isValid).toBe(false);
+      expect(Array.isArray(taskCalledParams.parameters.checksums)).toBe(true);
+      // Old checksum (1) kept as-is since status is FAILED (no checksum consideration)
+      expect(taskCalledParams.parameters.checksums).toHaveLength(1);
+
+      expect(updateJobSpy).toHaveBeenCalledWith(jobId, { status: OperationStatus.PENDING, reason: '' });
+      expect(resetJobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should throw ConflictError when shapefile has not changed', async () => {
+      const jobId = faker.string.uuid();
+      const taskId = faker.string.uuid();
+      const existingChecksum = { fileName: 'metadata.shp', checksum: 'sameChecksum123' };
+
+      const mockJob = {
+        id: jobId,
+        status: OperationStatus.FAILED,
+        productType: 'Orthophoto',
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        parameters: {
+          inputFiles: {
+            gpkgFilesPath: ['/path/to/file.gpkg'],
+            metadataShapefilePath: 'metadata.shp',
+            productShapefilePath: '/path/to/product.shp',
+          },
+        },
+      };
+      const mockValidationTask = {
+        id: taskId,
+        jobId,
+        type: 'validation',
+        status: OperationStatus.COMPLETED,
+        parameters: {
+          isValid: false,
+          checksums: [existingChecksum],
+        },
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
+      calcualteChecksumSpy.mockResolvedValue(existingChecksum);
+      zodValidator.validate.mockResolvedValue(undefined);
+      sourceValidator.validateFilesExist.mockResolvedValue(undefined);
+
+      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(ConflictError);
+      expect(updateTaskSpy).not.toHaveBeenCalled();
+      expect(resetJobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestError when metadataShapefilePath is missing', async () => {
+      const jobId = faker.string.uuid();
+      const taskId = faker.string.uuid();
+
+      const mockJob = {
+        id: jobId,
+        status: OperationStatus.FAILED,
+        productType: 'Orthophoto',
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        parameters: {
+          inputFiles: {
+            gpkgFilesPath: ['/path/to/file.gpkg'],
+            metadataShapefilePath: undefined,
+            productShapefilePath: '/path/to/product.shp',
+          },
+        },
+      };
+      const mockValidationTask = {
+        id: taskId,
+        jobId,
+        type: 'validation',
+        status: OperationStatus.FAILED,
+        parameters: {
+          isValid: false,
+          checksums: [{ fileName: 'metadata.shp', checksum: 'checksum123' }],
+        },
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockValidationTask]);
+      zodValidator.validate.mockRejectedValue(new BadRequestError('Validation failed'));
+
+      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
+
+      expect(updateTaskSpy).not.toHaveBeenCalled();
+      expect(resetJobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestError when job status is PENDING', async () => {
+      const jobId = faker.string.uuid();
+      const mockJob = {
+        id: jobId,
+        status: OperationStatus.PENDING,
+        productType: 'Orthophoto',
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        parameters: {
+          inputFiles: {
+            gpkgFilesPath: ['/path/to/file.gpkg'],
+            metadataShapefilePath: '/path/to/metadata.shp',
+            productShapefilePath: '/path/to/product.shp',
+          },
+        },
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+
+      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
+      expect(getTasksForJobSpy).not.toHaveBeenCalled();
+      expect(updateTaskSpy).not.toHaveBeenCalled();
+      expect(resetJobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestError when job status is IN_PROGRESS', async () => {
+      const jobId = faker.string.uuid();
+      const mockJob = {
+        id: jobId,
+        status: OperationStatus.IN_PROGRESS,
+        productType: 'Orthophoto',
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        parameters: {
+          inputFiles: {
+            gpkgFilesPath: ['/path/to/file.gpkg'],
+            metadataShapefilePath: '/path/to/metadata.shp',
+            productShapefilePath: '/path/to/product.shp',
+          },
+        },
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+
+      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
+      expect(updateTaskSpy).not.toHaveBeenCalled();
+      expect(resetJobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError when validation task is not found', async () => {
+      const jobId = faker.string.uuid();
+      const mockJob = {
+        id: jobId,
+        status: OperationStatus.FAILED,
+        productType: 'Orthophoto',
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        parameters: {
+          inputFiles: {
+            gpkgFilesPath: ['/path/to/file.gpkg'],
+            metadataShapefilePath: '/path/to/metadata.shp',
+            productShapefilePath: '/path/to/product.shp',
+          },
+        },
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([]);
+
+      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(NotFoundError);
+      expect(updateTaskSpy).not.toHaveBeenCalled();
+      expect(resetJobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should find validation task among multiple tasks', async () => {
+      const jobId = faker.string.uuid();
+      const taskId = faker.string.uuid();
+      const mockJob = {
+        id: jobId,
+        status: OperationStatus.FAILED,
+        productType: 'Orthophoto',
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        parameters: {
+          inputFiles: {
+            gpkgFilesPath: ['/path/to/file.gpkg'],
+            metadataShapefilePath: '/path/to/metadata.shp',
+            productShapefilePath: '/path/to/product.shp',
+          },
+        },
+      };
+      const mockTasks = [
+        {
+          id: faker.string.uuid(),
+          jobId,
+          type: 'other-task',
+          status: OperationStatus.COMPLETED,
+          parameters: {},
+        },
+        {
+          id: taskId,
+          jobId,
+          type: 'validation',
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: true,
+            checksums: [],
+          },
+        },
+      ];
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue(mockTasks);
+      resetJobSpy.mockResolvedValue(undefined);
+      zodValidator.validate.mockResolvedValue(undefined);
+      mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
+
+      const action = ingestionManager.retryIngestion(jobId);
+
+      await expect(action).resolves.not.toThrow();
+      expect(resetJobSpy).toHaveBeenCalledWith(jobId);
     });
   });
 });

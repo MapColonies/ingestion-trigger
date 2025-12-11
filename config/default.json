@@ -54,7 +54,8 @@
     "jobManagerURL": "",
     "mapProxyApiServiceUrl": "",
     "catalogServiceURL": "",
-    "jobTrackerServiceURL": ""
+    "jobTrackerServiceURL": "",
+    "polygonPartsManagerURL": ""
   },
   "jobManager": {
     "jobDomain": "RASTER",

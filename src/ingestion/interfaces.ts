@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { ICreateJobResponse } from '@map-colonies/mc-priority-queue';
-import type { Checksum } from '../utils/hash/interfaces';
+import { ingestionBaseJobParamsSchema } from '@map-colonies/raster-shared';
+import z from 'zod';
+
+export interface SourcesValidationResponse {
+  isValid: boolean;
+  message: string;
+}
 
 export interface ResponseId {
   jobId: ICreateJobResponse['id'];
@@ -9,6 +15,10 @@ export interface ResponseId {
 
 export interface IRecordRequestParams {
   id: string;
+}
+
+export interface IRetryRequestParams {
+  jobId: string;
 }
 
 export interface PixelRange {
@@ -42,6 +52,4 @@ export interface TileSize {
   height: number;
 }
 
-export interface ValidationTaskParameters {
-  checksums: Checksum[];
-}
+export type IngestionBaseJobParams = z.infer<typeof ingestionBaseJobParamsSchema>;

@@ -118,6 +118,53 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+  /ingestion/{jobId}/retry:
+    put:
+      operationId: retryIngestion
+      tags:
+        - ingestion
+      summary: retry a failed or completed ingestion job with task failures
+      description: >-
+        Retries an ingestion job that has failed or completed with errors.  This endpoint handles failures from any task in the ingestion workflow. The job must be in FAILED or COMPLETED status.
+      parameters:
+        - name: jobId
+          in: path
+          description: The id of the job to retry
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad request - Job status is not FAILED, SUSPENDED or required parameters are missing
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '404':
+          description: Not Found - Job tasks not found
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '409':
+          description: Conflict - Shapefile has not changed
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '500':
+          description: Internal Server error
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
   /validate/gpkgs:
     post:
       operationId: validateGpkgs
@@ -211,7 +258,6 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
-
 components:
   schemas:
     CallbackUrls:
@@ -285,7 +331,7 @@ components:
     IngestionResolution:
       type: number
       format: double
-      minimum: 0.000000167638063430786
+      minimum: 1.67638063430786e-7
       maximum: 0.703125
       description: requested ingestion resolution
     IngestionUpdateLayerMetadata:

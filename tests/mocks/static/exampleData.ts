@@ -1,7 +1,6 @@
-import type { InputFiles } from '@map-colonies/raster-shared';
-import type { ValidationTaskParameters } from '../../../src/ingestion/interfaces';
+import type { InputFiles, IngestionValidationTaskParams } from '@map-colonies/raster-shared';
 
-export const validInputFiles: Pick<ValidationTaskParameters, 'checksums'> & { inputFiles: InputFiles } = {
+export const validInputFiles: Pick<IngestionValidationTaskParams, 'checksums'> & { inputFiles: InputFiles } = {
   inputFiles: {
     gpkgFilesPath: ['validIndexed.gpkg'],
     productShapefilePath: 'validIndexed',

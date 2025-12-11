@@ -1,9 +1,14 @@
+import { OperationStatus } from '@map-colonies/mc-priority-queue';
+import { Logger } from '@map-colonies/js-logger';
+import { BadRequestError, NotFoundError } from '@map-colonies/error-types';
+import { Span } from '@opentelemetry/api';
+
 export class UnsupportedEntityError extends Error {
   public constructor(message: string) {
     super(message);
   }
 }
-export class FileNotFoundError extends UnsupportedEntityError {
+export class FileNotFoundError extends NotFoundError {
   public constructor(fileName: string);
   public constructor(fileName: string[]);
   public constructor(fileName: string, path: string);
@@ -36,4 +41,15 @@ export class ValidationError extends Error {
   public constructor(message: string) {
     super(message);
   }
+}
+
+export function throwInvalidJobStatusError(jobId: string, currentStatus: OperationStatus, logger: Logger, span?: Span): never {
+  const validStatuses = [OperationStatus.FAILED, OperationStatus.SUSPENDED];
+  const message = `Cannot retry job with id: ${jobId} because its status is: ${currentStatus}. Expected status: ${validStatuses.join(' or ')}`;
+
+  logger.error({ msg: message, jobId, currentStatus, validStatuses });
+
+  const error = new BadRequestError(message);
+  span?.setAttribute('exception.type', error.status);
+  throw error;
 }

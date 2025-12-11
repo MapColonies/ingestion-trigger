@@ -86,6 +86,7 @@ const registerDefaultConfig = (): void => {
       mapProxyApiServiceUrl: 'http://mapproxyapiserviceurl',
       catalogServiceURL: 'http://catalogserviceurl',
       jobTrackerServiceURL: 'http://jobTrackerServiceUrl',
+      polygonPartsManagerURL: 'http://polygonPartsManagerServiceUrl',
     },
     jobManager: {
       jobDomain: 'RASTER',

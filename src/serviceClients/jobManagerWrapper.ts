@@ -1,13 +1,17 @@
 import { Logger } from '@map-colonies/js-logger';
 import { ICreateJobBody, ICreateJobResponse, JobManagerClient } from '@map-colonies/mc-priority-queue';
 import { IHttpRetryConfig } from '@map-colonies/mc-utils';
-import type { IngestionNewJobParams, IngestionSwapUpdateJobParams, IngestionUpdateJobParams } from '@map-colonies/raster-shared';
+import type {
+  IngestionNewJobParams,
+  IngestionSwapUpdateJobParams,
+  IngestionUpdateJobParams,
+  IngestionValidationTaskParams,
+} from '@map-colonies/raster-shared';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { trace, Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
 import type { IConfig } from '../common/interfaces';
-import { ValidationTaskParameters } from '../ingestion/interfaces';
 
 @injectable()
 export class JobManagerWrapper extends JobManagerClient {
@@ -27,7 +31,7 @@ export class JobManagerWrapper extends JobManagerClient {
 
   @withSpanAsyncV4
   public async createIngestionJob(
-    payload: ICreateJobBody<IngestionNewJobParams | IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters>
+    payload: ICreateJobBody<IngestionNewJobParams | IngestionUpdateJobParams | IngestionSwapUpdateJobParams, IngestionValidationTaskParams>
   ): Promise<ICreateJobResponse> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('jobManagerWrapper.createJobWrapper');
@@ -38,6 +42,21 @@ export class JobManagerWrapper extends JobManagerClient {
     } catch (err) {
       const message = 'failed to create a new job';
       this.logger.error({ msg: message, err, layer: payload.parameters });
+      throw err;
+    }
+  }
+
+  @withSpanAsyncV4
+  public async resetJob(jobId: string): Promise<void> {
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('jobManagerWrapper.resetJob');
+
+    try {
+      await this.post(`${this.baseUrl}/jobs/${jobId}/reset`, {});
+      this.logger.info({ msg: 'successfully reset job', jobId });
+    } catch (err) {
+      const message = `failed to reset job with id: ${jobId}`;
+      this.logger.error({ msg: message, err, jobId });
       throw err;
     }
   }

@@ -1,9 +1,24 @@
+import { relative } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
-import { IFindJobsByCriteriaBody, OperationStatus, type ICreateJobBody } from '@map-colonies/mc-priority-queue';
+import {
+  IFindJobsByCriteriaBody,
+  IJobResponse,
+  IUpdateTaskBody,
+  OperationStatus,
+  type ICreateJobBody,
+  type ITaskResponse,
+} from '@map-colonies/mc-priority-queue';
 import {
   getMapServingLayerName,
+  inputFilesSchema,
+  rasterProductTypeSchema,
+  resourceIdSchema,
+  ingestionValidationTaskParamsSchema,
+  type IngestionValidationTaskParams,
+  type Checksum as IChecksum,
+  type FileMetadata,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
@@ -20,16 +35,18 @@ import { CatalogClient } from '../../serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
 import { Checksum } from '../../utils/hash/checksum';
-import { Checksum as IChecksum } from '../../utils/hash/interfaces';
 import { getAbsolutePathInputFiles } from '../../utils/paths';
 import { getShapefileFiles } from '../../utils/shapefile';
+import { ZodValidator } from '../../utils/validation/zodValidator';
 import { ValidateManager } from '../../validate/models/validateManager';
-import { ChecksumError } from '../errors/ingestionErrors';
-import type { ResponseId, ValidationTaskParameters } from '../interfaces';
+import { ChecksumError, throwInvalidJobStatusError } from '../errors/ingestionErrors';
+import type { IngestionBaseJobParams, ResponseId } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
 import { GeoValidator } from '../validators/geoValidator';
+import { SourceValidator } from '../validators/sourceValidator';
+import { PolygonPartsManagerClient } from '../../serviceClients/polygonPartsManagerClient';
 import { ProductManager } from './productManager';
 
 type ReplaceValuesOfKey<T extends Record<PropertyKey, unknown>, Key extends keyof T, Value> = {
@@ -60,12 +77,15 @@ export class IngestionManager {
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     private readonly validateManager: ValidateManager,
+    private readonly sourceValidator: SourceValidator,
+    private readonly polygonPartsManagerClient: PolygonPartsManagerClient,
     private readonly infoManager: InfoManager,
     private readonly geoValidator: GeoValidator,
     private readonly catalogClient: CatalogClient,
     private readonly jobManagerWrapper: JobManagerWrapper,
     private readonly mapProxyClient: MapProxyClient,
-    private readonly productManager: ProductManager
+    private readonly productManager: ProductManager,
+    private readonly zodValidator: ZodValidator
   ) {
     this.logContext = {
       fileName: __filename,
@@ -110,7 +130,7 @@ export class IngestionManager {
     };
 
     await this.newLayerValidations(newLayerLocal);
-    this.logger.info({ msg: `finished validation of new layer. all checks have passed`, logContext: logCtx });
+    this.logger.info({ msg: `finished validation of new layer, all checks passed`, logContext: logCtx });
     activeSpan?.addEvent('ingestionManager.validateNewLayer.success', { validationSuccess: true });
 
     const createJobRequest = await this.newLayerJobPayload(newLayerLocal);
@@ -118,8 +138,10 @@ export class IngestionManager {
     const taskId = taskIds[0];
 
     this.logger.info({
-      msg: `new ingestion job and validation task were created. jobId: ${jobId}, taskId: ${taskId}`,
+      msg: `new ingestion job and validation task created successfully`,
       logContext: logCtx,
+      jobId,
+      taskId,
     });
     activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.newLayer.success', { triggerSuccess: true, jobId, taskId });
 
@@ -156,20 +178,206 @@ export class IngestionManager {
     };
 
     await this.updateLayerValidations(rasterLayerMetadata, updateLayerLocal);
-    this.logger.info({ msg: `finished validation of update layer. all checks have passed`, logContext: logCtx });
-    activeSpan?.addEvent('ingestionManager.validateUpdateLayer.success', { validationSuccess: true });
+    this.logger.info({ msg: `finished validation of update layer, all checks passed`, logContext: logCtx });
+    activeSpan?.addEvent('ingestionManager.updateLayerValidations.success', { validationSuccess: true });
 
     const createJobRequest = await this.updateLayerJobPayload(rasterLayerMetadata, updateLayerLocal);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
     const taskId = taskIds[0];
 
     this.logger.info({
-      msg: `new update job and validation task were created. jobId: ${jobId}, taskId: ${taskId} `,
+      msg: `update job and validation task created successfully`,
       logContext: logCtx,
+      jobId,
+      taskId,
     });
     activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId });
 
     return { jobId, taskId };
+  }
+
+  @withSpanAsyncV4
+  public async retryIngestion(jobId: string): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.retryIngestion.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('ingestionManager.retryIngestion');
+
+    this.logger.info({ msg: 'starting retry ingestion process', logContext: logCtx, jobId });
+
+    const retryJob: IJobResponse<IngestionBaseJobParams, unknown> = await this.jobManagerWrapper.getJob<IngestionBaseJobParams, unknown>(jobId);
+
+    if (!this.isJobRetryable(retryJob.status)) {
+      throwInvalidJobStatusError(jobId, retryJob.status, this.logger, activeSpan);
+    }
+
+    const validationTask: ITaskResponse<IngestionValidationTaskParams> = await this.getValidationTask(jobId, logCtx);
+    const { resourceId, productType } = this.parseAndValidateJobIdentifiers(retryJob.resourceId, retryJob.productType);
+    await this.zodValidator.validate(ingestionValidationTaskParamsSchema, validationTask.parameters);
+    await this.polygonPartsManagerClient.deleteValidationEntity(resourceId, productType);
+
+    if (validationTask.parameters.isValid === true) {
+      await this.softReset(jobId, logCtx);
+    } else {
+      const shouldConsiderChecksumChanges = validationTask.status === OperationStatus.COMPLETED;
+      await this.hardReset(retryJob, validationTask, shouldConsiderChecksumChanges, logCtx);
+    }
+  }
+
+  @withSpanV4
+  private parseAndValidateJobIdentifiers(
+    resourceId: string | undefined,
+    productType: string | undefined
+  ): { resourceId: string; productType: RasterProductTypes } {
+    const parsedResourceId = resourceIdSchema.parse(resourceId);
+    const parsedProductType = rasterProductTypeSchema.parse(productType);
+    return { resourceId: parsedResourceId, productType: parsedProductType };
+  }
+
+  @withSpanAsyncV4
+  private async getValidationTask(jobId: string, logCtx: LogContext): Promise<ITaskResponse<IngestionValidationTaskParams>> {
+    const tasks = await this.jobManagerWrapper.getTasksForJob<IngestionValidationTaskParams>(jobId);
+
+    const validationTask = tasks.find((task) => task.type === this.validationTaskType);
+
+    if (!validationTask) {
+      const message = `Cannot retry job with id: ${jobId} because no validation task was found`;
+      this.logger.error({ msg: message, logContext: logCtx, jobId, taskTypes: tasks.map((t) => t.type) });
+      const error = new NotFoundError(message);
+      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
+      throw error;
+    }
+
+    return validationTask;
+  }
+
+  @withSpanAsyncV4
+  private async softReset(jobId: string, logCtx: LogContext): Promise<void> {
+    this.logger.info({ msg: 'performing soft reset: validation passed, resetting job via jobManager API', logContext: logCtx, jobId });
+    await this.jobManagerWrapper.resetJob(jobId);
+    trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.softReset.success', { retryType: 'softReset', jobId });
+    this.logger.info({ msg: 'soft reset completed successfully', logContext: logCtx, jobId });
+  }
+
+  @withSpanAsyncV4
+  private async hardReset(
+    retryJob: IJobResponse<IngestionBaseJobParams, unknown>,
+    validationTask: ITaskResponse<IngestionValidationTaskParams>,
+    shouldConsiderChecksumChanges: boolean,
+    logCtx: LogContext
+  ): Promise<void> {
+    this.logger.info({
+      msg: 'performing hard reset: validation has errors, checking for shapefile changes',
+      logContext: logCtx,
+      jobId: retryJob.id,
+      taskId: validationTask.id,
+      shouldConsiderChecksumChanges,
+    });
+
+    const absoluteInputFilesPaths = await this.validateAndGetAbsoluteInputFiles(retryJob.parameters.inputFiles);
+    const { metadataShapefilePath } = absoluteInputFilesPaths;
+
+    const newChecksums = await this.getChecksum(metadataShapefilePath);
+
+    let updatedChecksums = validationTask.parameters.checksums;
+
+    if (shouldConsiderChecksumChanges) {
+      if (!this.isChecksumChanged(validationTask.parameters.checksums, newChecksums)) {
+        const message = `job id: ${retryJob.id} could not be retried, due to the detection that not a single metadata shapefile has been changed.`;
+        this.logger.error({ msg: message, logContext: logCtx, jobId: retryJob.id, taskId: validationTask.id });
+        const error = new ConflictError(message);
+        trace.getActiveSpan()?.setAttribute('exception.type', error.status);
+        throw error;
+      }
+      updatedChecksums = this.buildUpdatedChecksums(validationTask.parameters.checksums, this.convertChecksumsToRelativePaths(newChecksums), logCtx);
+    }
+
+    const reportToSet: FileMetadata | undefined = validationTask.parameters.report ?? undefined;
+
+    const updatedParameters: IngestionValidationTaskParams = {
+      isValid: validationTask.parameters.isValid,
+      report: reportToSet,
+      checksums: updatedChecksums,
+    };
+
+    this.logger.info({
+      msg: 'resetting validation task and job to PENDING status with updated parameters',
+      logContext: logCtx,
+      jobId: retryJob.id,
+      taskId: validationTask.id,
+      updatedChecksumItems: updatedChecksums.length,
+      shouldConsiderChecksumChanges,
+    });
+
+    await this.manualResetJobAndTask(validationTask.jobId, validationTask.id, updatedParameters, logCtx);
+
+    trace
+      .getActiveSpan()
+      ?.setStatus({ code: SpanStatusCode.OK })
+      .addEvent('ingestionManager.hardReset.success', { retryType: 'hardReset', jobId: retryJob.id });
+    this.logger.info({ msg: 'hard reset completed successfully', logContext: logCtx, jobId: retryJob.id, taskId: validationTask.id });
+  }
+
+  @withSpanAsyncV4
+  private async validateAndGetAbsoluteInputFiles(inputFiles: InputFiles): Promise<InputFiles> {
+    await this.zodValidator.validate(inputFilesSchema, inputFiles);
+
+    const absoluteInputFilesPaths = getAbsolutePathInputFiles({
+      inputFiles,
+      sourceMount: this.sourceMount,
+    });
+    const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = absoluteInputFilesPaths.inputFiles;
+
+    // Validate that all input files exist
+    const combinedInputFiles = [...gpkgFilesPath, ...getShapefileFiles(metadataShapefilePath), ...getShapefileFiles(productShapefilePath)];
+    await this.sourceValidator.validateFilesExist(combinedInputFiles);
+
+    return absoluteInputFilesPaths.inputFiles;
+  }
+
+  @withSpanV4
+  private isChecksumChanged(existingChecksums: IChecksum[], newChecksums: IChecksum[]): boolean {
+    return newChecksums.some((newChecksum) => !this.checksumExists(existingChecksums, newChecksum.checksum));
+  }
+
+  @withSpanV4
+  private buildUpdatedChecksums(existingChecksums: IChecksum[], newChecksums: IChecksum[], logCtx: LogContext): IChecksum[] {
+    const uniqueNewChecksums = newChecksums.filter((newChecksum) => !this.checksumExists(existingChecksums, newChecksum.checksum));
+
+    const updatedChecksums = [...existingChecksums, ...uniqueNewChecksums];
+
+    this.logger.debug({
+      msg: 'built updated checksums array',
+      logContext: logCtx,
+      totalExistingFiles: existingChecksums.length,
+      totalNewFiles: newChecksums.length,
+      uniqueNewFiles: uniqueNewChecksums.length,
+      totalUpdatedFiles: updatedChecksums.length,
+      uniqueNewFileNames: uniqueNewChecksums.map((c) => c.fileName),
+    });
+
+    return updatedChecksums;
+  }
+
+  @withSpanV4
+  private checksumExists(checksums: IChecksum[], checksumValue: string): boolean {
+    return checksums.some((checksum) => checksum.checksum === checksumValue);
+  }
+
+  @withSpanAsyncV4
+  private async manualResetJobAndTask(jobId: string, taskId: string, parameters: IngestionValidationTaskParams, logCtx: LogContext): Promise<void> {
+    this.logger.debug({ msg: 'manually updating validation task and job status to PENDING', logContext: logCtx, jobId, taskId });
+
+    const taskParameters: IUpdateTaskBody<IngestionValidationTaskParams> = {
+      parameters,
+      status: OperationStatus.PENDING,
+      attempts: 0,
+      percentage: 0,
+      reason: '',
+    };
+
+    await this.jobManagerWrapper.updateTask<IngestionValidationTaskParams>(jobId, taskId, taskParameters);
+    await this.jobManagerWrapper.updateJob(jobId, { status: OperationStatus.PENDING, reason: '' });
+    this.logger.debug({ msg: 'validation task and job status updated to PENDING successfully', logContext: logCtx, jobId, taskId });
   }
 
   @withSpanAsyncV4
@@ -200,7 +408,7 @@ export class IngestionManager {
     const layerName = getMapServingLayerName(productId, productType);
     await this.validateLayerExistsInMapProxy(layerName);
     await this.validateNoParallelJobs(productId, productType);
-    this.logger.info({ msg: 'validation in catalog ,job manager and mapproxy passed', logContext: logCtx });
+    this.logger.info({ msg: 'validation against catalog, job-manager, and mapproxy passed', logContext: logCtx });
   }
 
   @withSpanAsyncV4
@@ -227,7 +435,7 @@ export class IngestionManager {
     await this.validateLayerDoesntExistInMapProxy(layerName);
     await this.validateLayerDoesntExistInCatalog(metadata.productId, metadata.productType);
     await this.validateNoParallelJobs(metadata.productId, metadata.productType);
-    this.logger.info({ msg: 'validation in catalog, job-manager and mapproxy passed', logContext: logCtx });
+    this.logger.info({ msg: 'validation against catalog, job-manager, and mapproxy passed', logContext: logCtx });
   }
 
   @withSpanAsyncV4
@@ -351,9 +559,12 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async newLayerJobPayload(newLayer: EnhancedIngestionNewLayer): Promise<ICreateJobBody<IngestionNewJobParams, ValidationTaskParameters>> {
-    const checksums = await this.getFilesChecksum(newLayer.inputFiles.metadataShapefilePath.absolute);
-    const taskParameters = { checksums };
+  private async newLayerJobPayload(
+    newLayer: EnhancedIngestionNewLayer
+  ): Promise<ICreateJobBody<IngestionNewJobParams, IngestionValidationTaskParams>> {
+    const checksums = await this.getChecksum(newLayer.inputFiles.metadataShapefilePath.absolute);
+    const relativeChecksums = this.convertChecksumsToRelativePaths(checksums);
+    const taskParameters: IngestionValidationTaskParams = { checksums: relativeChecksums };
 
     const newLayerRelative = {
       ...newLayer,
@@ -390,15 +601,16 @@ export class IngestionManager {
   private async updateLayerJobPayload(
     rasterLayerMetadata: RasterLayerMetadata,
     updateLayer: EnhancedIngestionUpdateLayer
-  ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, ValidationTaskParameters>> {
+  ): Promise<ICreateJobBody<IngestionUpdateJobParams | IngestionSwapUpdateJobParams, IngestionValidationTaskParams>> {
     const { displayPath, id, productId, productType, productVersion, tileOutputFormat, productName, productSubType } = rasterLayerMetadata;
     const isSwapUpdate = this.supportedIngestionSwapTypes.find((supportedSwapObj) => {
       return supportedSwapObj.productType === productType && supportedSwapObj.productSubType === productSubType;
     });
     const updateJobAction = isSwapUpdate ? this.swapUpdateJobType : this.updateJobType;
 
-    const checksums = await this.getFilesChecksum(updateLayer.inputFiles.metadataShapefilePath.absolute);
-    const taskParameters = { checksums };
+    const checksums = await this.getChecksum(updateLayer.inputFiles.metadataShapefilePath.absolute);
+    const relativeChecksums = this.convertChecksumsToRelativePaths(checksums);
+    const taskParameters: IngestionValidationTaskParams = { checksums: relativeChecksums };
 
     const updateLayerRelative = {
       ...updateLayer,
@@ -435,7 +647,7 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async getFilesChecksum(shapefilePath: string): Promise<IChecksum[]> {
+  private async getChecksum(shapefilePath: string): Promise<IChecksum[]> {
     const checksums = await Promise.all(getShapefileFiles(shapefilePath).map(async (fileName) => this.getFileChecksum(fileName)));
     return checksums;
   }
@@ -446,7 +658,7 @@ export class IngestionManager {
     activeSpan?.updateName('ingestionManager.getFileChecksum');
     const logCtx: LogContext = { ...this.logContext, function: this.getFileChecksum.name };
 
-    this.logger.info({ msg: `calucalting checksum for: ${filePath}`, logContext: logCtx });
+    this.logger.debug({ msg: `calculating checksum for: ${filePath}`, logContext: logCtx });
 
     try {
       // eslint-disable-next-line @typescript-eslint/await-thenable
@@ -466,5 +678,18 @@ export class IngestionManager {
       metadataShapefilePath: inputFiles.metadataShapefilePath.absolute,
       productShapefilePath: inputFiles.productShapefilePath.absolute,
     };
+  }
+
+  @withSpanV4
+  private isJobRetryable(status: OperationStatus): boolean {
+    const validStatuses = [OperationStatus.FAILED, OperationStatus.SUSPENDED];
+    return validStatuses.includes(status);
+  }
+
+  private convertChecksumsToRelativePaths(checksums: IChecksum[]): IChecksum[] {
+    return checksums.map((checksum) => ({
+      ...checksum,
+      fileName: relative(this.sourceMount, checksum.fileName),
+    }));
   }
 }

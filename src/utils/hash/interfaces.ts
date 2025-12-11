@@ -1,4 +1,4 @@
-import { HASH_ALGORITHMS } from './constants';
+import { HashAlgorithm } from '@map-colonies/raster-shared';
 
 /**
  * Interface describing a hash processor instance.
@@ -22,14 +22,6 @@ interface HashProcessor {
    * Optional method to reset the hash calculator state
    */
   reset?: () => void;
-}
-
-export type HashAlgorithm = (typeof HASH_ALGORITHMS)[number];
-
-export interface Checksum {
-  algorithm: HashAlgorithm;
-  checksum: string;
-  fileName: string;
 }
 
 /**

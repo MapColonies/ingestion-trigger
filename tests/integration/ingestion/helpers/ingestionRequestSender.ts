@@ -12,4 +12,8 @@ export class IngestionRequestSender {
   public async updateLayer(id: string, body: IngestionUpdateLayer): Promise<supertest.Response> {
     return supertest.agent(this.app).put(`/ingestion/${id}`).set('Content-Type', 'application/json').send(body);
   }
+
+  public async retryIngestion(jobId: string): Promise<supertest.Response> {
+    return supertest.agent(this.app).put(`/ingestion/${jobId}/retry`).set('Content-Type', 'application/json');
+  }
 }
