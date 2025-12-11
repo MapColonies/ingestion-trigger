@@ -2220,7 +2220,7 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
         expect(response.body).toHaveProperty('message');
         expect((response.body as { message: string }).message).toContain('nonexistent-file.gpkg');
-      }, 1000000);
+      });
     });
   });
 });
