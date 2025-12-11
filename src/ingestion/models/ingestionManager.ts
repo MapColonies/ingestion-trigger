@@ -1,4 +1,5 @@
 import { relative } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import {
@@ -584,6 +585,7 @@ export class IngestionManager {
     const createJobRequest = {
       resourceId: newLayerRelative.metadata.productId,
       version: initialProductVersion,
+      internalId: randomUUID(),
       type: this.ingestionNewJobType,
       status: OperationStatus.PENDING,
       parameters: ingestionNewJobParams,
