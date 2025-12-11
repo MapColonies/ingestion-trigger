@@ -110,6 +110,19 @@ describe('Checksum', () => {
       expect(processorWithoutReset.update).toHaveBeenCalled();
     });
 
+    it('should throw ChecksumError when reset method rejects', async () => {
+      const filePath = '/test/path/file.txt';
+      const resetError = new Error('Reset failed');
+
+      mockChecksumProcessor.reset = jest.fn().mockImplementation(() => {
+        throw resetError;
+      });
+      mockChecksumProcessorInit.mockResolvedValue(mockChecksumProcessor);
+
+      await expect(checksum.calculate(filePath)).rejects.toThrow(ChecksumError);
+      await expect(checksum.calculate(filePath)).rejects.toThrow(`Failed to calculate checksum for file: ${filePath}`);
+    });
+
     it('should handle multiple data chunks', async () => {
       const filePath = '/test/path/large-file.txt';
       const mockStream = new Readable();

@@ -1,6 +1,7 @@
 import jsLogger from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import { container } from 'tsyringe';
+import { NotFoundError } from '@map-colonies/error-types';
 import { GdalInfoManager } from '../../../../src/info/models/gdalInfoManager';
 import { InfoManager } from '../../../../src/info/models/infoManager';
 import { FileNotFoundError, GdalInfoError } from '../../../../src/ingestion/errors/ingestionErrors';
@@ -58,10 +59,9 @@ describe('InfoManager', () => {
     });
 
     it('should throw an file not found error if file is not exist', async () => {
-      //validateFilesExistSpy.mockRejectedValue(new FileNotFoundError(mockInputFiles.gpkgFilesPath[0]));
       sourceValidator.validateFilesExist.mockRejectedValue(new FileNotFoundError(generateInputFiles().gpkgFilesPath[0]));
 
-      await expect(infoManager.getGpkgsInfo(generateInputFiles())).rejects.toThrow(FileNotFoundError);
+      await expect(infoManager.getGpkgsInfo(generateInputFiles())).rejects.toThrow(NotFoundError);
     });
 
     it('should throw an error when getInfoData throws GdalInfoError', async () => {
