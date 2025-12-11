@@ -17,13 +17,13 @@ import type { DeepPartial, DeepRequired, FlattenKeyTupleUnion } from '../../util
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
 import { ValidateRequestSender } from './helpers/validateRequestSender';
 
-describe('Validate', function () {
+describe('Validate', () => {
   let requestSender: ValidateRequestSender;
   let validateFilesExistSpy: jest.SpyInstance;
   let validateGdalInfoSpy: jest.SpyInstance;
   let validateGpkgFilesSpy: jest.SpyInstance;
 
-  beforeEach(function () {
+  beforeEach(() => {
     const [app] = getApp({
       override: [...getTestContainerConfig()],
     });
@@ -35,14 +35,14 @@ describe('Validate', function () {
     validateGpkgFilesSpy = jest.spyOn(SourceValidator.prototype, 'validateGpkgFiles');
   });
 
-  afterEach(function () {
+  afterEach(() => {
     resetContainer();
     jest.restoreAllMocks();
     nock.cleanAll();
   });
 
-  describe('POST /validate/gpkgs', function () {
-    describe('Happy Path', function () {
+  describe('POST /validate/gpkgs', () => {
+    describe('Happy Path', () => {
       it('should return 200 status code and sources is valid response', async () => {
         const validateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(validInputFiles.inputFiles.gpkgFilesPath) };
 
@@ -181,12 +181,12 @@ describe('Validate', function () {
       });
     });
 
-    describe('Bad Path', function () {
+    describe('Bad Path', () => {
       let zodValidatorSpy: jest.SpyInstance;
-      beforeEach(function () {
+      beforeEach(() => {
         zodValidatorSpy = jest.spyOn(ZodValidator.prototype, 'validate');
       });
-      afterEach(function () {
+      afterEach(() => {
         zodValidatorSpy.mockClear();
       });
 
@@ -240,8 +240,8 @@ describe('Validate', function () {
       });
     });
 
-    describe('Sad Path', function () {
-      beforeEach(function () {
+    describe('Sad Path', () => {
+      beforeEach(() => {
         jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
           throw new SqliteError('failed read sqlite file', 'SQLITE_ERROR');
         });

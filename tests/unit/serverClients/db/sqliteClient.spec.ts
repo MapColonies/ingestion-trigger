@@ -120,7 +120,7 @@ describe('SQLClient', () => {
       expect(result).toBe(false);
     });
 
-    it('should throw SqliteError error - isGpkgIndexExist', function () {
+    it('should throw SqliteError error - isGpkgIndexExist', () => {
       jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
         throw sqlLiteError;
       });
@@ -136,7 +136,7 @@ describe('SQLClient', () => {
       expect(handleErrorSpy).toHaveBeenCalled();
     });
 
-    it('should throw Unknown error - isGpkgIndexExist', function () {
+    it('should throw Unknown error - isGpkgIndexExist', () => {
       jest.spyOn(SQLiteClient.prototype, 'getDB').mockImplementation(() => {
         throw new Error('Unexpected Error');
       });

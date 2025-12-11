@@ -1,18 +1,21 @@
 import fs from 'node:fs';
 import { faker } from '@faker-js/faker';
 import { OperationStatus, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
-import { CORE_VALIDATIONS, getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
+import { ShapefileChunkReader } from '@map-colonies/mc-utils';
+import { CORE_VALIDATIONS, getMapServingLayerName, RasterProductTypes, SHAPEFILE_EXTENSIONS_LIST } from '@map-colonies/raster-shared';
 import { SqliteError } from 'better-sqlite3';
 import httpStatusCodes from 'http-status-codes';
 import { matches, merge, set, unset } from 'lodash';
 import nock from 'nock';
 import { randexp } from 'randexp';
+import xxhashFactory from 'xxhash-wasm';
 import { getApp } from '../../../src/app';
 import { type ResponseId } from '../../../src/ingestion/interfaces';
 import type { IngestionNewLayer } from '../../../src/ingestion/schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../../../src/ingestion/schemas/updateLayerSchema';
 import { SQLiteClient } from '../../../src/serviceClients/database/SQLiteClient';
 import { Checksum } from '../../../src/utils/hash/checksum';
+import type { ChecksumProcessor, HashAlgorithm } from '../../../src/utils/hash/interfaces';
 import { configMock } from '../../mocks/configMock';
 import {
   createCatalogLayerResponse,
@@ -37,9 +40,39 @@ describe('Ingestion', () => {
   let jobResponse: ICreateJobResponse;
   let requestSender: IngestionRequestSender;
 
+  const mocksChecksumUpdate = Array.from({ length: SHAPEFILE_EXTENSIONS_LIST.length }, () =>
+    jest.fn<ReturnType<ChecksumProcessor['update']>, Parameters<ChecksumProcessor['update']>>()
+  );
+  const mocksChecksumDigest = Array.from({ length: SHAPEFILE_EXTENSIONS_LIST.length }, () =>
+    jest.fn<ReturnType<ChecksumProcessor['digest']>, Parameters<ChecksumProcessor['digest']>>()
+  );
   beforeEach(() => {
+    let mockedFileIndex = 0;
+
+    const defaultOptions = {
+      checksumProcessor: (): (() => Promise<ChecksumProcessor>) => {
+        const result = async () => {
+          const xxhash = await xxhashFactory();
+          const xx64hash = xxhash.create64();
+
+          const mockProcessor = {
+            algorithm: 'XXH64',
+            update: mocksChecksumUpdate[mockedFileIndex].mockImplementation((...args) => {
+              return xx64hash.update(...args);
+            }),
+            digest: mocksChecksumDigest[mockedFileIndex].mockImplementation((...args) => {
+              return xx64hash.digest(...args);
+            }),
+          } satisfies ChecksumProcessor;
+          mockedFileIndex++;
+          return Object.assign(mockProcessor, { algorithm: 'XXH64' as const satisfies HashAlgorithm });
+        };
+        return result;
+      },
+    };
+
     const [app] = getApp({
-      override: [...getTestContainerConfig()],
+      override: [...getTestContainerConfig(defaultOptions)],
     });
     jobResponse = {
       id: faker.string.uuid(),
@@ -101,7 +134,7 @@ describe('Ingestion', () => {
 
       it('should return 200 status code when product shapefile is multipolygon', async () => {
         const layerRequest = createNewLayerRequest({
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validIndexedMultiPolygon' },
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validMultiPolygon' },
         });
         const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
         const findJobsParams = createFindJobsParams({
@@ -579,11 +612,62 @@ describe('Ingestion', () => {
         expect(scope.isDone()).toBe(false);
       });
 
+      it('should return 400 status code when product shapefile has 0 features', async () => {
+        const layerRequest = createNewLayerRequest({
+          inputFiles: {
+            gpkgFilesPath: ['validIndexed.gpkg'],
+            metadataShapefilePath: 'valid',
+            productShapefilePath: 'empty',
+          },
+        });
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 400 status code when product shapefile has more than 1 feature', async () => {
+        const layerRequest = createNewLayerRequest({
+          inputFiles: {
+            gpkgFilesPath: ['validIndexed.gpkg'],
+            metadataShapefilePath: 'valid',
+            productShapefilePath: 'multiple',
+          },
+        });
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 400 status code when product shapefile is not polygon or multipolygon', async () => {
+        const layerRequest = createNewLayerRequest({
+          inputFiles: {
+            gpkgFilesPath: ['validIndexed.gpkg'],
+            metadataShapefilePath: 'valid',
+            productShapefilePath: 'point',
+          },
+        });
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
+      });
+
       it('should return 400 status code when product shapefile is not contained within gpkg extent', async () => {
         const layerRequest = createNewLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['validIndexed.gpkg'],
-            metadataShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
             productShapefilePath: 'blueMarble',
           },
         });
@@ -600,10 +684,25 @@ describe('Ingestion', () => {
     describe('Sad Path', () => {
       it('should return 422 status code when invalid gdal info', async () => {
         const layerRequest = createNewLayerRequest({
-          inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+          inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'valid', productShapefilePath: 'valid' },
         });
 
         const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 422 status code when failed to read and process product shapefile', async () => {
+        const layerRequest = createNewLayerRequest({
+          inputFiles: { gpkgFilesPath: ['validIndexed.gpkg'], metadataShapefilePath: 'valid', productShapefilePath: 'valid' },
+        });
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        jest.spyOn(ShapefileChunkReader.prototype, 'readAndProcess').mockRejectedValueOnce(new Error());
 
         const response = await requestSender.ingestNewLayer(layerRequest);
 
@@ -698,7 +797,7 @@ describe('Ingestion', () => {
         expect(scope.isDone()).toBe(false);
       });
 
-      it('should return 500 status code when failed to calculate checksum for input file', async () => {
+      it('should return 422 status code when failed to calculate checksum for input file - processing chunk', async () => {
         const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
         const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
 
@@ -720,12 +819,47 @@ describe('Ingestion', () => {
         nock(mapProxyApiServiceUrl)
           .get(`/layer/${encodeURIComponent(newLayerName)}`)
           .reply(httpStatusCodes.NOT_FOUND);
-        jest.spyOn(Checksum.prototype, 'calculate').mockRejectedValueOnce(new Error());
+        mocksChecksumUpdate[0].mockImplementationOnce(() => {
+          throw new Error();
+        });
 
         const response = await requestSender.ingestNewLayer(layerRequest);
 
         expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 422 status code when failed to calculate checksum for input file - digesting chunk', async () => {
+        const layerRequest = createNewLayerRequest({ inputFiles: validInputFiles.inputFiles });
+        const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
+
+        const findJobsParams = createFindJobsParams({
+          resourceId: layerRequest.metadata.productId,
+          productType: layerRequest.metadata.productType,
+        });
+
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL)
+          .post('/records/find', {
+            metadata: {
+              productId: layerRequest.metadata.productId,
+              productType: layerRequest.metadata.productType,
+            },
+          })
+          .reply(httpStatusCodes.OK, []);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(newLayerName)}`)
+          .reply(httpStatusCodes.NOT_FOUND);
+        mocksChecksumDigest[0].mockImplementationOnce(() => {
+          throw new Error();
+        });
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
         expect(scope.isDone()).toBe(false);
       });
 
@@ -801,7 +935,7 @@ describe('Ingestion', () => {
 
       it('should return 200 status code with update request when product shapefile is multipolygon', async () => {
         const layerRequest = createUpdateLayerRequest({
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validIndexedMultiPolygon' },
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validMultiPolygon' },
           callbackUrls: undefined,
         });
         const updatedLayer = createCatalogLayerResponse();
@@ -879,7 +1013,7 @@ describe('Ingestion', () => {
 
       it('should return 200 status code with swap update request when product shapefile is multipolygon', async () => {
         const layerRequest = createUpdateLayerRequest({
-          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validIndexedMultiPolygon' },
+          inputFiles: { ...validInputFiles.inputFiles, productShapefilePath: 'validMultiPolygon' },
         });
         const catalogLayerResponse = createCatalogLayerResponse({
           metadata: {
@@ -1144,11 +1278,74 @@ describe('Ingestion', () => {
         expect(scope.isDone()).toBe(false);
       });
 
+      it('should return 400 status code when product shapefile has 0 features', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: {
+            gpkgFilesPath: ['validIndexed.gpkg'],
+            metadataShapefilePath: 'valid',
+            productShapefilePath: 'empty',
+          },
+        });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 400 status code when product shapefile has more than 1 feature', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: {
+            gpkgFilesPath: ['validIndexed.gpkg'],
+            metadataShapefilePath: 'valid',
+            productShapefilePath: 'multiple',
+          },
+        });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 400 status code when product shapefile is not polygon or multipolygon', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: {
+            gpkgFilesPath: ['validIndexed.gpkg'],
+            metadataShapefilePath: 'valid',
+            productShapefilePath: 'point',
+          },
+        });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
+      });
+
       it('should return 400 status code when product shapefile is not contained within gpkg extent', async () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['validIndexed.gpkg'],
-            metadataShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
             productShapefilePath: 'blueMarble',
           },
         });
@@ -1321,7 +1518,7 @@ describe('Ingestion', () => {
 
       it('should return 422 status code when invalid gdal info', async () => {
         const layerRequest = createUpdateLayerRequest({
-          inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+          inputFiles: { gpkgFilesPath: ['invalidCrs-3857.gpkg'], metadataShapefilePath: 'valid', productShapefilePath: 'valid' },
         });
         const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
@@ -1338,7 +1535,7 @@ describe('Ingestion', () => {
 
       it('should return 422 status code when gpkg is invalid gpkg', async () => {
         const layerRequest = createUpdateLayerRequest({
-          inputFiles: { gpkgFilesPath: ['invalid.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+          inputFiles: { gpkgFilesPath: ['invalid.gpkg'], metadataShapefilePath: 'valid', productShapefilePath: 'valid' },
         });
         const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
@@ -1354,7 +1551,7 @@ describe('Ingestion', () => {
 
       it('should return 422 status code when gpkg index is missing', async () => {
         const layerRequest = createUpdateLayerRequest({
-          inputFiles: { gpkgFilesPath: ['withoutGpkgIndex.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+          inputFiles: { gpkgFilesPath: ['withoutGpkgIndex.gpkg'], metadataShapefilePath: 'valid', productShapefilePath: 'valid' },
         });
         const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
@@ -1371,7 +1568,7 @@ describe('Ingestion', () => {
 
       it('should return 422 status code when gpkg grid is not a supported tile matrix grid', async () => {
         const layerRequest = createUpdateLayerRequest({
-          inputFiles: { gpkgFilesPath: ['unsupportedGridMatrix.gpkg'], metadataShapefilePath: 'validIndexed', productShapefilePath: 'validIndexed' },
+          inputFiles: { gpkgFilesPath: ['unsupportedGridMatrix.gpkg'], metadataShapefilePath: 'valid', productShapefilePath: 'valid' },
         });
         const updatedLayer = createCatalogLayerResponse();
         const updatedLayerMetadata = updatedLayer.metadata;
@@ -1390,8 +1587,8 @@ describe('Ingestion', () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['unsupportedTileSize-height-512.gpkg'],
-            metadataShapefilePath: 'validIndexed',
-            productShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
+            productShapefilePath: 'valid',
           },
         });
         const updatedLayer = createCatalogLayerResponse();
@@ -1411,8 +1608,8 @@ describe('Ingestion', () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['unsupportedTileSize-width-512.gpkg'],
-            metadataShapefilePath: 'validIndexed',
-            productShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
+            productShapefilePath: 'valid',
           },
         });
         const updatedLayer = createCatalogLayerResponse();
@@ -1420,6 +1617,28 @@ describe('Ingestion', () => {
 
         const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
         nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 422 status code when failed to read and process product shapefile', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: {
+            gpkgFilesPath: ['validIndexed.gpkg'],
+            metadataShapefilePath: 'valid',
+            productShapefilePath: 'valid',
+          },
+        });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+        jest.spyOn(ShapefileChunkReader.prototype, 'readAndProcess').mockRejectedValueOnce(new Error());
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
 
@@ -1491,8 +1710,8 @@ describe('Ingestion', () => {
         const layerRequest = createUpdateLayerRequest({
           inputFiles: {
             gpkgFilesPath: ['validIndexed.gpkg'],
-            metadataShapefilePath: 'validIndexed',
-            productShapefilePath: 'validIndexed',
+            metadataShapefilePath: 'valid',
+            productShapefilePath: 'valid',
           },
         });
         const updatedLayer = createCatalogLayerResponse();

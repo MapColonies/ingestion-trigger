@@ -1,7 +1,6 @@
+import { faker } from '@faker-js/faker';
 import jsLogger from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
-import { container } from 'tsyringe';
-import { SERVICES } from '../../../../src/common/constants';
 import { FileNotFoundError, GdalInfoError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { GpkgError } from '../../../../src/serviceClients/database/errors';
@@ -23,10 +22,6 @@ describe('ValidateManager', () => {
 
   beforeEach(() => {
     registerDefaultConfig();
-    // Reset container for a clean test
-    container.reset();
-    container.register(SERVICES.TRACER, { useValue: testTracer });
-    container.register(SERVICES.LOGGER, { useValue: testLogger });
 
     validateManager = new ValidateManager(testLogger, configMock, testTracer, sourceValidator as unknown as SourceValidator);
   });
@@ -38,8 +33,8 @@ describe('ValidateManager', () => {
 
   describe('validateGpkgs', () => {
     it('should return successfully validation response when all validations pass', async () => {
-      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
-      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
+      sourceValidator.validateFilesExist.mockResolvedValue(undefined);
+      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
       sourceValidator.validateGpkgFiles.mockReturnValue(undefined);
 
       const response = await validateManager.validateGpkgs({ gpkgFilesPath: generateInputFiles().gpkgFilesPath });
@@ -58,24 +53,86 @@ describe('ValidateManager', () => {
     });
 
     it('should return failed validation response when gdal info validation throws an error', async () => {
+      const validateGpkgRequest = { gpkgFilesPath: generateInputFiles().gpkgFilesPath };
+      const expectedError = 'Error while validating gpkg files';
       sourceValidator.validateFilesExist.mockResolvedValue(undefined);
-      sourceValidator.validateGdalInfo.mockRejectedValue(new GdalInfoError('Error while validating gdal info'));
+      sourceValidator.validateGdalInfo.mockRejectedValue(new GdalInfoError(expectedError));
 
-      const response = await validateManager.validateGpkgs({ gpkgFilesPath: generateInputFiles().gpkgFilesPath });
+      const response = await validateManager.validateGpkgs(validateGpkgRequest);
 
-      expect(response).toStrictEqual({ isValid: false, message: 'Error while validating gdal info' });
+      expect(response).toStrictEqual({ isValid: false, message: expectedError });
     });
 
     it('should return failed validation response when gpkg validation throws an error', async () => {
-      sourceValidator.validateFilesExist.mockImplementation(async () => Promise.resolve());
-      sourceValidator.validateGdalInfo.mockImplementation(async () => Promise.resolve());
+      const validateGpkgRequest = { gpkgFilesPath: generateInputFiles().gpkgFilesPath };
+      const expectedError = 'Error while validating gpkg files';
+      sourceValidator.validateFilesExist.mockResolvedValue(undefined);
+      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
       sourceValidator.validateGpkgFiles.mockImplementation(() => {
-        throw new GpkgError('Error while validating gpkg files');
+        throw new GpkgError(expectedError);
       });
 
-      const response = await validateManager.validateGpkgs({ gpkgFilesPath: generateInputFiles().gpkgFilesPath });
+      const response = await validateManager.validateGpkgs(validateGpkgRequest);
 
-      expect(response).toStrictEqual({ isValid: false, message: 'Error while validating gpkg files' });
+      expect(response).toStrictEqual({ isValid: false, message: expectedError });
+    });
+
+    it('should return failed validation response when gpkg validation throws unexpected error', async () => {
+      const validateGpkgRequest = { gpkgFilesPath: generateInputFiles().gpkgFilesPath };
+      const expectedError = 'error';
+      sourceValidator.validateFilesExist.mockResolvedValue(undefined);
+      sourceValidator.validateGdalInfo.mockResolvedValue(undefined);
+      sourceValidator.validateGpkgFiles.mockImplementation(() => {
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw { error: expectedError };
+      });
+
+      const promise = validateManager.validateGpkgs(validateGpkgRequest);
+
+      await expect(promise).rejects.toEqual({ error: expectedError });
+    });
+  });
+
+  describe('validateShapefiles', () => {
+    it('should return successfully validation response when all validations pass', async () => {
+      const shapefilePaths = [generateInputFiles().metadataShapefilePath];
+      sourceValidator.validateFilesExist.mockResolvedValue(undefined);
+
+      const promise = validateManager.validateShapefiles(shapefilePaths);
+
+      await expect(promise).resolves.not.toThrow();
+    });
+
+    it('should throw file not fount error when file does not exists', async () => {
+      const shapefilePaths = faker.helpers.multiple(() => generateInputFiles().metadataShapefilePath);
+      sourceValidator.validateFilesExist.mockRejectedValue(new FileNotFoundError(shapefilePaths));
+
+      const promise = validateManager.validateShapefiles(shapefilePaths);
+
+      await expect(promise).rejects.toThrow(new FileNotFoundError(shapefilePaths));
+    });
+
+    it('should throw file not fount error when file is invalid', async () => {
+      const shapefilePaths = faker.helpers.multiple(() => generateInputFiles().metadataShapefilePath);
+      const expectedError = 'error';
+      sourceValidator.validateFilesExist.mockRejectedValue(new Error(expectedError));
+
+      const promise = validateManager.validateShapefiles(shapefilePaths);
+
+      await expect(promise).rejects.toThrow(new Error(expectedError));
+    });
+
+    it('should throw file not fount error when unexpected error occures', async () => {
+      const shapefilePaths = faker.helpers.multiple(() => generateInputFiles().metadataShapefilePath);
+      const expectedError = 'error';
+      sourceValidator.validateFilesExist.mockImplementation(() => {
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw { error: expectedError };
+      });
+
+      const promise = validateManager.validateShapefiles(shapefilePaths);
+
+      await expect(promise).rejects.toEqual({ error: expectedError });
     });
   });
 });

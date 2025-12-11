@@ -16,6 +16,7 @@ module.exports = {
     '!<rootDir>/src/*',
     '!<rootDir>/src/serviceClients/database/SQLiteClient.ts',
     '!<rootDir>/src/ingestion/errors/ingestionErrors.ts',
+    '!<rootDir>/src/utils/stringCapitalizationPermutations.ts',
     '!<rootDir>/src/**/interfaces.ts',
     '!<rootDir>/src/utils/hash/constants.ts',
   ],

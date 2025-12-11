@@ -5,8 +5,6 @@ import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-q
 import { getMapServingLayerName } from '@map-colonies/raster-shared';
 import { trace } from '@opentelemetry/api';
 import { container } from 'tsyringe';
-import xxhashFactory from 'xxhash-wasm';
-import { SERVICES } from '../../../../src/common/constants';
 import { InfoManager } from '../../../../src/info/models/infoManager';
 import { ChecksumError, FileNotFoundError, UnsupportedEntityError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { IngestionManager } from '../../../../src/ingestion/models/ingestionManager';
@@ -16,8 +14,6 @@ import { CatalogClient } from '../../../../src/serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../../../src/serviceClients/jobManagerWrapper';
 import { MapProxyClient } from '../../../../src/serviceClients/mapProxyClient';
 import { Checksum } from '../../../../src/utils/hash/checksum';
-import { CHECKSUM_PROCESSOR } from '../../../../src/utils/hash/constants';
-import type { ChecksumProcessor } from '../../../../src/utils/hash/interfaces';
 import type { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { generateCatalogLayerResponse, generateChecksum, generateNewLayerRequest, generateUpdateLayerRequest } from '../../../mocks/mockFactory';
@@ -30,7 +26,7 @@ describe('IngestionManager', () => {
     validateShapefiles: jest.fn(),
   } satisfies Partial<ValidateManager>;
 
-  const productManager = { read: jest.fn() } satisfies Partial<ProductManager>;
+  const mockProductManager = { read: jest.fn() } satisfies Partial<ProductManager>;
 
   const mockInfoManager = {
     getGpkgsInformation: jest.fn(),
@@ -38,13 +34,16 @@ describe('IngestionManager', () => {
 
   const mockGeoValidator = {
     validate: jest.fn(),
-  };
+  } satisfies Partial<GeoValidator>;
+
+  const mockChecksum = {
+    calculate: jest.fn(),
+  } satisfies Partial<Checksum>;
 
   let createIngestionJobSpy: jest.SpyInstance;
   let findJobsSpy: jest.SpyInstance;
   let existsMapproxySpy: jest.SpyInstance;
   let existsCatalogSpy: jest.SpyInstance;
-  let calcualteChecksumSpy: jest.SpyInstance;
   let findByIdSpy: jest.SpyInstance;
 
   let catalogClient: CatalogClient;
@@ -56,19 +55,6 @@ describe('IngestionManager', () => {
 
   beforeEach(() => {
     registerDefaultConfig();
-    // Reset container for a clean test
-    container.reset();
-    container.register(SERVICES.TRACER, { useValue: testTracer });
-    container.register(SERVICES.LOGGER, { useValue: testLogger });
-    container.register(CHECKSUM_PROCESSOR, {
-      useFactory: (): (() => Promise<ChecksumProcessor>) => {
-        return async () => {
-          const xxhash = await xxhashFactory();
-          return { ...xxhash.create64(), algorithm: 'XXH64' };
-        };
-      },
-    });
-
     mapProxyClient = new MapProxyClient(configMock, testLogger, testTracer);
     catalogClient = new CatalogClient(configMock, testLogger, testTracer);
     jobManagerWrapper = new JobManagerWrapper(configMock, testLogger, testTracer);
@@ -77,7 +63,7 @@ describe('IngestionManager', () => {
     existsMapproxySpy = jest.spyOn(MapProxyClient.prototype, 'exists');
     existsCatalogSpy = jest.spyOn(CatalogClient.prototype, 'exists');
     findByIdSpy = jest.spyOn(CatalogClient.prototype, 'findById');
-    calcualteChecksumSpy = jest.spyOn(Checksum.prototype, 'calculate');
+    jest.spyOn(container, 'resolve').mockReturnValue(mockChecksum);
 
     ingestionManager = new IngestionManager(
       testLogger,
@@ -89,7 +75,7 @@ describe('IngestionManager', () => {
       catalogClient,
       jobManagerWrapper,
       mapProxyClient,
-      productManager as unknown as ProductManager
+      mockProductManager as unknown as ProductManager
     );
   });
 
@@ -111,12 +97,12 @@ describe('IngestionManager', () => {
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
+      mockProductManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(false);
       existsCatalogSpy.mockResolvedValue(false);
       findJobsSpy.mockResolvedValue([]);
-      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
+      mockChecksum.calculate.mockResolvedValue(generateChecksum());
       createIngestionJobSpy.mockResolvedValue(createJobResponse);
       const expectedResponse = { jobId: createJobResponse.id, taskId: createJobResponse.taskIds[0] };
 
@@ -162,6 +148,7 @@ describe('IngestionManager', () => {
       const layerRequest = generateNewLayerRequest();
       const expectedErrorMessage = 'error message';
       mockValidateManager.validateShapefiles.mockRejectedValue(new FileNotFoundError(expectedErrorMessage));
+      mockValidateManager.validateShapefiles.mockRejectedValue(new FileNotFoundError(expectedErrorMessage));
 
       const promise = ingestionManager.newLayer(layerRequest);
 
@@ -174,6 +161,8 @@ describe('IngestionManager', () => {
       const expectedErrorMessage = 'errror message';
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockRejectedValue(new Error(expectedErrorMessage));
+      mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
+      mockValidateManager.validateGpkgsSources.mockRejectedValue(new Error(expectedErrorMessage));
 
       const promise = ingestionManager.newLayer(layerRequest);
 
@@ -183,6 +172,9 @@ describe('IngestionManager', () => {
 
     it('should throw an error when fails to read gpkg info', async () => {
       const layerRequest = generateNewLayerRequest();
+      mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
+      mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
+      mockInfoManager.getGpkgsInformation.mockRejectedValue(new Error());
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockRejectedValue(new Error());
@@ -198,7 +190,7 @@ describe('IngestionManager', () => {
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockRejectedValue(new Error());
+      mockProductManager.read.mockRejectedValue(new Error());
 
       const promise = ingestionManager.newLayer(layerRequest);
 
@@ -211,7 +203,7 @@ describe('IngestionManager', () => {
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
+      mockProductManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockImplementation(() => {
         throw new Error();
       });
@@ -229,7 +221,7 @@ describe('IngestionManager', () => {
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
+      mockProductManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(true);
 
@@ -244,7 +236,7 @@ describe('IngestionManager', () => {
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
+      mockProductManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockRejectedValue(new Error());
 
@@ -260,7 +252,7 @@ describe('IngestionManager', () => {
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
+      mockProductManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(false);
       existsCatalogSpy.mockResolvedValue(true);
@@ -276,7 +268,7 @@ describe('IngestionManager', () => {
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
+      mockProductManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(false);
       existsCatalogSpy.mockRejectedValue(new Error());
@@ -293,7 +285,7 @@ describe('IngestionManager', () => {
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
+      mockProductManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(false);
       existsCatalogSpy.mockResolvedValue(false);
@@ -310,7 +302,7 @@ describe('IngestionManager', () => {
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
+      mockProductManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(false);
       existsCatalogSpy.mockResolvedValue(false);
@@ -329,12 +321,12 @@ describe('IngestionManager', () => {
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
+      mockProductManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(false);
       existsCatalogSpy.mockResolvedValue(false);
       findJobsSpy.mockResolvedValue([]);
-      calcualteChecksumSpy.mockRejectedValue(new ChecksumError(expectedErrorMessage));
+      mockChecksum.calculate.mockRejectedValue(new ChecksumError(expectedErrorMessage));
 
       const promise = ingestionManager.newLayer(layerRequest);
 
@@ -347,12 +339,12 @@ describe('IngestionManager', () => {
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
+      mockProductManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(false);
       existsCatalogSpy.mockResolvedValue(false);
       findJobsSpy.mockResolvedValue([]);
-      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
+      mockChecksum.calculate.mockResolvedValue(generateChecksum());
       createIngestionJobSpy.mockRejectedValue(new Error());
 
       const promise = ingestionManager.newLayer(layerRequest);
@@ -382,11 +374,11 @@ describe('IngestionManager', () => {
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
+      mockProductManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(true);
       findJobsSpy.mockResolvedValue([]);
-      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
+      mockChecksum.calculate.mockResolvedValue(generateChecksum());
       createIngestionJobSpy.mockResolvedValue(createJobResponse);
       const expectedResponse = { jobId: createJobResponse.id, taskId: createJobResponse.taskIds[0] };
 
@@ -411,10 +403,10 @@ describe('IngestionManager', () => {
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
+      mockProductManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(true);
-      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
+      mockChecksum.calculate.mockResolvedValue(generateChecksum());
       findJobsSpy.mockResolvedValue([]);
       createIngestionJobSpy.mockResolvedValue(createJobResponse);
       const expectedResponse = { jobId: createJobResponse.id, taskId: createJobResponse.taskIds[0] };
@@ -458,7 +450,7 @@ describe('IngestionManager', () => {
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
+      mockProductManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(false);
 
@@ -476,7 +468,7 @@ describe('IngestionManager', () => {
       mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
       mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
       mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
+      mockProductManager.read.mockResolvedValue(undefined);
       mockGeoValidator.validate.mockResolvedValue(undefined);
       existsMapproxySpy.mockResolvedValue(true);
       findJobsSpy.mockResolvedValue([{ status: OperationStatus.IN_PROGRESS }]);

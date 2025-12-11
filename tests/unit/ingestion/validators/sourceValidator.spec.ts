@@ -11,33 +11,68 @@ import { generateInputFiles } from '../../../mocks/mockFactory';
 
 describe('SourceValidator', () => {
   let sourceValidator: SourceValidator;
-  let mockGdalInfoManager: GdalInfoManager;
-  let mockGpkgManager: GpkgManager;
-  let fspAccessSpy: jest.SpyInstance;
+  const mockGpkgManager = { validateGpkgFiles: jest.fn() } satisfies Partial<GpkgManager>;
+  const mockGdalInfoManager = { getInfoData: jest.fn(), validateInfoData: jest.fn() } satisfies Partial<GdalInfoManager>;
+  const fspAccessSpy = jest.spyOn(fsp, 'access');
 
   beforeEach(() => {
-    mockGdalInfoManager = { getInfoData: jest.fn, validateInfoData: jest.fn } as unknown as GdalInfoManager;
-    mockGpkgManager = { validateGpkgFiles: jest.fn } as unknown as GpkgManager;
     sourceValidator = new SourceValidator(
       jsLogger({ enabled: false }),
       configMock,
       trace.getTracer('testTracer'),
-      mockGdalInfoManager,
-      mockGpkgManager
+      mockGdalInfoManager as unknown as GdalInfoManager,
+      mockGpkgManager as unknown as GpkgManager
     );
-    fspAccessSpy = jest.spyOn(fsp, 'access');
   });
+
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+  });
+
+  describe('validateGdalInfo', () => {
+    it('should succesfully validate gdal info with no errors', async () => {
+      const { gpkgFilesPath } = generateInputFiles();
+      mockGdalInfoManager.getInfoData.mockResolvedValue([mockGdalInfoDataWithFile]);
+
+      await expect(sourceValidator.validateGdalInfo(gpkgFilesPath)).resolves.not.toThrow();
+
+      expect(mockGdalInfoManager.validateInfoData).toHaveBeenCalledWith([mockGdalInfoDataWithFile]);
+      expect(mockGdalInfoManager.validateInfoData).toHaveBeenCalledTimes(gpkgFilesPath.length);
+    });
+  });
+
+  describe('validateGpkgFiles', () => {
+    it('should succesfully validate gpkg with no errors', () => {
+      const { gpkgFilesPath } = generateInputFiles();
+      mockGpkgManager.validateGpkgFiles.mockReturnValue(undefined);
+
+      const action = () => sourceValidator.validateGpkgFiles(gpkgFilesPath);
+
+      expect(action).not.toThrow();
+      expect(mockGpkgManager.validateGpkgFiles).toHaveBeenCalledTimes(gpkgFilesPath.length);
+    });
+
+    it('should throw error when gpkg validation fails', () => {
+      const { gpkgFilesPath } = generateInputFiles();
+      mockGpkgManager.validateGpkgFiles.mockImplementation(() => {
+        throw new Error();
+      });
+
+      const action = () => sourceValidator.validateGpkgFiles(gpkgFilesPath);
+
+      expect(action).toThrow();
+      expect(mockGpkgManager.validateGpkgFiles).toHaveBeenCalledTimes(gpkgFilesPath.length);
+    });
   });
 
   describe('validateFilesExist', () => {
-    it('should validate that all files exist', async () => {
+    it('should successfully validate that all files exist', async () => {
       const { gpkgFilesPath } = generateInputFiles();
       fspAccessSpy.mockResolvedValue(undefined);
 
-      await sourceValidator.validateFilesExist(gpkgFilesPath);
+      const promise = sourceValidator.validateFilesExist(gpkgFilesPath);
 
+      await expect(promise).resolves.not.toThrow();
       expect(fspAccessSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
       gpkgFilesPath.forEach((filePath) => {
         expect(fspAccessSpy).toHaveBeenNthCalledWith(1, filePath, fsConstants.F_OK);
@@ -55,19 +90,6 @@ describe('SourceValidator', () => {
       gpkgFilesPath.forEach((filePath) => {
         expect(fspAccessSpy).toHaveBeenNthCalledWith(1, filePath, fsConstants.F_OK);
       });
-    });
-  });
-
-  describe('validateGdalInfo', () => {
-    it('should succesfully validate gdal info with no errors', async () => {
-      const { gpkgFilesPath } = generateInputFiles();
-      jest.spyOn(mockGdalInfoManager, 'getInfoData').mockResolvedValue([mockGdalInfoDataWithFile]);
-      const gdalInfoValidatorSpy = jest.spyOn(mockGdalInfoManager, 'validateInfoData');
-
-      await expect(sourceValidator.validateGdalInfo(gpkgFilesPath)).resolves.not.toThrow();
-
-      expect(gdalInfoValidatorSpy).toHaveBeenCalledWith([mockGdalInfoDataWithFile]);
-      expect(gdalInfoValidatorSpy).toHaveBeenCalledTimes(gpkgFilesPath.length);
     });
   });
 });
