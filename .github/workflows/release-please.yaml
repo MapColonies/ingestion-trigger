@@ -1,7 +1,8 @@
 on:
   push:
     branches:
-      - master
+    - master
+    - alpha
 permissions:
   contents: write
   pull-requests: write
@@ -10,9 +11,11 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
-      - uses: googleapis/release-please-action@v4
-        with:
-          # this assumes that you have created a personal access token
-          # (PAT) and configured it as a GitHub action secret named
-          # `MY_RELEASE_PLEASE_TOKEN` (this secret name is not important).
-          token: ${{ secrets.GH_PAT }}
+    - uses: googleapis/release-please-action@v4
+      with:
+        # this assumes that you have created a personal access token
+        # (PAT) and configured it as a GitHub action secret named
+        # `MY_RELEASE_PLEASE_TOKEN` (this secret name is not important).
+        token: ${{ secrets.GH_PAT }}
+        prerelease: true
+        prerelease-type: alpha
