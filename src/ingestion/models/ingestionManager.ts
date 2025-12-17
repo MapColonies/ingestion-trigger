@@ -18,7 +18,6 @@ import {
   ingestionValidationTaskParamsSchema,
   type IngestionValidationTaskParams,
   type Checksum as IChecksum,
-  type FileMetadata,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
@@ -291,11 +290,8 @@ export class IngestionManager {
       updatedChecksums = this.buildUpdatedChecksums(validationTask.parameters.checksums, this.convertChecksumsToRelativePaths(newChecksums), logCtx);
     }
 
-    const reportToSet: FileMetadata | undefined = validationTask.parameters.report ?? undefined;
-
     const updatedParameters: IngestionValidationTaskParams = {
       isValid: validationTask.parameters.isValid,
-      report: reportToSet,
       checksums: updatedChecksums,
     };
 
