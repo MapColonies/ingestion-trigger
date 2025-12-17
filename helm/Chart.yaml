@@ -2,5 +2,5 @@ apiVersion: v2
 name: ingestion-trigger
 description: A Helm chart for ingestion-trigger service
 type: application
-version: 4.0.0-alpha.4
-appVersion: 4.0.0-alpha.4
+version: 4.0.0-alpha.5
+appVersion: 4.0.0-alpha.5
