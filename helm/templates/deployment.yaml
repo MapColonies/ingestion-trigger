@@ -33,15 +33,15 @@ spec:
         app: {{ $chartName }}
         release: {{ $releaseName }}
         run: {{ $releaseName }}-{{ $chartName }}
-        {{- include "ingestion-trigger.selectorLabels" . | nindent 8 }}
+        {{- include "ingestion-trigger.labels" . | nindent 8 }}
       annotations:
         {{- if .Values.resetOnConfigChange }}
         checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         {{- end }}
+        {{- if .Values.podAnnotations }}
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+        {{- end }}
         {{ include "mclabels.annotations" . | nindent 8 }}
-      {{- if .Values.podAnnotations }}
-      {{- toYaml .Values.podAnnotations | nindent 8 }}
-      {{- end }}
     spec:
     {{- if $cloudProviderImagePullSecretName }}
       imagePullSecrets:
