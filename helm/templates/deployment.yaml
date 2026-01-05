@@ -38,13 +38,10 @@ spec:
         {{- if .Values.resetOnConfigChange }}
         checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         {{- end }}
-        {{ if $metrics.enabled }}
-        prometheus.io/port: {{ $metrics.prometheus.port | quote }}
-        prometheus.io/scrape: {{ $metrics.prometheus.scrape | quote }}
-        {{- end }}
-        {{- if .Values.podAnnotations }}
-        {{- toYaml .Values.podAnnotations | nindent 8 }}
-        {{- end }}
+        {{ include "mclabels.annotations" . | nindent 8 }}
+      {{- if .Values.podAnnotations }}
+      {{- toYaml .Values.podAnnotations | nindent 8 }}
+      {{- end }}
     spec:
     {{- if $cloudProviderImagePullSecretName }}
       imagePullSecrets:
