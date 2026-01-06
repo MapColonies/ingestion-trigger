@@ -118,3 +118,7 @@ bundledApi.yaml
 
 # Local configs
 config/*local*.json
+
+#helm
+Chart.lock
+
