@@ -31,7 +31,6 @@ Common labels
 */}}
 {{- define "ingestion-trigger.labels" -}}
 helm.sh/chart: {{ include "ingestion-trigger.chart" . }}
-{{ include "ingestion-trigger.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
