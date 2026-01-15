@@ -68,6 +68,7 @@ export class IngestionManager {
   private readonly updateJobType: string;
   private readonly swapUpdateJobType: string;
   private readonly validationTaskType: string;
+  private readonly finalizeTaskType: string;
   private readonly sourceMount: string;
   private readonly jobTrackerServiceUrl: string;
 
@@ -97,6 +98,7 @@ export class IngestionManager {
     this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
     this.swapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
     this.validationTaskType = config.get<string>('jobManager.validationTaskType');
+    this.finalizeTaskType = config.get<string>('jobManager.finalizeTaskType');
     this.sourceMount = config.get<string>('storageExplorer.layerSourceDir');
     this.jobTrackerServiceUrl = config.get<string>('services.jobTrackerServiceURL');
   }
@@ -680,6 +682,45 @@ export class IngestionManager {
   private isJobRetryable(status: OperationStatus): boolean {
     const validStatuses = [OperationStatus.FAILED, OperationStatus.SUSPENDED];
     return validStatuses.includes(status);
+  }
+
+  @withSpanV4
+  private isJobAbortable(status: OperationStatus): boolean {
+    const invalidStatuses = [OperationStatus.COMPLETED, OperationStatus.ABORTED];
+    return !invalidStatuses.includes(status);
+  }
+
+  @withSpanAsyncV4
+  public async abortIngestion(jobId: string): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.abortIngestion.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('ingestionManager.abortIngestion');
+
+    this.logger.info({ msg: 'starting abort ingestion process', logContext: logCtx, jobId });
+
+    const job: IJobResponse<IngestionBaseJobParams, unknown> = await this.jobManagerWrapper.getJob<IngestionBaseJobParams, unknown>(jobId);
+
+    if (!this.isJobAbortable(job.status)) {
+      throwInvalidJobStatusError(jobId, job.status, this.logger, activeSpan);
+    }
+
+    const tasks = await this.jobManagerWrapper.getTasksForJob(jobId);
+    const finalizeTask = tasks.find((task) => task.type === this.finalizeTaskType);
+    
+    if (finalizeTask !== undefined) {
+      const errorMessage = `cannot abort job ${jobId} - finalize task already exists (point of no return)`;
+      this.logger.error({ msg: errorMessage, logContext: logCtx, jobId, finalizeTaskId: finalizeTask.id });
+      activeSpan?.setStatus({ code: SpanStatusCode.ERROR, message: errorMessage });
+      throw new ConflictError(errorMessage);
+    }
+
+    await this.jobManagerWrapper.abortJob(jobId);
+
+    const { resourceId, productType } = this.parseAndValidateJobIdentifiers(job.resourceId, job.productType);
+    await this.polygonPartsManagerClient.deleteValidationEntity(resourceId, productType);
+
+    this.logger.info({ msg: 'successfully aborted ingestion job', logContext: logCtx, jobId });
+    activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.abortIngestion.success', { abortSuccess: true, jobId });
   }
 
   private convertChecksumsToRelativePaths(checksums: IChecksum[]): IChecksum[] {

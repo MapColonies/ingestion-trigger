@@ -21,6 +21,10 @@ export interface IRetryRequestParams {
   jobId: string;
 }
 
+export interface IAbortRequestParams {
+  jobId: string;
+}
+
 export interface PixelRange {
   min: number;
   max: number;

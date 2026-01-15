@@ -157,6 +157,67 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '422':
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '500':
+          description: Internal Server error
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+  /ingestion/{jobId}/abort:
+    put:
+      operationId: abortIngestion
+      tags:
+        - ingestion
+      summary: abort a running ingestion job
+      description: >-
+        Aborts an ingestion job that is currently running or pending. The job cannot be aborted if it has already completed or if the finalize task has started (point of no return).
+      parameters:
+        - name: jobId
+          in: path
+          description: The id of the job to abort
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK - Job aborted successfully
+        '400':
+          description: Bad request - Job status does not allow abort (COMPLETED or ABORTED)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '404':
+          description: Not Found - Job does not exist
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '409':
+          description: Conflict - Job has reached finalize task (point of no return)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '422':
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '500':
           description: Internal Server error
           content:
@@ -257,6 +318,7 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+
 components:
   schemas:
     CallbackUrls:
