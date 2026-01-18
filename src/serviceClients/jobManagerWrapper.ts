@@ -67,7 +67,7 @@ export class JobManagerWrapper extends JobManagerClient {
     activeSpan?.updateName('jobManagerWrapper.abortJob');
 
     try {
-      await this.post(`${this.baseUrl}/jobs/${jobId}/abort`, {});
+      await this.post(`${this.baseUrl}/tasks/abort/${jobId}`, {});
       this.logger.info({ msg: 'successfully aborted job', jobId });
     } catch (err) {
       const message = `failed to abort job with id: ${jobId}`;
