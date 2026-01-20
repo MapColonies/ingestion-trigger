@@ -55,6 +55,8 @@ jobDefinitions:
   tasks:
     validation:
       type: ""
+    finalize:
+      type: ""
 
 storage:
   fs:

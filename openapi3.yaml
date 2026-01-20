@@ -176,9 +176,9 @@ paths:
       operationId: abortIngestion
       tags:
         - ingestion
-      summary: abort a running ingestion job
+      summary: abort an active ingestion job
       description: >-
-        Aborts an ingestion job that is currently running or pending. The job cannot be aborted if it has already completed or if the finalize task has started (point of no return).
+        Aborts an ingestion job that is currently active or pending. The job cannot be aborted if it has already completed or if the finalize task has started (point of no return).
       parameters:
         - name: jobId
           in: path

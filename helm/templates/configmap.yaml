@@ -37,6 +37,7 @@ data:
   INGESTION_UPDATE_JOB_TYPE: {{ $jobDefinitions.jobs.update.type | quote }}
   INGESTION_SWAP_UPDATE_JOB_TYPE: {{ $jobDefinitions.jobs.swapUpdate.type | quote }}
   VALIDATION_TASK_TYPE: {{ $jobDefinitions.tasks.validation.type | quote }}
+  FINALIZE_TASK_TYPE: {{ $jobDefinitions.tasks.finalize.type | quote }}
   CRS: {{ .Values.env.validationValuesByInfo.crs | toJson | quote}}
   FILE_FORMAT: {{ .Values.env.validationValuesByInfo.fileFormat | toJson | quote}}
   TILE_SIZE: {{ .Values.env.validationValuesByInfo.tileSize | quote}}

@@ -43,9 +43,15 @@ export class ValidationError extends Error {
   }
 }
 
-export function throwInvalidJobStatusError(jobId: string, currentStatus: OperationStatus, logger: Logger, span?: Span): never {
-  const validStatuses = [OperationStatus.FAILED, OperationStatus.SUSPENDED];
-  const message = `Cannot retry job with id: ${jobId} because its status is: ${currentStatus}. Expected status: ${validStatuses.join(' or ')}`;
+export function throwInvalidJobStatusError(
+  operation: string,
+  jobId: string,
+  currentStatus: OperationStatus,
+  validStatuses: OperationStatus[],
+  logger: Logger,
+  span?: Span
+): never {
+  const message = `Cannot ${operation} job with id: ${jobId} because its status is: ${currentStatus}. Expected status: ${validStatuses.join(' or ')}`;
 
   logger.error({ msg: message, jobId, currentStatus, validStatuses });
 

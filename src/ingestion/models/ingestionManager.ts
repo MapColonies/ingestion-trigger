@@ -208,7 +208,7 @@ export class IngestionManager {
     const retryJob: IJobResponse<IngestionBaseJobParams, unknown> = await this.jobManagerWrapper.getJob<IngestionBaseJobParams, unknown>(jobId);
 
     if (!this.isJobRetryable(retryJob.status)) {
-      throwInvalidJobStatusError(jobId, retryJob.status, this.logger, activeSpan);
+      throwInvalidJobStatusError('retry', jobId, retryJob.status, [OperationStatus.FAILED, OperationStatus.SUSPENDED], this.logger, activeSpan);
     }
 
     const validationTask: ITaskResponse<IngestionValidationTaskParams> = await this.getValidationTask(jobId, logCtx);
@@ -701,25 +701,32 @@ export class IngestionManager {
     const job: IJobResponse<IngestionBaseJobParams, unknown> = await this.jobManagerWrapper.getJob<IngestionBaseJobParams, unknown>(jobId);
 
     if (!this.isJobAbortable(job.status)) {
-      throwInvalidJobStatusError(jobId, job.status, this.logger, activeSpan);
+      throwInvalidJobStatusError(
+        'abort',
+        jobId,
+        job.status,
+        [OperationStatus.FAILED, OperationStatus.SUSPENDED, OperationStatus.IN_PROGRESS, OperationStatus.PENDING],
+        this.logger,
+        activeSpan
+      );
     }
 
     const tasks = await this.jobManagerWrapper.getTasksForJob(jobId);
     const finalizeTask = tasks.find((task) => task.type === this.finalizeTaskType);
     
     if (finalizeTask !== undefined) {
-      const errorMessage = `cannot abort job ${jobId} - finalize task already exists (point of no return)`;
+      const errorMessage = `cannot abort job ${jobId} - job already in finalization stage and cannot be aborted`;
       this.logger.error({ msg: errorMessage, logContext: logCtx, jobId, finalizeTaskId: finalizeTask.id });
       activeSpan?.setStatus({ code: SpanStatusCode.ERROR, message: errorMessage });
       throw new ConflictError(errorMessage);
     }
 
+    this.logger.info({ msg: 'successfully aborted ingestion job', logContext: logCtx, jobId });
     await this.jobManagerWrapper.abortJob(jobId);
 
     const { resourceId, productType } = this.parseAndValidateJobIdentifiers(job.resourceId, job.productType);
+    this.logger.debug({ msg: 'we are going to delete the validation entity', logContext: logCtx, jobId, resourceId, productType });
     await this.polygonPartsManagerClient.deleteValidationEntity(resourceId, productType);
-
-    this.logger.info({ msg: 'successfully aborted ingestion job', logContext: logCtx, jobId });
     activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.abortIngestion.success', { abortSuccess: true, jobId });
   }
 
