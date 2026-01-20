@@ -58,6 +58,11 @@ type InputFilesPaths = MapToRelativeAndAbsolute<InputFiles>;
 type EnhancedIngestionNewLayer = ReplaceValuesOfKey<IngestionNewLayer, 'inputFiles', InputFilesPaths>;
 type EnhancedIngestionUpdateLayer = ReplaceValuesOfKey<IngestionUpdateLayer, 'inputFiles', InputFilesPaths>;
 
+enum IngestionOperation {
+  RETRY = 'retry',
+  ABORT = 'abort',
+}
+
 @injectable()
 export class IngestionManager {
   private readonly logContext: LogContext;
@@ -208,7 +213,7 @@ export class IngestionManager {
     const retryJob: IJobResponse<IngestionBaseJobParams, unknown> = await this.jobManagerWrapper.getJob<IngestionBaseJobParams, unknown>(jobId);
 
     if (!this.isJobRetryable(retryJob.status)) {
-      throwInvalidJobStatusError('retry', jobId, retryJob.status, [OperationStatus.FAILED, OperationStatus.SUSPENDED], this.logger, activeSpan);
+      throwInvalidJobStatusError(IngestionOperation.RETRY, jobId, retryJob.status, this.logger, activeSpan);
     }
 
     const validationTask: ITaskResponse<IngestionValidationTaskParams> = await this.getValidationTask(jobId, logCtx);
@@ -701,22 +706,15 @@ export class IngestionManager {
     const job: IJobResponse<IngestionBaseJobParams, unknown> = await this.jobManagerWrapper.getJob<IngestionBaseJobParams, unknown>(jobId);
 
     if (!this.isJobAbortable(job.status)) {
-      throwInvalidJobStatusError(
-        'abort',
-        jobId,
-        job.status,
-        [OperationStatus.FAILED, OperationStatus.SUSPENDED, OperationStatus.IN_PROGRESS, OperationStatus.PENDING],
-        this.logger,
-        activeSpan
-      );
+      throwInvalidJobStatusError(IngestionOperation.ABORT, jobId, job.status, this.logger, activeSpan);
     }
 
     const tasks = await this.jobManagerWrapper.getTasksForJob(jobId);
-    const finalizeTask = tasks.find((task) => task.type === this.finalizeTaskType);
+    const hasFinalize = tasks.some((task) => task.type === this.finalizeTaskType);
     
-    if (finalizeTask !== undefined) {
+    if (hasFinalize) {
       const errorMessage = `cannot abort job ${jobId} - job already in finalization stage and cannot be aborted`;
-      this.logger.error({ msg: errorMessage, logContext: logCtx, jobId, finalizeTaskId: finalizeTask.id });
+      this.logger.error({ msg: errorMessage, logContext: logCtx, jobId });
       activeSpan?.setStatus({ code: SpanStatusCode.ERROR, message: errorMessage });
       throw new ConflictError(errorMessage);
     }
@@ -725,7 +723,7 @@ export class IngestionManager {
     await this.jobManagerWrapper.abortJob(jobId);
 
     const { resourceId, productType } = this.parseAndValidateJobIdentifiers(job.resourceId, job.productType);
-    this.logger.debug({ msg: 'we are going to delete the validation entity', logContext: logCtx, jobId, resourceId, productType });
+    this.logger.debug({ msg: 'deleting validation entity', logContext: logCtx, jobId, resourceId, productType });
     await this.polygonPartsManagerClient.deleteValidationEntity(resourceId, productType);
     activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.abortIngestion.success', { abortSuccess: true, jobId });
   }

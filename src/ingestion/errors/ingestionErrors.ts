@@ -47,13 +47,12 @@ export function throwInvalidJobStatusError(
   operation: string,
   jobId: string,
   currentStatus: OperationStatus,
-  validStatuses: OperationStatus[],
   logger: Logger,
   span?: Span
 ): never {
-  const message = `Cannot ${operation} job with id: ${jobId} because its status is: ${currentStatus}. Expected status: ${validStatuses.join(' or ')}`;
+  const message = `Cannot ${operation} job with id: ${jobId} because its status is: ${currentStatus}`;
 
-  logger.error({ msg: message, jobId, currentStatus, validStatuses });
+  logger.error({ msg: message, jobId, currentStatus });
 
   const error = new BadRequestError(message);
   span?.setAttribute('exception.type', error.status);
