@@ -25,6 +25,11 @@ export interface IAbortRequestParams {
   jobId: string;
 }
 
+export enum IngestionOperation {
+  RETRY = 'retry',
+  ABORT = 'abort',
+}
+
 export interface PixelRange {
   min: number;
   max: number;

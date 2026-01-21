@@ -1,6 +1,6 @@
 import { relative } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import {
   IFindJobsByCriteriaBody,
@@ -39,7 +39,7 @@ import { getShapefileFiles } from '../../utils/shapefile';
 import { ZodValidator } from '../../utils/validation/zodValidator';
 import { ValidateManager } from '../../validate/models/validateManager';
 import { ChecksumError, throwInvalidJobStatusError } from '../errors/ingestionErrors';
-import type { IngestionBaseJobParams, ResponseId } from '../interfaces';
+import type { IngestionBaseJobParams, IngestionOperation, ResponseId } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
@@ -57,11 +57,6 @@ type MapToRelativeAndAbsolute<T extends Record<PropertyKey, unknown>> = {
 type InputFilesPaths = MapToRelativeAndAbsolute<InputFiles>;
 type EnhancedIngestionNewLayer = ReplaceValuesOfKey<IngestionNewLayer, 'inputFiles', InputFilesPaths>;
 type EnhancedIngestionUpdateLayer = ReplaceValuesOfKey<IngestionUpdateLayer, 'inputFiles', InputFilesPaths>;
-
-enum IngestionOperation {
-  RETRY = 'retry',
-  ABORT = 'abort',
-}
 
 @injectable()
 export class IngestionManager {
@@ -716,7 +711,7 @@ export class IngestionManager {
       const errorMessage = `cannot abort job ${jobId} - job already in finalization stage and cannot be aborted`;
       this.logger.error({ msg: errorMessage, logContext: logCtx, jobId });
       activeSpan?.setStatus({ code: SpanStatusCode.ERROR, message: errorMessage });
-      throw new ConflictError(errorMessage);
+      throw new BadRequestError(errorMessage);
     }
 
     this.logger.info({ msg: 'successfully aborted ingestion job', logContext: logCtx, jobId });
