@@ -43,13 +43,7 @@ export class ValidationError extends Error {
   }
 }
 
-export function throwInvalidJobStatusError(
-  operation: string,
-  jobId: string,
-  currentStatus: OperationStatus,
-  logger: Logger,
-  span?: Span
-): never {
+export function throwInvalidJobStatusError(operation: string, jobId: string, currentStatus: OperationStatus, logger: Logger, span?: Span): never {
   const message = `Cannot ${operation} job with id: ${jobId} because its status is: ${currentStatus}`;
 
   logger.error({ msg: message, jobId, currentStatus });

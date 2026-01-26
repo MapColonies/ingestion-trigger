@@ -706,7 +706,7 @@ export class IngestionManager {
 
     const tasks = await this.jobManagerWrapper.getTasksForJob(jobId);
     const hasFinalize = tasks.some((task) => task.type === this.finalizeTaskType);
-    
+
     if (hasFinalize) {
       const errorMessage = `cannot abort job ${jobId} - job already in finalization stage and cannot be aborted`;
       this.logger.error({ msg: errorMessage, logContext: logCtx, jobId });
