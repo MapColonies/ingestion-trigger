@@ -1026,10 +1026,9 @@ describe('IngestionManager', () => {
           status: OperationStatus.FAILED,
           parameters: {},
         };
-        const mockTasks: ITaskEvent[] = [];
 
         getJobSpy.mockResolvedValue(mockJob);
-        getTasksForJobSpy.mockResolvedValue(mockTasks);
+        getTasksForJobSpy.mockResolvedValue([]);
         abortJobSpy.mockResolvedValue(undefined);
         mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
@@ -1179,10 +1178,9 @@ describe('IngestionManager', () => {
           status: OperationStatus.FAILED,
           parameters: {},
         };
-        const mockTasks: ITaskEvent[] = [];
 
         getJobSpy.mockResolvedValue(mockJob);
-        getTasksForJobSpy.mockResolvedValue(mockTasks);
+        getTasksForJobSpy.mockResolvedValue([]);
         abortJobSpy.mockRejectedValue(new InternalServerError('Job Manager failed'));
 
         await expect(ingestionManager.abortIngestion(jobId)).rejects.toThrow(InternalServerError);
