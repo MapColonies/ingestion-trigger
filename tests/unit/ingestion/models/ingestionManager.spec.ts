@@ -959,13 +959,11 @@ describe('IngestionManager', () => {
     let getJobSpy: jest.SpyInstance;
     let getTasksForJobSpy: jest.SpyInstance;
     let abortJobSpy: jest.SpyInstance;
-    let isJobAbortableSpy: jest.SpyInstance;
 
     beforeEach(() => {
       getJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'getJob');
       getTasksForJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'getTasksForJob');
       abortJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'abortJob');
-      isJobAbortableSpy = jest.spyOn(IngestionManager.prototype as any, 'isJobAbortable');
       mockPolygonPartsManagerClient.deleteValidationEntity.mockClear();
     });
 
@@ -1028,7 +1026,7 @@ describe('IngestionManager', () => {
           status: OperationStatus.FAILED,
           parameters: {},
         };
-        const mockTasks: any[] = [];
+        const mockTasks: ITaskEvent[] = [];
 
         getJobSpy.mockResolvedValue(mockJob);
         getTasksForJobSpy.mockResolvedValue(mockTasks);
@@ -1181,7 +1179,7 @@ describe('IngestionManager', () => {
           status: OperationStatus.FAILED,
           parameters: {},
         };
-        const mockTasks: any[] = [];
+        const mockTasks: ITaskEvent[] = [];
 
         getJobSpy.mockResolvedValue(mockJob);
         getTasksForJobSpy.mockResolvedValue(mockTasks);
@@ -1206,38 +1204,6 @@ describe('IngestionManager', () => {
 
         await expect(ingestionManager.abortIngestion(jobId)).rejects.toThrow(InternalServerError);
         expect(abortJobSpy).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('isJobAbortable', () => {
-      it('should return true for FAILED status', () => {
-        const result = (ingestionManager as any).isJobAbortable(OperationStatus.FAILED);
-        expect(result).toBe(true);
-      });
-
-      it('should return true for SUSPENDED status', () => {
-        const result = (ingestionManager as any).isJobAbortable(OperationStatus.SUSPENDED);
-        expect(result).toBe(true);
-      });
-
-      it('should return true for IN_PROGRESS status', () => {
-        const result = (ingestionManager as any).isJobAbortable(OperationStatus.IN_PROGRESS);
-        expect(result).toBe(true);
-      });
-
-      it('should return true for PENDING status', () => {
-        const result = (ingestionManager as any).isJobAbortable(OperationStatus.PENDING);
-        expect(result).toBe(true);
-      });
-
-      it('should return false for COMPLETED status', () => {
-        const result = (ingestionManager as any).isJobAbortable(OperationStatus.COMPLETED);
-        expect(result).toBe(false);
-      });
-
-      it('should return false for ABORTED status', () => {
-        const result = (ingestionManager as any).isJobAbortable(OperationStatus.ABORTED);
-        expect(result).toBe(false);
       });
     });
   });
