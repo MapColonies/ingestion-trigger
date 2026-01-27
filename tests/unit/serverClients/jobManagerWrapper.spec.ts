@@ -62,4 +62,69 @@ describe('jobManagerWrapper', () => {
       await expect(action()).rejects.toThrow();
     });
   });
+
+  describe('abortJob', () => {
+    let jobId: string;
+
+    beforeEach(() => {
+      jobId = faker.string.uuid();
+    });
+
+    describe('Happy Path', () => {
+      it('should successfully send abort request to Job Manager', async () => {
+        nock('http://jobmanagerurl').post(`/tasks/abort/${jobId}`).reply(200);
+
+        await expect(jobManagerWrapper.abortJob(jobId)).resolves.not.toThrow();
+      });
+
+      it('should call correct endpoint /tasks/abort/{jobId}', async () => {
+        const scope = nock('http://jobmanagerurl').post(`/tasks/abort/${jobId}`).reply(200);
+
+        await jobManagerWrapper.abortJob(jobId);
+
+        expect(scope.isDone()).toBe(true);
+      });
+
+      it('should send empty body in POST request', async () => {
+        const scope = nock('http://jobmanagerurl').post(`/tasks/abort/${jobId}`, {}).reply(200);
+
+        await jobManagerWrapper.abortJob(jobId);
+
+        expect(scope.isDone()).toBe(true);
+      });
+    });
+
+    describe('Error Scenarios', () => {
+      it('should throw error when Job Manager returns 404', async () => {
+        nock('http://jobmanagerurl').post(`/tasks/abort/${jobId}`).reply(404, { message: 'Job not found' });
+
+        await expect(jobManagerWrapper.abortJob(jobId)).rejects.toThrow();
+      });
+
+      it('should throw error when Job Manager returns 500', async () => {
+        nock('http://jobmanagerurl').post(`/tasks/abort/${jobId}`).reply(500, { message: 'Internal server error' });
+
+        await expect(jobManagerWrapper.abortJob(jobId)).rejects.toThrow();
+      });
+
+      it('should handle network timeout', async () => {
+        nock('http://jobmanagerurl').post(`/tasks/abort/${jobId}`).replyWithError({ code: 'ETIMEDOUT', message: 'Timeout' });
+
+        await expect(jobManagerWrapper.abortJob(jobId)).rejects.toThrow();
+      });
+
+      it('should handle connection refused', async () => {
+        nock('http://jobmanagerurl').post(`/tasks/abort/${jobId}`).replyWithError({ code: 'ECONNREFUSED', message: 'Connection refused' });
+
+        await expect(jobManagerWrapper.abortJob(jobId)).rejects.toThrow();
+      });
+
+      it('should propagate error and re-throw after logging', async () => {
+        const errorMessage = 'Test error';
+        nock('http://jobmanagerurl').post(`/tasks/abort/${jobId}`).replyWithError(new Error(errorMessage));
+
+        await expect(jobManagerWrapper.abortJob(jobId)).rejects.toThrow(errorMessage);
+      });
+    });
+  });
 });
