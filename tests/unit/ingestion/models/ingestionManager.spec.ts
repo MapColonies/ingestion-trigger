@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from '@map-colonies/error-types';
 import jsLogger from '@map-colonies/js-logger';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
-import { getMapServingLayerName } from '@map-colonies/raster-shared';
+import { getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
 import { trace } from '@opentelemetry/api';
 import { container } from 'tsyringe';
 import xxhashFactory from 'xxhash-wasm';
@@ -535,7 +535,7 @@ describe('IngestionManager', () => {
       const mockJob = {
         id: jobId,
         status: OperationStatus.FAILED,
-        productType: 'Orthophoto',
+        productType: RasterProductTypes.ORTHOPHOTO,
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
@@ -574,7 +574,7 @@ describe('IngestionManager', () => {
       const mockJob = {
         id: jobId,
         status: OperationStatus.SUSPENDED,
-        productType: 'Orthophoto',
+        productType: RasterProductTypes.ORTHOPHOTO,
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
@@ -608,15 +608,15 @@ describe('IngestionManager', () => {
     });
 
     it('should update task with new checksums when shapefile has changed and job is SUSPENDED', async () => {
-      const jobId = faker.string.uuid();
-      const taskId = faker.string.uuid();
       const oldChecksum = 'oldChecksum123';
       const newChecksum = 'newChecksum456';
+      const jobId = faker.string.uuid();
+      const taskId = faker.string.uuid();
 
       const mockJob = {
         id: jobId,
         status: OperationStatus.SUSPENDED,
-        productType: 'Orthophoto',
+        productType: RasterProductTypes.ORTHOPHOTO,
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
@@ -683,15 +683,15 @@ describe('IngestionManager', () => {
     });
 
     it('should update task with new checksums when shapefile has changed and job is FAILED', async () => {
-      const jobId = faker.string.uuid();
-      const taskId = faker.string.uuid();
       const oldChecksum = 'oldChecksum123';
       const newChecksum = 'newChecksum456';
+      const jobId = faker.string.uuid();
+      const taskId = faker.string.uuid();
 
       const mockJob = {
         id: jobId,
         status: OperationStatus.FAILED,
-        productType: 'Orthophoto',
+        productType: RasterProductTypes.ORTHOPHOTO,
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
@@ -758,14 +758,14 @@ describe('IngestionManager', () => {
     });
 
     it('should throw ConflictError when shapefile has not changed', async () => {
+      const existingChecksum = { fileName: 'metadata.shp', checksum: 'sameChecksum123' };
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
-      const existingChecksum = { fileName: 'metadata.shp', checksum: 'sameChecksum123' };
 
       const mockJob = {
         id: jobId,
         status: OperationStatus.FAILED,
-        productType: 'Orthophoto',
+        productType: RasterProductTypes.ORTHOPHOTO,
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
@@ -800,11 +800,10 @@ describe('IngestionManager', () => {
     it('should throw BadRequestError when metadataShapefilePath is missing', async () => {
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
-
       const mockJob = {
         id: jobId,
         status: OperationStatus.FAILED,
-        productType: 'Orthophoto',
+        productType: RasterProductTypes.ORTHOPHOTO,
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
@@ -840,7 +839,7 @@ describe('IngestionManager', () => {
       const mockJob = {
         id: jobId,
         status: OperationStatus.PENDING,
-        productType: 'Orthophoto',
+        productType: RasterProductTypes.ORTHOPHOTO,
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
@@ -864,7 +863,7 @@ describe('IngestionManager', () => {
       const mockJob = {
         id: jobId,
         status: OperationStatus.IN_PROGRESS,
-        productType: 'Orthophoto',
+        productType: RasterProductTypes.ORTHOPHOTO,
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
@@ -887,7 +886,7 @@ describe('IngestionManager', () => {
       const mockJob = {
         id: jobId,
         status: OperationStatus.FAILED,
-        productType: 'Orthophoto',
+        productType: RasterProductTypes.ORTHOPHOTO,
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
@@ -908,11 +907,10 @@ describe('IngestionManager', () => {
 
     it('should find validation task among multiple tasks', async () => {
       const jobId = faker.string.uuid();
-      const taskId = faker.string.uuid();
       const mockJob = {
         id: jobId,
         status: OperationStatus.FAILED,
-        productType: 'Orthophoto',
+        productType: RasterProductTypes.ORTHOPHOTO,
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
@@ -931,7 +929,7 @@ describe('IngestionManager', () => {
           parameters: {},
         },
         {
-          id: taskId,
+          id: faker.string.uuid(),
           jobId,
           type: 'validation',
           status: OperationStatus.COMPLETED,
@@ -967,242 +965,211 @@ describe('IngestionManager', () => {
       mockPolygonPartsManagerClient.deleteValidationEntity.mockClear();
     });
 
-    describe('Happy Path', () => {
-      it('should successfully abort a failed job without finalize task', async () => {
-        const jobId = faker.string.uuid();
-        const resourceId = rasterLayerMetadataGenerators.productId();
-        const mockJob = {
-          id: jobId,
-          resourceId,
-          productType: 'Orthophoto',
-          status: OperationStatus.FAILED,
-          parameters: {},
-        };
-        const mockTasks = [
-          { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
-          { id: faker.string.uuid(), type: 'tile-processing', status: OperationStatus.FAILED },
-        ];
+    it.each([
+      [OperationStatus.FAILED],
+      [OperationStatus.SUSPENDED],
+      [OperationStatus.IN_PROGRESS],
+      [OperationStatus.PENDING],
+    ])('should successfully abort job with status %s', async (status) => {
+      const resourceId = rasterLayerMetadataGenerators.productId();
+      const mockJob = {
+        id: faker.string.uuid(),
+        resourceId,
+        productType: RasterProductTypes.ORTHOPHOTO,
+        status: status,
+        parameters: {},
+      };
+      const mockTasks = [
+        { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
+        { id: faker.string.uuid(), type: 'create-tasks', status: OperationStatus.FAILED },
+      ];
 
-        getJobSpy.mockResolvedValue(mockJob);
-        getTasksForJobSpy.mockResolvedValue(mockTasks);
-        abortJobSpy.mockResolvedValue(undefined);
-        mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue(mockTasks);
+      abortJobSpy.mockResolvedValue(undefined);
+      mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-        await expect(ingestionManager.abortIngestion(jobId)).resolves.not.toThrow();
+      await ingestionManager.abortIngestion(mockJob.id);
 
-        expect(getJobSpy).toHaveBeenCalledWith(jobId);
-        expect(getTasksForJobSpy).toHaveBeenCalledWith(jobId);
-        expect(abortJobSpy).toHaveBeenCalledWith(jobId);
-        expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(resourceId, 'Orthophoto');
-      });
-
-      it('should successfully abort a suspended job', async () => {
-        const jobId = faker.string.uuid();
-        const mockJob = {
-          id: jobId,
-          resourceId: rasterLayerMetadataGenerators.productId(),
-          productType: 'OrthophotoHistory',
-          status: OperationStatus.SUSPENDED,
-          parameters: {},
-        };
-        const mockTasks = [{ id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED }];
-
-        getJobSpy.mockResolvedValue(mockJob);
-        getTasksForJobSpy.mockResolvedValue(mockTasks);
-        abortJobSpy.mockResolvedValue(undefined);
-        mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
-
-        await expect(ingestionManager.abortIngestion(jobId)).resolves.not.toThrow();
-
-        expect(abortJobSpy).toHaveBeenCalledWith(jobId);
-      });
-
-      it('should succeed when polygon parts cleanup returns 404 (idempotent)', async () => {
-        const jobId = faker.string.uuid();
-        const mockJob = {
-          id: jobId,
-          resourceId: rasterLayerMetadataGenerators.productId(),
-          productType: 'Orthophoto',
-          status: OperationStatus.FAILED,
-          parameters: {},
-        };
-
-        getJobSpy.mockResolvedValue(mockJob);
-        getTasksForJobSpy.mockResolvedValue([]);
-        abortJobSpy.mockResolvedValue(undefined);
-        mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
-
-        await expect(ingestionManager.abortIngestion(jobId)).resolves.not.toThrow();
-
-        expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalled();
-      });
-
-      it('should succeed when no tasks exist', async () => {
-        const jobId = faker.string.uuid();
-        const mockJob = {
-          id: jobId,
-          resourceId: rasterLayerMetadataGenerators.productId(),
-          productType: 'Orthophoto',
-          status: OperationStatus.FAILED,
-          parameters: {},
-        };
-
-        getJobSpy.mockResolvedValue(mockJob);
-        getTasksForJobSpy.mockResolvedValue([]);
-        abortJobSpy.mockResolvedValue(undefined);
-        mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
-
-        await expect(ingestionManager.abortIngestion(jobId)).resolves.not.toThrow();
-      });
+      expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
+      expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
+      expect(abortJobSpy).toHaveBeenCalledWith(mockJob.id);
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(resourceId, RasterProductTypes.ORTHOPHOTO);
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
     });
 
-    describe('Validation Layer 1: Job Status', () => {
-      it('should reject abort for completed job (400)', async () => {
-        const jobId = faker.string.uuid();
-        const mockJob = {
-          id: jobId,
-          resourceId: rasterLayerMetadataGenerators.productId(),
-          productType: 'Orthophoto',
-          status: OperationStatus.COMPLETED,
-          parameters: {},
-        };
+    it('should succeed when no tasks exist', async () => {
+      const resourceId = rasterLayerMetadataGenerators.productId();
+      const mockJob = {
+        id: faker.string.uuid(),
+        resourceId,
+        productType: RasterProductTypes.ORTHOPHOTO,
+        status: OperationStatus.FAILED,
+        parameters: {},
+      };
 
-        getJobSpy.mockResolvedValue(mockJob);
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([]);
+      abortJobSpy.mockResolvedValue(undefined);
+      mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-        await expect(ingestionManager.abortIngestion(jobId)).rejects.toThrow(BadRequestError);
-        expect(getTasksForJobSpy).not.toHaveBeenCalled();
-        expect(abortJobSpy).not.toHaveBeenCalled();
-      });
+      await ingestionManager.abortIngestion(mockJob.id);
 
-      it('should reject abort for already aborted job (400)', async () => {
-        const jobId = faker.string.uuid();
-        const mockJob = {
-          id: jobId,
-          resourceId: rasterLayerMetadataGenerators.productId(),
-          productType: 'Orthophoto',
-          status: OperationStatus.ABORTED,
-          parameters: {},
-        };
-
-        getJobSpy.mockResolvedValue(mockJob);
-
-        await expect(ingestionManager.abortIngestion(jobId)).rejects.toThrow(BadRequestError);
-        expect(abortJobSpy).not.toHaveBeenCalled();
-      });
+      expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
+      expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
+      expect(abortJobSpy).toHaveBeenCalledWith(mockJob.id);
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(resourceId, RasterProductTypes.ORTHOPHOTO);
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
     });
 
-    describe('Validation Layer 2: Finalize Task', () => {
-      it('should reject abort when finalize task exists (409)', async () => {
-        const jobId = faker.string.uuid();
-        const finalizeTaskId = faker.string.uuid();
-        const mockJob = {
-          id: jobId,
-          resourceId: rasterLayerMetadataGenerators.productId(),
-          productType: 'Orthophoto',
-          status: OperationStatus.FAILED,
-          parameters: {},
-        };
-        const mockTasks = [
-          { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
-          { id: finalizeTaskId, type: 'finalize', status: OperationStatus.PENDING },
-        ];
+    it('should reject abort for completed job', async () => {
+      const mockJob = {
+        id: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        productType: RasterProductTypes.ORTHOPHOTO,
+        status: OperationStatus.COMPLETED,
+        parameters: {},
+      };
 
-        getJobSpy.mockResolvedValue(mockJob);
-        getTasksForJobSpy.mockResolvedValue(mockTasks);
+      getJobSpy.mockResolvedValue(mockJob);
 
-        await expect(ingestionManager.abortIngestion(jobId)).rejects.toThrow(BadRequestError);
-        expect(abortJobSpy).not.toHaveBeenCalled();
-      });
-
-      it('should allow abort when only non-finalize tasks exist', async () => {
-        const jobId = faker.string.uuid();
-        const mockJob = {
-          id: jobId,
-          resourceId: rasterLayerMetadataGenerators.productId(),
-          productType: 'Orthophoto',
-          status: OperationStatus.FAILED,
-          parameters: {},
-        };
-        const mockTasks = [
-          { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
-          { id: faker.string.uuid(), type: 'tile-processing', status: OperationStatus.FAILED },
-          { id: faker.string.uuid(), type: 'merge', status: OperationStatus.PENDING },
-        ];
-
-        getJobSpy.mockResolvedValue(mockJob);
-        getTasksForJobSpy.mockResolvedValue(mockTasks);
-        abortJobSpy.mockResolvedValue(undefined);
-        mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
-
-        await expect(ingestionManager.abortIngestion(jobId)).resolves.not.toThrow();
-        expect(abortJobSpy).toHaveBeenCalled();
-      });
-
-      it('should detect finalize task at different array positions', async () => {
-        const jobId = faker.string.uuid();
-        const mockJob = {
-          id: jobId,
-          resourceId: rasterLayerMetadataGenerators.productId(),
-          productType: 'Orthophoto',
-          status: OperationStatus.FAILED,
-          parameters: {},
-        };
-        const mockTasks = [
-          { id: faker.string.uuid(), type: 'finalize', status: OperationStatus.PENDING },
-          { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
-        ];
-
-        getJobSpy.mockResolvedValue(mockJob);
-        getTasksForJobSpy.mockResolvedValue(mockTasks);
-
-        await expect(ingestionManager.abortIngestion(jobId)).rejects.toThrow(BadRequestError);
-      });
+      await expect(ingestionManager.abortIngestion(mockJob.id)).rejects.toThrow(BadRequestError);
+      expect(getTasksForJobSpy).not.toHaveBeenCalled();
+      expect(abortJobSpy).not.toHaveBeenCalled();
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
     });
 
-    describe('Error Scenarios', () => {
-      it('should throw NotFoundError when job does not exist (404)', async () => {
-        const jobId = faker.string.uuid();
-        getJobSpy.mockRejectedValue(new NotFoundError('Job not found'));
+    it('should reject abort for already aborted job', async () => {
+      const mockJob = {
+        id: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        productType: RasterProductTypes.ORTHOPHOTO,
+        status: OperationStatus.ABORTED,
+        parameters: {},
+      };
 
-        await expect(ingestionManager.abortIngestion(jobId)).rejects.toThrow(NotFoundError);
-        expect(getTasksForJobSpy).not.toHaveBeenCalled();
-        expect(abortJobSpy).not.toHaveBeenCalled();
-      });
+      getJobSpy.mockResolvedValue(mockJob);
 
-      it('should propagate error when Job Manager abort fails', async () => {
-        const jobId = faker.string.uuid();
-        const mockJob = {
-          id: jobId,
-          resourceId: rasterLayerMetadataGenerators.productId(),
-          productType: 'Orthophoto',
-          status: OperationStatus.FAILED,
-          parameters: {},
-        };
+      await expect(ingestionManager.abortIngestion(mockJob.id)).rejects.toThrow(BadRequestError);
+      expect(getTasksForJobSpy).not.toHaveBeenCalled();
+      expect(abortJobSpy).not.toHaveBeenCalled();
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
+    });
 
-        getJobSpy.mockResolvedValue(mockJob);
-        getTasksForJobSpy.mockResolvedValue([]);
-        abortJobSpy.mockRejectedValue(new InternalServerError('Job Manager failed'));
+    it('should reject abort when finalize task exists', async () => {
+      const finalizeTaskId = faker.string.uuid();
+      const mockJob = {
+        id: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        productType: RasterProductTypes.ORTHOPHOTO,
+        status: OperationStatus.FAILED,
+        parameters: {},
+      };
+      const mockTasks = [
+        { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
+        { id: finalizeTaskId, type: 'finalize', status: OperationStatus.PENDING },
+      ];
 
-        await expect(ingestionManager.abortIngestion(jobId)).rejects.toThrow(InternalServerError);
-        expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
-      });
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue(mockTasks);
 
-      it('should handle getTasksForJob failure', async () => {
-        const jobId = faker.string.uuid();
-        const mockJob = {
-          id: jobId,
-          resourceId: rasterLayerMetadataGenerators.productId(),
-          productType: 'Orthophoto',
-          status: OperationStatus.FAILED,
-          parameters: {},
-        };
+      await expect(ingestionManager.abortIngestion(mockJob.id)).rejects.toThrow(BadRequestError);
+      expect(abortJobSpy).not.toHaveBeenCalled();
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
+    });
 
-        getJobSpy.mockResolvedValue(mockJob);
-        getTasksForJobSpy.mockRejectedValue(new InternalServerError('Failed to fetch tasks'));
+    it('should allow abort when only non-finalize tasks exist', async () => {
+      const resourceId = rasterLayerMetadataGenerators.productId();
+      const mockJob = {
+        id: faker.string.uuid(),
+        resourceId,
+        productType: RasterProductTypes.ORTHOPHOTO,
+        status: OperationStatus.FAILED,
+        parameters: {},
+      };
+      const mockTasks = [
+        { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
+        { id: faker.string.uuid(), type: 'create-tasks', status: OperationStatus.FAILED },
+        { id: faker.string.uuid(), type: 'merge', status: OperationStatus.PENDING },
+      ];
 
-        await expect(ingestionManager.abortIngestion(jobId)).rejects.toThrow(InternalServerError);
-        expect(abortJobSpy).not.toHaveBeenCalled();
-      });
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue(mockTasks);
+      abortJobSpy.mockResolvedValue(undefined);
+      mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
+
+      await ingestionManager.abortIngestion(mockJob.id);
+      
+      expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
+      expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
+      expect(abortJobSpy).toHaveBeenCalledWith(mockJob.id);
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(resourceId, RasterProductTypes.ORTHOPHOTO);
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
+    });
+
+    it('should detect finalize task at different array positions', async () => {
+      const mockJob = {
+        id: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        productType: RasterProductTypes.ORTHOPHOTO,
+        status: OperationStatus.FAILED,
+        parameters: {},
+      };
+      const mockTasks = [
+        { id: faker.string.uuid(), type: 'finalize', status: OperationStatus.PENDING },
+        { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
+      ];
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue(mockTasks);
+
+      await expect(ingestionManager.abortIngestion(mockJob.id)).rejects.toThrow(BadRequestError);
+      expect(abortJobSpy).not.toHaveBeenCalled();
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError when job does not exist', async () => {
+      const jobId = faker.string.uuid();
+      getJobSpy.mockRejectedValue(new NotFoundError('Job not found'));
+
+      await expect(ingestionManager.abortIngestion(jobId)).rejects.toThrow(NotFoundError);
+      expect(getTasksForJobSpy).not.toHaveBeenCalled();
+      expect(abortJobSpy).not.toHaveBeenCalled();
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
+    });
+
+    it('should propagate error when Job Manager abort fails', async () => {
+      const mockJob = {
+        id: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        productType: RasterProductTypes.ORTHOPHOTO,
+        status: OperationStatus.FAILED,
+        parameters: {},
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([]);
+      abortJobSpy.mockRejectedValue(new InternalServerError('Job Manager failed'));
+
+      await expect(ingestionManager.abortIngestion(mockJob.id)).rejects.toThrow(InternalServerError);
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
+    });
+
+    it('should handle getTasksForJob failure', async () => {
+      const mockJob = {
+        id: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        productType: RasterProductTypes.ORTHOPHOTO,
+        status: OperationStatus.FAILED,
+        parameters: {},
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockRejectedValue(new InternalServerError('Failed to fetch tasks'));
+
+      await expect(ingestionManager.abortIngestion(mockJob.id)).rejects.toThrow(InternalServerError);
+      expect(abortJobSpy).not.toHaveBeenCalled();
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
     });
   });
 });
