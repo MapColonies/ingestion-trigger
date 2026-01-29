@@ -1033,7 +1033,9 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
 
-      await expect(ingestionManager.abortIngestion(mockJob.id)).rejects.toThrow(BadRequestError);
+      const action = ingestionManager.abortIngestion(mockJob.id);
+
+      await expect(action).rejects.toThrow(BadRequestError);
       expect(getTasksForJobSpy).not.toHaveBeenCalled();
       expect(abortJobSpy).not.toHaveBeenCalled();
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
@@ -1050,7 +1052,9 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
 
-      await expect(ingestionManager.abortIngestion(mockJob.id)).rejects.toThrow(BadRequestError);
+      const action = ingestionManager.abortIngestion(mockJob.id);
+
+      await expect(action).rejects.toThrow(BadRequestError);
       expect(getTasksForJobSpy).not.toHaveBeenCalled();
       expect(abortJobSpy).not.toHaveBeenCalled();
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
@@ -1078,7 +1082,9 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue(mockTasks);
 
-      await expect(ingestionManager.abortIngestion(mockJob.id)).rejects.toThrow(ConflictError);
+      const action = ingestionManager.abortIngestion(mockJob.id);
+
+      await expect(action).rejects.toThrow(ConflictError);
       expect(abortJobSpy).not.toHaveBeenCalled();
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
     });
