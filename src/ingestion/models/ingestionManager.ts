@@ -712,7 +712,7 @@ export class IngestionManager {
       const errorMessage = `cannot abort job ${jobId} - job already in finalization stage and cannot be aborted`;
       this.logger.error({ msg: errorMessage, logContext: logCtx, jobId });
       activeSpan?.setStatus({ code: SpanStatusCode.ERROR, message: errorMessage });
-      throw new BadRequestError(errorMessage);
+      throw new ConflictError(errorMessage);
     }
 
     this.logger.info({ msg: 'successfully aborted ingestion job', logContext: logCtx, jobId });
