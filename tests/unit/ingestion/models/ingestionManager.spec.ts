@@ -20,6 +20,7 @@ import { ZodValidator } from '../../../../src/utils/validation/zodValidator';
 import { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import {
+  generateAbortMockJob,
   generateCatalogLayerResponse,
   generateChecksum,
   generateNewLayerRequest,
@@ -973,11 +974,9 @@ describe('IngestionManager', () => {
     ])('should successfully abort job with status %s', async (status) => {
       const resourceId = rasterLayerMetadataGenerators.productId();
       const mockJob = {
-        id: faker.string.uuid(),
+        ...generateAbortMockJob(),
         resourceId,
-        productType: RasterProductTypes.ORTHOPHOTO,
         status: status,
-        parameters: {},
       };
       const mockTasks = [
         { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
@@ -1001,11 +1000,9 @@ describe('IngestionManager', () => {
     it('should successfully abort when no tasks exist for the requested job', async () => {
       const resourceId = rasterLayerMetadataGenerators.productId();
       const mockJob = {
-        id: faker.string.uuid(),
+        ...generateAbortMockJob(),
         resourceId,
-        productType: RasterProductTypes.ORTHOPHOTO,
         status: OperationStatus.FAILED,
-        parameters: {},
       };
 
       getJobSpy.mockResolvedValue(mockJob);
@@ -1022,32 +1019,13 @@ describe('IngestionManager', () => {
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
     });
 
-    it('should reject abort for completed job', async () => {
+    it.each([
+      [OperationStatus.COMPLETED],
+      [OperationStatus.ABORTED],
+    ])('should reject abort for job with invalid status %s', async (status) => {
       const mockJob = {
-        id: faker.string.uuid(),
-        resourceId: rasterLayerMetadataGenerators.productId(),
-        productType: RasterProductTypes.ORTHOPHOTO,
-        status: OperationStatus.COMPLETED,
-        parameters: {},
-      };
-
-      getJobSpy.mockResolvedValue(mockJob);
-
-      const action = ingestionManager.abortIngestion(mockJob.id);
-
-      await expect(action).rejects.toThrow(BadRequestError);
-      expect(getTasksForJobSpy).not.toHaveBeenCalled();
-      expect(abortJobSpy).not.toHaveBeenCalled();
-      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
-    });
-
-    it('should reject abort for already aborted job', async () => {
-      const mockJob = {
-        id: faker.string.uuid(),
-        resourceId: rasterLayerMetadataGenerators.productId(),
-        productType: RasterProductTypes.ORTHOPHOTO,
-        status: OperationStatus.ABORTED,
-        parameters: {},
+        ...generateAbortMockJob(),
+        status: status,
       };
 
       getJobSpy.mockResolvedValue(mockJob);
@@ -1068,11 +1046,8 @@ describe('IngestionManager', () => {
     ])('should throw Conflict Error when finalize task exists for job with status %s', async (status) => {
       const finalizeTaskId = faker.string.uuid();
       const mockJob = {
-        id: faker.string.uuid(),
-        resourceId: rasterLayerMetadataGenerators.productId(),
-        productType: RasterProductTypes.ORTHOPHOTO,
+        ...generateAbortMockJob(),
         status: status,
-        parameters: {},
       };
       const mockTasks = [
         { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
@@ -1096,11 +1071,9 @@ describe('IngestionManager', () => {
     ])('should allow abort when only non-finalize tasks exist (task type: %s)', async (taskType) => {
       const resourceId = rasterLayerMetadataGenerators.productId();
       const mockJob = {
-        id: faker.string.uuid(),
+        ...generateAbortMockJob(),
         resourceId,
-        productType: RasterProductTypes.ORTHOPHOTO,
         status: OperationStatus.FAILED,
-        parameters: {},
       };
       const mockTasks = [
         { id: faker.string.uuid(), type: taskType, status: OperationStatus.COMPLETED },
@@ -1139,11 +1112,9 @@ describe('IngestionManager', () => {
       [OperationStatus.PENDING],
     ])('should throw error when job has invalid productId for status %s', async (status) => {
       const mockJob = {
-        id: faker.string.uuid(),
+        ...generateAbortMockJob(),
         resourceId: undefined,
-        productType: RasterProductTypes.ORTHOPHOTO,
         status: status,
-        parameters: {},
       };
 
       getJobSpy.mockResolvedValue(mockJob);
@@ -1163,11 +1134,9 @@ describe('IngestionManager', () => {
       [OperationStatus.PENDING],
     ])('should throw error when job has invalid productType for status %s', async (status) => {
       const mockJob = {
-        id: faker.string.uuid(),
-        resourceId: rasterLayerMetadataGenerators.productId(),
+        ...generateAbortMockJob(),
         productType: undefined,
         status: status,
-        parameters: {},
       };
 
       getJobSpy.mockResolvedValue(mockJob);
@@ -1182,11 +1151,8 @@ describe('IngestionManager', () => {
 
     it('should propagate error when Job Manager abort fails', async () => {
       const mockJob = {
-        id: faker.string.uuid(),
-        resourceId: rasterLayerMetadataGenerators.productId(),
-        productType: RasterProductTypes.ORTHOPHOTO,
+        ...generateAbortMockJob(),
         status: OperationStatus.FAILED,
-        parameters: {},
       };
 
       getJobSpy.mockResolvedValue(mockJob);
@@ -1201,11 +1167,8 @@ describe('IngestionManager', () => {
 
     it('should handle getTasksForJob failure', async () => {
       const mockJob = {
-        id: faker.string.uuid(),
-        resourceId: rasterLayerMetadataGenerators.productId(),
-        productType: RasterProductTypes.ORTHOPHOTO,
+        ...generateAbortMockJob(),
         status: OperationStatus.FAILED,
-        parameters: {},
       };
 
       getJobSpy.mockResolvedValue(mockJob);

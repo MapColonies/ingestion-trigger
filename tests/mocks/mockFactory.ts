@@ -228,6 +228,13 @@ export const generateChecksum = (): Checksum => {
 export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] =>
   faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
 
+export const generateAbortMockJob = () => ({
+  id: faker.string.uuid(),
+  resourceId: rasterLayerMetadataGenerators.productId(),
+  productType: RasterProductTypes.ORTHOPHOTO,
+  parameters: {},
+});
+
 export const rasterLayerMetadataGenerators: RasterLayerMetadataPropertiesGenerators = {
   id: (): string => faker.string.uuid(),
   classification: (): string => faker.number.int({ max: 100 }).toString(),
