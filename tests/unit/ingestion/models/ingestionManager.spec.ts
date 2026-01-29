@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from '@map-colonies/error-types';
+import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
 import jsLogger from '@map-colonies/js-logger';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
