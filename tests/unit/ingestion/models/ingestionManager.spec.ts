@@ -1056,13 +1056,18 @@ describe('IngestionManager', () => {
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
     });
 
-    it('should throw Conflict Error when finalize task exists', async () => {
+    it.each([
+      [OperationStatus.FAILED],
+      [OperationStatus.SUSPENDED],
+      [OperationStatus.IN_PROGRESS],
+      [OperationStatus.PENDING],
+    ])('should throw Conflict Error when finalize task exists for job with status %s', async (status) => {
       const finalizeTaskId = faker.string.uuid();
       const mockJob = {
         id: faker.string.uuid(),
         resourceId: rasterLayerMetadataGenerators.productId(),
         productType: RasterProductTypes.ORTHOPHOTO,
-        status: OperationStatus.FAILED,
+        status: status,
         parameters: {},
       };
       const mockTasks = [
@@ -1113,9 +1118,59 @@ describe('IngestionManager', () => {
       const jobId = faker.string.uuid();
       getJobSpy.mockRejectedValue(new NotFoundError('Job not found'));
 
-      await expect(ingestionManager.abortIngestion(jobId)).rejects.toThrow(NotFoundError);
+      const action = ingestionManager.abortIngestion(jobId);
+
+      await expect(action).rejects.toThrow(NotFoundError);
       expect(getTasksForJobSpy).not.toHaveBeenCalled();
       expect(abortJobSpy).not.toHaveBeenCalled();
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [OperationStatus.FAILED],
+      [OperationStatus.SUSPENDED],
+      [OperationStatus.IN_PROGRESS],
+      [OperationStatus.PENDING],
+    ])('should throw error when job has invalid productId for status %s', async (status) => {
+      const mockJob = {
+        id: faker.string.uuid(),
+        resourceId: undefined,
+        productType: RasterProductTypes.ORTHOPHOTO,
+        status: status,
+        parameters: {},
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([]);
+      abortJobSpy.mockResolvedValue(undefined);
+
+      const action = ingestionManager.abortIngestion(mockJob.id);
+
+      await expect(action).rejects.toThrow();
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [OperationStatus.FAILED],
+      [OperationStatus.SUSPENDED],
+      [OperationStatus.IN_PROGRESS],
+      [OperationStatus.PENDING],
+    ])('should throw error when job has invalid productType for status %s', async (status) => {
+      const mockJob = {
+        id: faker.string.uuid(),
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        productType: undefined,
+        status: status,
+        parameters: {},
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([]);
+      abortJobSpy.mockResolvedValue(undefined);
+
+      const action = ingestionManager.abortIngestion(mockJob.id);
+
+      await expect(action).rejects.toThrow();
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
     });
 
@@ -1130,9 +1185,11 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([]);
-      abortJobSpy.mockRejectedValue(new InternalServerError('Job Manager failed'));
+      abortJobSpy.mockRejectedValue(new Error('Job Manager failed'));
 
-      await expect(ingestionManager.abortIngestion(mockJob.id)).rejects.toThrow(InternalServerError);
+      const action = ingestionManager.abortIngestion(mockJob.id);
+
+      await expect(action).rejects.toThrow(Error);
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
     });
 
@@ -1146,9 +1203,11 @@ describe('IngestionManager', () => {
       };
 
       getJobSpy.mockResolvedValue(mockJob);
-      getTasksForJobSpy.mockRejectedValue(new InternalServerError('Failed to fetch tasks'));
+      getTasksForJobSpy.mockRejectedValue(new Error('Failed to fetch tasks'));
 
-      await expect(ingestionManager.abortIngestion(mockJob.id)).rejects.toThrow(InternalServerError);
+      const action = ingestionManager.abortIngestion(mockJob.id);
+
+      await expect(action).rejects.toThrow(Error);
       expect(abortJobSpy).not.toHaveBeenCalled();
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
     });
