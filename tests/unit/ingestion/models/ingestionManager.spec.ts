@@ -884,9 +884,11 @@ describe('IngestionManager', () => {
 
     it('should throw NotFoundError when validation task is not found', async () => {
       const jobId = faker.string.uuid();
+      const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
       const mockJob = {
         id: jobId,
         status: OperationStatus.FAILED,
+        type: ingestionNewJobType,
         productType: 'Orthophoto',
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
@@ -952,6 +954,83 @@ describe('IngestionManager', () => {
 
       await expect(action).resolves.not.toThrow();
       expect(resetJobSpy).toHaveBeenCalledWith(jobId);
+    });
+
+    it('should perform soft reset when validation task is missing for non-ingestion job type', async () => {
+      const jobId = faker.string.uuid();
+      const seedingJobType = 'seeding-job-type';
+      const mockJob = {
+        id: jobId,
+        status: OperationStatus.FAILED,
+        type: seedingJobType,
+        productType: 'Orthophoto',
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        parameters: {
+          inputFiles: {
+            gpkgFilesPath: ['/path/to/file.gpkg'],
+            metadataShapefilePath: '/path/to/metadata.shp',
+            productShapefilePath: '/path/to/product.shp',
+          },
+        },
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([]);
+      resetJobSpy.mockResolvedValue(undefined);
+
+      await expect(ingestionManager.retryIngestion(jobId)).resolves.not.toThrow();
+      expect(resetJobSpy).toHaveBeenCalledWith(jobId);
+      expect(resetJobSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw NotFoundError when validation task is missing for update job type', async () => {
+      const jobId = faker.string.uuid();
+      const updateJobType = configMock.get<string>('jobManager.ingestionUpdateJobType');
+      const mockJob = {
+        id: jobId,
+        status: OperationStatus.FAILED,
+        type: updateJobType,
+        productType: 'Orthophoto',
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        parameters: {
+          inputFiles: {
+            gpkgFilesPath: ['/path/to/file.gpkg'],
+            metadataShapefilePath: '/path/to/metadata.shp',
+            productShapefilePath: '/path/to/product.shp',
+          },
+        },
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([]);
+
+      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(NotFoundError);
+      expect(resetJobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError when validation task is missing for swap-update job type', async () => {
+      const jobId = faker.string.uuid();
+      const swapUpdateJobType = configMock.get<string>('jobManager.ingestionSwapUpdateJobType');
+      const mockJob = {
+        id: jobId,
+        status: OperationStatus.FAILED,
+        type: swapUpdateJobType,
+        productType: 'Orthophoto',
+        resourceId: rasterLayerMetadataGenerators.productId(),
+        parameters: {
+          inputFiles: {
+            gpkgFilesPath: ['/path/to/file.gpkg'],
+            metadataShapefilePath: '/path/to/metadata.shp',
+            productShapefilePath: '/path/to/product.shp',
+          },
+        },
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([]);
+
+      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(NotFoundError);
+      expect(resetJobSpy).not.toHaveBeenCalled();
     });
   });
 });

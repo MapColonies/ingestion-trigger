@@ -37,6 +37,7 @@ describe('Ingestion', () => {
   let polygonPartsManagerURL: string;
   let jobResponse: ICreateJobResponse;
   let requestSender: IngestionRequestSender;
+  let ingestionNewJobType: string;
 
   beforeEach(() => {
     const [app] = getApp({
@@ -51,6 +52,7 @@ describe('Ingestion', () => {
     mapProxyApiServiceUrl = configMock.get<string>('services.mapProxyApiServiceUrl');
     catalogServiceURL = configMock.get<string>('services.catalogServiceURL');
     polygonPartsManagerURL = configMock.get<string>('services.polygonPartsManagerURL');
+    ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
 
     requestSender = new IngestionRequestSender(app);
   });
@@ -148,424 +150,424 @@ describe('Ingestion', () => {
         badRequest: DeepPartial<IngestionNewLayer>;
         removeProperty?: FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>;
       }[] = [
-        {
-          testCase: 'req body is not an object',
-          badRequest: '' as DeepPartial<IngestionNewLayer>,
-        },
-        {
-          testCase: 'inputFiles in req body is not set',
-          badRequest: createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }),
-          removeProperty: ['inputFiles'],
-        },
-        {
-          testCase: 'inputFiles in req body is not an object',
-          badRequest: merge(createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
-            inputFiles: '',
-          }),
-        },
-        {
-          testCase: 'gpkgFilesPath in inputFiles in req body is not set',
-          badRequest: createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }),
-          removeProperty: ['inputFiles', 'gpkgFilesPath'],
-        },
-        {
-          testCase: 'gpkgFilesPath in inputFiles in req body is not an array',
-          badRequest: merge(createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
-            inputFiles: { gpkgFilesPath: faker.string.alphanumeric({ length: { min: 1, max: 100 } }) },
-          }),
-        },
-        {
-          testCase: 'gpkgFilesPath in inputFiles in req body is an array with items count not equal to 1',
-          badRequest: set(
-            createNewLayerRequest({
-              inputFiles: validInputFiles.inputFiles,
+          {
+            testCase: 'req body is not an object',
+            badRequest: '' as DeepPartial<IngestionNewLayer>,
+          },
+          {
+            testCase: 'inputFiles in req body is not set',
+            badRequest: createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }),
+            removeProperty: ['inputFiles'],
+          },
+          {
+            testCase: 'inputFiles in req body is not an object',
+            badRequest: merge(createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
+              inputFiles: '',
             }),
-            ['inputFiles', 'gpkgFilesPath'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
-            faker.helpers.arrayElement([
-              [],
-              faker.helpers.multiple(() => faker.string.alphanumeric({ length: { min: 1, max: 100 } }), {
-                count: { min: 2, max: 10 },
+          },
+          {
+            testCase: 'gpkgFilesPath in inputFiles in req body is not set',
+            badRequest: createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }),
+            removeProperty: ['inputFiles', 'gpkgFilesPath'],
+          },
+          {
+            testCase: 'gpkgFilesPath in inputFiles in req body is not an array',
+            badRequest: merge(createNewLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
+              inputFiles: { gpkgFilesPath: faker.string.alphanumeric({ length: { min: 1, max: 100 } }) },
+            }),
+          },
+          {
+            testCase: 'gpkgFilesPath in inputFiles in req body is an array with items count not equal to 1',
+            badRequest: set(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
               }),
-            ])
-          ),
-        },
-        {
-          testCase: 'gpkgFilesPath in inputFiles in req body is an array with 1 item that is not a string',
-          badRequest: merge(
-            createNewLayerRequest({
-              inputFiles: validInputFiles.inputFiles,
-            }),
-            { inputFiles: { gpkgFilesPath: [false] } }
-          ),
-        },
-        {
-          testCase: 'gpkgFilesPath in inputFiles in req body is an array with 1 item that does not match file pattern',
-          badRequest: createNewLayerRequest({
-            inputFiles: {
-              ...validInputFiles.inputFiles,
-              gpkgFilesPath: [rasterLayerInputFilesGenerators.gpkgFilesPath()[0] + ' '],
-            },
-          }),
-        },
-        {
-          testCase: 'productShapefilePath in inputFiles in req body is not set',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['inputFiles', 'productShapefilePath'],
-        },
-        {
-          testCase: 'productShapefilePath in inputFiles in req body is not a string',
-          badRequest: merge(
-            createNewLayerRequest({
-              inputFiles: validInputFiles.inputFiles,
-            }),
-            { inputFiles: { productShapefilePath: false } }
-          ),
-        },
-        {
-          testCase: 'productShapefilePath in inputFiles in req body does not match file pattern',
-          badRequest: merge(
-            createNewLayerRequest({
-              inputFiles: validInputFiles.inputFiles,
-            }),
-            { inputFiles: { productShapefilePath: rasterLayerInputFilesGenerators.productShapefilePath() + ' ' } }
-          ),
-        },
-        {
-          testCase: 'metadataShapefilePath in inputFiles in req body is not set',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['inputFiles', 'metadataShapefilePath'],
-        },
-        {
-          testCase: 'metadataShapefilePath in inputFiles in req body is not a string',
-          badRequest: merge(
-            createNewLayerRequest({
-              inputFiles: validInputFiles.inputFiles,
-            }),
-            { inputFiles: { metadataShapefilePath: false } }
-          ),
-        },
-        {
-          testCase: 'metadataShapefilePath in inputFiles in req body does not match file pattern',
-          badRequest: merge(
-            createNewLayerRequest({
-              inputFiles: validInputFiles.inputFiles,
-            }),
-            { inputFiles: { metadataShapefilePath: rasterLayerInputFilesGenerators.metadataShapefilePath() + ' ' } }
-          ),
-        },
-        {
-          testCase: 'metadata in req body is not set',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['metadata'],
-        },
-        {
-          testCase: 'metadata in req body is not an object',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-            metadata: '' as unknown as IngestionNewLayer['metadata'],
-          }),
-        },
-        {
-          testCase: 'classification in metadata in req body is not a string',
-          badRequest: merge(
-            createNewLayerRequest({
-              inputFiles: validInputFiles.inputFiles,
-            }),
-            { metadata: { classification: false } }
-          ),
-        },
-        {
-          testCase: 'classification in metadata in req body does not match string pattern',
-          badRequest: merge(
-            createNewLayerRequest({
-              inputFiles: validInputFiles.inputFiles,
-            }),
-            { metadata: { classification: '00' } }
-          ),
-        },
-        {
-          testCase: 'productId in metadata in req body is not set',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['metadata', 'productId'],
-        },
-        {
-          testCase: 'productId in metadata in req body is not a string',
-          badRequest: merge(
-            createNewLayerRequest({
-              inputFiles: validInputFiles.inputFiles,
-            }),
-            { metadata: { productId: false } }
-          ),
-        },
-        {
-          testCase: 'productId in metadata in req body does not match string pattern',
-          badRequest: merge(
-            createNewLayerRequest({
-              inputFiles: validInputFiles.inputFiles,
-            }),
-            {
-              metadata: {
-                productId: faker.helpers.arrayElement([
-                  randexp('^[^A-Za-z]{1}[A-Za-z0-9_]{0,37}$'),
-                  randexp('^[A-Za-z]{1}[A-Za-z0-9_]{37}$') + faker.string.alphanumeric(),
-                ]),
+              ['inputFiles', 'gpkgFilesPath'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
+              faker.helpers.arrayElement([
+                [],
+                faker.helpers.multiple(() => faker.string.alphanumeric({ length: { min: 1, max: 100 } }), {
+                  count: { min: 2, max: 10 },
+                }),
+              ])
+            ),
+          },
+          {
+            testCase: 'gpkgFilesPath in inputFiles in req body is an array with 1 item that is not a string',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { inputFiles: { gpkgFilesPath: [false] } }
+            ),
+          },
+          {
+            testCase: 'gpkgFilesPath in inputFiles in req body is an array with 1 item that does not match file pattern',
+            badRequest: createNewLayerRequest({
+              inputFiles: {
+                ...validInputFiles.inputFiles,
+                gpkgFilesPath: [rasterLayerInputFilesGenerators.gpkgFilesPath()[0] + ' '],
               },
-            }
-          ),
-        },
-        {
-          testCase: 'productName in metadata in req body is not set',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['metadata', 'productName'],
-        },
-        {
-          testCase: 'productName in metadata in req body is not a string',
-          badRequest: merge(
-            createNewLayerRequest({
+            }),
+          },
+          {
+            testCase: 'productShapefilePath in inputFiles in req body is not set',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { metadata: { productName: false } }
-          ),
-        },
-        {
-          testCase: 'productName in metadata in req body must have a length of at least 1',
-          badRequest: merge(
-            createNewLayerRequest({
+            removeProperty: ['inputFiles', 'productShapefilePath'],
+          },
+          {
+            testCase: 'productShapefilePath in inputFiles in req body is not a string',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { inputFiles: { productShapefilePath: false } }
+            ),
+          },
+          {
+            testCase: 'productShapefilePath in inputFiles in req body does not match file pattern',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { inputFiles: { productShapefilePath: rasterLayerInputFilesGenerators.productShapefilePath() + ' ' } }
+            ),
+          },
+          {
+            testCase: 'metadataShapefilePath in inputFiles in req body is not set',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { metadata: { productName: '' } }
-          ),
-        },
-        {
-          testCase: 'productType in metadata in req body is not set',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['metadata', 'productType'],
-        },
-        {
-          testCase: 'productType in metadata in req body is not a string',
-          badRequest: merge(
-            createNewLayerRequest({
+            removeProperty: ['inputFiles', 'metadataShapefilePath'],
+          },
+          {
+            testCase: 'metadataShapefilePath in inputFiles in req body is not a string',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { inputFiles: { metadataShapefilePath: false } }
+            ),
+          },
+          {
+            testCase: 'metadataShapefilePath in inputFiles in req body does not match file pattern',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { inputFiles: { metadataShapefilePath: rasterLayerInputFilesGenerators.metadataShapefilePath() + ' ' } }
+            ),
+          },
+          {
+            testCase: 'metadata in req body is not set',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { metadata: { productType: false } }
-          ),
-        },
-        {
-          testCase: 'productType in metadata in req body must be one of allowed raster product types',
-          badRequest: merge(
-            createNewLayerRequest({
+            removeProperty: ['metadata'],
+          },
+          {
+            testCase: 'metadata in req body is not an object',
+            badRequest: createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+              metadata: '' as unknown as IngestionNewLayer['metadata'],
+            }),
+          },
+          {
+            testCase: 'classification in metadata in req body is not a string',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { classification: false } }
+            ),
+          },
+          {
+            testCase: 'classification in metadata in req body does not match string pattern',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { classification: '00' } }
+            ),
+          },
+          {
+            testCase: 'productId in metadata in req body is not set',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { metadata: { productType: '' } }
-          ),
-        },
-        {
-          testCase: 'srs in metadata in req body is not set',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['metadata', 'srs'],
-        },
-        {
-          testCase: 'srs in metadata in req body is not a string',
-          badRequest: merge(
-            createNewLayerRequest({
+            removeProperty: ['metadata', 'productId'],
+          },
+          {
+            testCase: 'productId in metadata in req body is not a string',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { productId: false } }
+            ),
+          },
+          {
+            testCase: 'productId in metadata in req body does not match string pattern',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              {
+                metadata: {
+                  productId: faker.helpers.arrayElement([
+                    randexp('^[^A-Za-z]{1}[A-Za-z0-9_]{0,37}$'),
+                    randexp('^[A-Za-z]{1}[A-Za-z0-9_]{37}$') + faker.string.alphanumeric(),
+                  ]),
+                },
+              }
+            ),
+          },
+          {
+            testCase: 'productName in metadata in req body is not set',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { metadata: { srs: false } }
-          ),
-        },
-        {
-          testCase: 'srs in metadata in req body must be one of allowed srs values',
-          badRequest: merge(
-            createNewLayerRequest({
+            removeProperty: ['metadata', 'productName'],
+          },
+          {
+            testCase: 'productName in metadata in req body is not a string',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { productName: false } }
+            ),
+          },
+          {
+            testCase: 'productName in metadata in req body must have a length of at least 1',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { productName: '' } }
+            ),
+          },
+          {
+            testCase: 'productType in metadata in req body is not set',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { metadata: { srs: '' } }
-          ),
-        },
-        {
-          testCase: 'srsName in metadata in req body is not set',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['metadata', 'srsName'],
-        },
-        {
-          testCase: 'srsName in metadata in req body is not a string',
-          badRequest: merge(
-            createNewLayerRequest({
+            removeProperty: ['metadata', 'productType'],
+          },
+          {
+            testCase: 'productType in metadata in req body is not a string',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { productType: false } }
+            ),
+          },
+          {
+            testCase: 'productType in metadata in req body must be one of allowed raster product types',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { productType: '' } }
+            ),
+          },
+          {
+            testCase: 'srs in metadata in req body is not set',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { metadata: { srsName: false } }
-          ),
-        },
-        {
-          testCase: 'srsName in metadata in req body must be one of allowed srsName values',
-          badRequest: merge(
-            createNewLayerRequest({
+            removeProperty: ['metadata', 'srs'],
+          },
+          {
+            testCase: 'srs in metadata in req body is not a string',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { srs: false } }
+            ),
+          },
+          {
+            testCase: 'srs in metadata in req body must be one of allowed srs values',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { srs: '' } }
+            ),
+          },
+          {
+            testCase: 'srsName in metadata in req body is not set',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { metadata: { srsName: '' } }
-          ),
-        },
-        {
-          testCase: 'transparency in metadata in req body is not set',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['metadata', 'transparency'],
-        },
-        {
-          testCase: 'transparency in metadata in req body is not a string',
-          badRequest: merge(
-            createNewLayerRequest({
+            removeProperty: ['metadata', 'srsName'],
+          },
+          {
+            testCase: 'srsName in metadata in req body is not a string',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { srsName: false } }
+            ),
+          },
+          {
+            testCase: 'srsName in metadata in req body must be one of allowed srsName values',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { srsName: '' } }
+            ),
+          },
+          {
+            testCase: 'transparency in metadata in req body is not set',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { metadata: { transparency: false } }
-          ),
-        },
-        {
-          testCase: 'transparency in metadata in req body must be one of allowed transparency values',
-          badRequest: merge(
-            createNewLayerRequest({
+            removeProperty: ['metadata', 'transparency'],
+          },
+          {
+            testCase: 'transparency in metadata in req body is not a string',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { transparency: false } }
+            ),
+          },
+          {
+            testCase: 'transparency in metadata in req body must be one of allowed transparency values',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { transparency: '' } }
+            ),
+          },
+          {
+            testCase: 'region in metadata in req body is not set',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { metadata: { transparency: '' } }
-          ),
-        },
-        {
-          testCase: 'region in metadata in req body is not set',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['metadata', 'region'],
-        },
-        {
-          testCase: 'region in metadata in req body is not an array',
-          badRequest: merge(
-            createNewLayerRequest({
+            removeProperty: ['metadata', 'region'],
+          },
+          {
+            testCase: 'region in metadata in req body is not an array',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { region: false } }
+            ),
+          },
+          {
+            testCase: 'region in metadata in req body is an empty array',
+            badRequest: set(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              ['metadata', 'region'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
+              []
+            ),
+          },
+          {
+            testCase: 'region in metadata in req body is an array with a region of min length of 1',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { region: [...faker.helpers.multiple(() => rasterLayerMetadataGenerators.region(), { count: { min: 1, max: 10 } }), ''] } }
+            ),
+          },
+          {
+            testCase: 'description in metadata in req body is not a string',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { description: false } }
+            ),
+          },
+          {
+            testCase: 'scale in metadata in req body is not a number',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { scale: false } }
+            ),
+          },
+          {
+            testCase: 'producerName in metadata in req body is not a string',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { producerName: false } }
+            ),
+          },
+          {
+            testCase: 'productSubType in metadata in req body is not a string',
+            badRequest: merge(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { metadata: { productSubType: false } }
+            ),
+          },
+          {
+            testCase: 'ingestionResolution in req body is not set',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { metadata: { region: false } }
-          ),
-        },
-        {
-          testCase: 'region in metadata in req body is an empty array',
-          badRequest: set(
-            createNewLayerRequest({
+            removeProperty: ['ingestionResolution'],
+          },
+          {
+            testCase: 'ingestionResolution in req body is not a number',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
+              ingestionResolution: '' as unknown as number,
             }),
-            ['metadata', 'region'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
-            []
-          ),
-        },
-        {
-          testCase: 'region in metadata in req body is an array with a region of min length of 1',
-          badRequest: merge(
-            createNewLayerRequest({
+          },
+          {
+            testCase: 'ingestionResolution in req body is not in a range of valid values',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
+              ingestionResolution: faker.helpers.arrayElement([
+                faker.number.float({ min: Number.MIN_SAFE_INTEGER, max: CORE_VALIDATIONS.resolutionDeg.min }),
+                faker.number.float({ min: CORE_VALIDATIONS.resolutionDeg.max + Number.EPSILON, max: Number.MAX_SAFE_INTEGER }),
+              ]),
             }),
-            { metadata: { region: [...faker.helpers.multiple(() => rasterLayerMetadataGenerators.region(), { count: { min: 1, max: 10 } }), ''] } }
-          ),
-        },
-        {
-          testCase: 'description in metadata in req body is not a string',
-          badRequest: merge(
-            createNewLayerRequest({
+          },
+          {
+            testCase: 'callbackUrls in req body is not an array',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
+              callbackUrls: '' as unknown as string[],
             }),
-            { metadata: { description: false } }
-          ),
-        },
-        {
-          testCase: 'scale in metadata in req body is not a number',
-          badRequest: merge(
-            createNewLayerRequest({
+          },
+          {
+            testCase: 'callbackUrls in req body is an empty array',
+            badRequest: set(
+              createNewLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              ['callbackUrls'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
+              []
+            ),
+          },
+          {
+            testCase: 'callbackUrls in req body does not match url pattern',
+            badRequest: createNewLayerRequest({
               inputFiles: validInputFiles.inputFiles,
+              callbackUrls: [generateCallbackUrl() + ' '],
             }),
-            { metadata: { scale: false } }
-          ),
-        },
-        {
-          testCase: 'producerName in metadata in req body is not a string',
-          badRequest: merge(
-            createNewLayerRequest({
-              inputFiles: validInputFiles.inputFiles,
-            }),
-            { metadata: { producerName: false } }
-          ),
-        },
-        {
-          testCase: 'productSubType in metadata in req body is not a string',
-          badRequest: merge(
-            createNewLayerRequest({
-              inputFiles: validInputFiles.inputFiles,
-            }),
-            { metadata: { productSubType: false } }
-          ),
-        },
-        {
-          testCase: 'ingestionResolution in req body is not set',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['ingestionResolution'],
-        },
-        {
-          testCase: 'ingestionResolution in req body is not a number',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-            ingestionResolution: '' as unknown as number,
-          }),
-        },
-        {
-          testCase: 'ingestionResolution in req body is not in a range of valid values',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-            ingestionResolution: faker.helpers.arrayElement([
-              faker.number.float({ min: Number.MIN_SAFE_INTEGER, max: CORE_VALIDATIONS.resolutionDeg.min }),
-              faker.number.float({ min: CORE_VALIDATIONS.resolutionDeg.max + Number.EPSILON, max: Number.MAX_SAFE_INTEGER }),
-            ]),
-          }),
-        },
-        {
-          testCase: 'callbackUrls in req body is not an array',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-            callbackUrls: '' as unknown as string[],
-          }),
-        },
-        {
-          testCase: 'callbackUrls in req body is an empty array',
-          badRequest: set(
-            createNewLayerRequest({
-              inputFiles: validInputFiles.inputFiles,
-            }),
-            ['callbackUrls'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
-            []
-          ),
-        },
-        {
-          testCase: 'callbackUrls in req body does not match url pattern',
-          badRequest: createNewLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-            callbackUrls: [generateCallbackUrl() + ' '],
-          }),
-        },
-      ];
+          },
+        ];
 
       it.each(badRequestBodyTestCases)('should return 400 status code when invalid input - $testCase', async ({ badRequest, removeProperty }) => {
         if (removeProperty) {
@@ -939,199 +941,199 @@ describe('Ingestion', () => {
         badRequest: DeepPartial<IngestionUpdateLayer>;
         removeProperty?: FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>;
       }[] = [
-        {
-          testCase: 'req body is not an object',
-          badRequest: '' as DeepPartial<IngestionUpdateLayer>,
-        },
-        {
-          testCase: 'inputFiles in req body is not set',
-          badRequest: createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles }),
-          removeProperty: ['inputFiles'],
-        },
-        {
-          testCase: 'inputFiles in req body is not an object',
-          badRequest: merge(createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
-            inputFiles: '',
-          }),
-        },
-        {
-          testCase: 'gpkgFilesPath in inputFiles in req body is not set',
-          badRequest: createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles }),
-          removeProperty: ['inputFiles', 'gpkgFilesPath'],
-        },
-        {
-          testCase: 'gpkgFilesPath in inputFiles in req body is not an array',
-          badRequest: merge(createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
-            inputFiles: { gpkgFilesPath: faker.string.alphanumeric({ length: { min: 1, max: 100 } }) },
-          }),
-        },
-        {
-          testCase: 'gpkgFilesPath in inputFiles in req body is an array with items count not equal to 1',
-          badRequest: set(
-            createUpdateLayerRequest({
-              inputFiles: validInputFiles.inputFiles,
+          {
+            testCase: 'req body is not an object',
+            badRequest: '' as DeepPartial<IngestionUpdateLayer>,
+          },
+          {
+            testCase: 'inputFiles in req body is not set',
+            badRequest: createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles }),
+            removeProperty: ['inputFiles'],
+          },
+          {
+            testCase: 'inputFiles in req body is not an object',
+            badRequest: merge(createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
+              inputFiles: '',
             }),
-            ['inputFiles', 'gpkgFilesPath'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
-            faker.helpers.arrayElement([
-              [],
-              faker.helpers.multiple(() => faker.string.alphanumeric({ length: { min: 1, max: 100 } }), {
-                count: { min: 2, max: 10 },
+          },
+          {
+            testCase: 'gpkgFilesPath in inputFiles in req body is not set',
+            badRequest: createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles }),
+            removeProperty: ['inputFiles', 'gpkgFilesPath'],
+          },
+          {
+            testCase: 'gpkgFilesPath in inputFiles in req body is not an array',
+            badRequest: merge(createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles }), {
+              inputFiles: { gpkgFilesPath: faker.string.alphanumeric({ length: { min: 1, max: 100 } }) },
+            }),
+          },
+          {
+            testCase: 'gpkgFilesPath in inputFiles in req body is an array with items count not equal to 1',
+            badRequest: set(
+              createUpdateLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
               }),
-            ])
-          ),
-        },
-        {
-          testCase: 'gpkgFilesPath in inputFiles in req body is an array with 1 item that is not a string',
-          badRequest: merge(
-            createUpdateLayerRequest({
+              ['inputFiles', 'gpkgFilesPath'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
+              faker.helpers.arrayElement([
+                [],
+                faker.helpers.multiple(() => faker.string.alphanumeric({ length: { min: 1, max: 100 } }), {
+                  count: { min: 2, max: 10 },
+                }),
+              ])
+            ),
+          },
+          {
+            testCase: 'gpkgFilesPath in inputFiles in req body is an array with 1 item that is not a string',
+            badRequest: merge(
+              createUpdateLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { inputFiles: { gpkgFilesPath: [false] } }
+            ),
+          },
+          {
+            testCase: 'gpkgFilesPath in inputFiles in req body is an array with 1 item that does not match file pattern',
+            badRequest: createUpdateLayerRequest({
+              inputFiles: {
+                ...validInputFiles.inputFiles,
+                gpkgFilesPath: [rasterLayerInputFilesGenerators.gpkgFilesPath()[0] + ' '],
+              },
+            }),
+          },
+          {
+            testCase: 'productShapefilePath in inputFiles in req body is not set',
+            badRequest: createUpdateLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { inputFiles: { gpkgFilesPath: [false] } }
-          ),
-        },
-        {
-          testCase: 'gpkgFilesPath in inputFiles in req body is an array with 1 item that does not match file pattern',
-          badRequest: createUpdateLayerRequest({
-            inputFiles: {
-              ...validInputFiles.inputFiles,
-              gpkgFilesPath: [rasterLayerInputFilesGenerators.gpkgFilesPath()[0] + ' '],
-            },
-          }),
-        },
-        {
-          testCase: 'productShapefilePath in inputFiles in req body is not set',
-          badRequest: createUpdateLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['inputFiles', 'productShapefilePath'],
-        },
-        {
-          testCase: 'productShapefilePath in inputFiles in req body is not a string',
-          badRequest: merge(
-            createUpdateLayerRequest({
+            removeProperty: ['inputFiles', 'productShapefilePath'],
+          },
+          {
+            testCase: 'productShapefilePath in inputFiles in req body is not a string',
+            badRequest: merge(
+              createUpdateLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { inputFiles: { productShapefilePath: false } }
+            ),
+          },
+          {
+            testCase: 'productShapefilePath in inputFiles in req body does not match file pattern',
+            badRequest: merge(
+              createUpdateLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { inputFiles: { productShapefilePath: rasterLayerInputFilesGenerators.productShapefilePath() + ' ' } }
+            ),
+          },
+          {
+            testCase: 'metadataShapefilePath in inputFiles in req body is not set',
+            badRequest: createUpdateLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { inputFiles: { productShapefilePath: false } }
-          ),
-        },
-        {
-          testCase: 'productShapefilePath in inputFiles in req body does not match file pattern',
-          badRequest: merge(
-            createUpdateLayerRequest({
+            removeProperty: ['inputFiles', 'metadataShapefilePath'],
+          },
+          {
+            testCase: 'metadataShapefilePath in inputFiles in req body is not a string',
+            badRequest: merge(
+              createUpdateLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { inputFiles: { metadataShapefilePath: false } }
+            ),
+          },
+          {
+            testCase: 'metadataShapefilePath in inputFiles in req body does not match file pattern',
+            badRequest: merge(
+              createUpdateLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              { inputFiles: { metadataShapefilePath: rasterLayerInputFilesGenerators.metadataShapefilePath() + ' ' } }
+            ),
+          },
+          {
+            testCase: 'metadata in req body is not set',
+            badRequest: createUpdateLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { inputFiles: { productShapefilePath: rasterLayerInputFilesGenerators.productShapefilePath() + ' ' } }
-          ),
-        },
-        {
-          testCase: 'metadataShapefilePath in inputFiles in req body is not set',
-          badRequest: createUpdateLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['inputFiles', 'metadataShapefilePath'],
-        },
-        {
-          testCase: 'metadataShapefilePath in inputFiles in req body is not a string',
-          badRequest: merge(
-            createUpdateLayerRequest({
+            removeProperty: ['metadata'],
+          },
+          {
+            testCase: 'metadata in req body is not an object',
+            badRequest: createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+              metadata: '' as unknown as IngestionUpdateLayer['metadata'],
+            }),
+          },
+          {
+            testCase: 'classification in metadata in req body is not set',
+            badRequest: createUpdateLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { inputFiles: { metadataShapefilePath: false } }
-          ),
-        },
-        {
-          testCase: 'metadataShapefilePath in inputFiles in req body does not match file pattern',
-          badRequest: merge(
-            createUpdateLayerRequest({
+            removeProperty: ['metadata', 'classification'],
+          },
+          {
+            testCase: 'classification in metadata in req body is not a string',
+            badRequest: createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+              metadata: { classification: false as unknown as string },
+            }),
+          },
+          {
+            testCase: 'classification in metadata in req body does not match string pattern',
+            badRequest: createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+              metadata: { classification: '00' },
+            }),
+          },
+          {
+            testCase: 'ingestionResolution in req body is not set',
+            badRequest: createUpdateLayerRequest({
               inputFiles: validInputFiles.inputFiles,
             }),
-            { inputFiles: { metadataShapefilePath: rasterLayerInputFilesGenerators.metadataShapefilePath() + ' ' } }
-          ),
-        },
-        {
-          testCase: 'metadata in req body is not set',
-          badRequest: createUpdateLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['metadata'],
-        },
-        {
-          testCase: 'metadata in req body is not an object',
-          badRequest: createUpdateLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-            metadata: '' as unknown as IngestionUpdateLayer['metadata'],
-          }),
-        },
-        {
-          testCase: 'classification in metadata in req body is not set',
-          badRequest: createUpdateLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['metadata', 'classification'],
-        },
-        {
-          testCase: 'classification in metadata in req body is not a string',
-          badRequest: createUpdateLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-            metadata: { classification: false as unknown as string },
-          }),
-        },
-        {
-          testCase: 'classification in metadata in req body does not match string pattern',
-          badRequest: createUpdateLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-            metadata: { classification: '00' },
-          }),
-        },
-        {
-          testCase: 'ingestionResolution in req body is not set',
-          badRequest: createUpdateLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-          }),
-          removeProperty: ['ingestionResolution'],
-        },
-        {
-          testCase: 'ingestionResolution in req body is not a number',
-          badRequest: createUpdateLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-            ingestionResolution: '' as unknown as number,
-          }),
-        },
-        {
-          testCase: 'ingestionResolution in req body is not in a range of valid values',
-          badRequest: createUpdateLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-            ingestionResolution: faker.helpers.arrayElement([
-              faker.number.float({ min: Number.MIN_SAFE_INTEGER, max: CORE_VALIDATIONS.resolutionDeg.min }),
-              faker.number.float({ min: CORE_VALIDATIONS.resolutionDeg.max + Number.EPSILON, max: Number.MAX_SAFE_INTEGER }),
-            ]),
-          }),
-        },
-        {
-          testCase: 'callbackUrls in req body is not an array',
-          badRequest: createUpdateLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-            callbackUrls: '' as unknown as string[],
-          }),
-        },
-        {
-          testCase: 'callbackUrls in req body is an empty array',
-          badRequest: set(
-            createUpdateLayerRequest({
+            removeProperty: ['ingestionResolution'],
+          },
+          {
+            testCase: 'ingestionResolution in req body is not a number',
+            badRequest: createUpdateLayerRequest({
               inputFiles: validInputFiles.inputFiles,
+              ingestionResolution: '' as unknown as number,
             }),
-            ['callbackUrls'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
-            []
-          ),
-        },
-        {
-          testCase: 'callbackUrls in req body does not match url pattern',
-          badRequest: createUpdateLayerRequest({
-            inputFiles: validInputFiles.inputFiles,
-            callbackUrls: [faker.internet.url() + ' '],
-          }),
-        },
-      ];
+          },
+          {
+            testCase: 'ingestionResolution in req body is not in a range of valid values',
+            badRequest: createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+              ingestionResolution: faker.helpers.arrayElement([
+                faker.number.float({ min: Number.MIN_SAFE_INTEGER, max: CORE_VALIDATIONS.resolutionDeg.min }),
+                faker.number.float({ min: CORE_VALIDATIONS.resolutionDeg.max + Number.EPSILON, max: Number.MAX_SAFE_INTEGER }),
+              ]),
+            }),
+          },
+          {
+            testCase: 'callbackUrls in req body is not an array',
+            badRequest: createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+              callbackUrls: '' as unknown as string[],
+            }),
+          },
+          {
+            testCase: 'callbackUrls in req body is an empty array',
+            badRequest: set(
+              createUpdateLayerRequest({
+                inputFiles: validInputFiles.inputFiles,
+              }),
+              ['callbackUrls'] satisfies FlattenKeyTupleUnion<DeepRequired<IngestionNewLayer>>,
+              []
+            ),
+          },
+          {
+            testCase: 'callbackUrls in req body does not match url pattern',
+            badRequest: createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+              callbackUrls: [faker.internet.url() + ' '],
+            }),
+          },
+        ];
 
       it.each(badRequestBodyTestCases)('should return 400 status code when invalid input - $testCase', async ({ badRequest, removeProperty }) => {
         if (removeProperty) {
@@ -1810,6 +1812,7 @@ describe('Ingestion', () => {
           id: jobId,
           resourceId: productId,
           productType,
+          type: ingestionNewJobType,
           status: OperationStatus.FAILED,
           parameters: {
             inputFiles: storedInputFiles,
@@ -1842,6 +1845,7 @@ describe('Ingestion', () => {
           id: jobId,
           resourceId: productId,
           productType,
+          type: ingestionNewJobType,
           status: OperationStatus.FAILED,
           parameters: {
             inputFiles: storedInputFiles,
