@@ -209,12 +209,16 @@ export class IngestionManager {
       throwInvalidJobStatusError(jobId, retryJob.status, this.logger, activeSpan);
     }
 
-    const validationTask: ITaskResponse<IngestionValidationTaskParams> | undefined = await this.getValidationTask(jobId, logCtx);
+    const validationJobTypes = [this.ingestionNewJobType, this.updateJobType, this.swapUpdateJobType];
 
-    if (!validationTask) {
-      await this.handleMissingValidationTask(jobId, retryJob.type, logCtx, activeSpan);
+    if (!validationJobTypes.includes(retryJob.type)) {
+      this.logger.info({ msg: 'performing soft reset', logContext: logCtx, jobId, jobType: retryJob.type });
+      await this.softReset(jobId, logCtx);
+
       return;
     }
+
+    const validationTask: ITaskResponse<IngestionValidationTaskParams> = await this.getValidationTask(jobId, logCtx);
 
     const { resourceId, productType } = this.parseAndValidateJobIdentifiers(retryJob.resourceId, retryJob.productType);
     await this.zodValidator.validate(ingestionValidationTaskParamsSchema, validationTask.parameters);
@@ -239,33 +243,20 @@ export class IngestionManager {
   }
 
   @withSpanAsyncV4
-  private async getValidationTask(jobId: string, logCtx: LogContext): Promise<ITaskResponse<IngestionValidationTaskParams> | undefined> {
+  private async getValidationTask(jobId: string, logCtx: LogContext): Promise<ITaskResponse<IngestionValidationTaskParams>> {
     const tasks = await this.jobManagerWrapper.getTasksForJob<IngestionValidationTaskParams>(jobId);
 
     const validationTask = tasks.find((task) => task.type === this.validationTaskType);
 
     if (!validationTask) {
-      this.logger.info({ msg: 'no validation task found for job', logContext: logCtx, jobId, taskTypes: tasks.map((t) => t.type) });
-      return undefined;
-    }
-
-    return validationTask;
-  }
-
-  @withSpanAsyncV4
-  private async handleMissingValidationTask(jobId: string, jobType: string, logCtx: LogContext, activeSpan: ReturnType<typeof trace.getActiveSpan>): Promise<void> {
-    const validationJobTypes = [this.ingestionNewJobType, this.updateJobType, this.swapUpdateJobType];
-
-    if (validationJobTypes.includes(jobType)) {
-      const message = `Cannot retry job with id: ${jobId} of type: ${jobType} because no validation task was found`;
-      this.logger.error({ msg: message, logContext: logCtx, jobId, jobType });
+      const message = `Cannot retry job with id: ${jobId} because no validation task was found`;
+      this.logger.error({ msg: message, logContext: logCtx, jobId, taskTypes: tasks.map((t) => t.type) });
       const error = new NotFoundError(message);
-      activeSpan?.setAttribute('exception.type', error.status);
+      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
       throw error;
     }
 
-    this.logger.info({ msg: 'no validation task found, performing simple reset', logContext: logCtx, jobId, jobType });
-    await this.softReset(jobId, logCtx);
+    return validationTask;
   }
 
   @withSpanAsyncV4

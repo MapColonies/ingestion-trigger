@@ -571,9 +571,11 @@ describe('IngestionManager', () => {
     it('should reset job when job status is SUSPENDED and validation passed', async () => {
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
+      const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
       const mockJob = {
         id: jobId,
         status: OperationStatus.SUSPENDED,
+        type: ingestionNewJobType,
         productType: 'Orthophoto',
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
@@ -612,10 +614,12 @@ describe('IngestionManager', () => {
       const taskId = faker.string.uuid();
       const oldChecksum = 'oldChecksum123';
       const newChecksum = 'newChecksum456';
+      const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
 
       const mockJob = {
         id: jobId,
         status: OperationStatus.SUSPENDED,
+        type: ingestionNewJobType,
         productType: 'Orthophoto',
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
@@ -687,10 +691,12 @@ describe('IngestionManager', () => {
       const taskId = faker.string.uuid();
       const oldChecksum = 'oldChecksum123';
       const newChecksum = 'newChecksum456';
+      const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
 
       const mockJob = {
         id: jobId,
         status: OperationStatus.FAILED,
+        type: ingestionNewJobType,
         productType: 'Orthophoto',
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
@@ -761,10 +767,12 @@ describe('IngestionManager', () => {
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
       const existingChecksum = { fileName: 'metadata.shp', checksum: 'sameChecksum123' };
+      const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
 
       const mockJob = {
         id: jobId,
         status: OperationStatus.FAILED,
+        type: ingestionNewJobType,
         productType: 'Orthophoto',
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
@@ -800,10 +808,12 @@ describe('IngestionManager', () => {
     it('should throw BadRequestError when metadataShapefilePath is missing', async () => {
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
+      const ingestionNewJobType = configMock.get<string>('jobManager.ingestionNewJobType');
 
       const mockJob = {
         id: jobId,
         status: OperationStatus.FAILED,
+        type: ingestionNewJobType,
         productType: 'Orthophoto',
         resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
