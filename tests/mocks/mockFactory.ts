@@ -2,7 +2,7 @@
 import { join, relative } from 'node:path';
 import { faker } from '@faker-js/faker';
 import { RecordType, TileOutputFormat } from '@map-colonies/mc-model-types';
-import { OperationStatus, type ICreateJobBody, type IFindJobsByCriteriaBody } from '@map-colonies/mc-priority-queue';
+import { OperationStatus, type ICreateJobBody, type IFindJobsByCriteriaBody, type IJobResponse } from '@map-colonies/mc-priority-queue';
 import {
   Checksum,
   CORE_VALIDATIONS,
@@ -27,6 +27,7 @@ import { trace } from '@opentelemetry/api';
 import type { RasterLayersCatalog } from '../../src/ingestion/schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../../src/ingestion/schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
+import type { IngestionBaseJobParams } from '../../src/ingestion/interfaces';
 import { getShapefileFiles } from '../../src/utils/shapefile';
 import type { DeepPartial, FlatRecordValues, ReplaceValueWithFunctionResponse as ReplaceValueWithGenerator } from '../utils/types';
 import { configMock } from './configMock';
@@ -228,7 +229,7 @@ export const generateChecksum = (): Checksum => {
 export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] =>
   faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
 
-export const generateAbortMockJob = () => ({
+export const generateAbortMockJob = (): { id: string; resourceId: string; productType: RasterProductTypes; parameters: Record<string, unknown> } => ({
   id: faker.string.uuid(),
   resourceId: rasterLayerMetadataGenerators.productId(),
   productType: RasterProductTypes.ORTHOPHOTO,

@@ -2223,4 +2223,55 @@ describe('Ingestion', () => {
       });
     });
   });
+
+  describe('PUT /ingestion/:jobId/abort', () => {
+    describe('Happy Path', () => {
+      it('should return 200 status code when aborting job with FAILED status', async () => {
+        const jobId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const abortJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.FAILED,
+        };
+        const tasks = [
+          { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
+          { id: faker.string.uuid(), type: 'init', status: OperationStatus.COMPLETED },
+        ];
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, abortJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, tasks);
+        nock(jobManagerURL).post(`/tasks/abort/${jobId}`).reply(httpStatusCodes.OK);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
+
+        const response = await requestSender.abortIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
+    });
+
+    describe('Sad Path', () => {
+      it('should return 400 BAD_REQUEST status code when job is in COMPLETED status', async () => {
+        const jobId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const abortJob = {
+          id: jobId,
+          resourceId: productId,
+          productType,
+          status: OperationStatus.COMPLETED,
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, abortJob);
+
+        const response = await requestSender.abortIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+    });
+  });
 });

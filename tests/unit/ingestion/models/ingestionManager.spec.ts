@@ -966,36 +966,34 @@ describe('IngestionManager', () => {
       mockPolygonPartsManagerClient.deleteValidationEntity.mockClear();
     });
 
-    it.each([
-      [OperationStatus.FAILED],
-      [OperationStatus.SUSPENDED],
-      [OperationStatus.IN_PROGRESS],
-      [OperationStatus.PENDING],
-    ])('should successfully abort job with status %s', async (status) => {
-      const resourceId = rasterLayerMetadataGenerators.productId();
-      const mockJob = {
-        ...generateAbortMockJob(),
-        resourceId,
-        status: status,
-      };
-      const mockTasks = [
-        { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
-        { id: faker.string.uuid(), type: 'create-tasks', status: OperationStatus.FAILED },
-      ];
+    it.each([[OperationStatus.FAILED], [OperationStatus.SUSPENDED], [OperationStatus.IN_PROGRESS], [OperationStatus.PENDING]])(
+      'should successfully abort job with status %s',
+      async (status) => {
+        const resourceId = rasterLayerMetadataGenerators.productId();
+        const mockJob = {
+          ...generateAbortMockJob(),
+          resourceId,
+          status: status,
+        };
+        const mockTasks = [
+          { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
+          { id: faker.string.uuid(), type: 'create-tasks', status: OperationStatus.FAILED },
+        ];
 
-      getJobSpy.mockResolvedValue(mockJob);
-      getTasksForJobSpy.mockResolvedValue(mockTasks);
-      abortJobSpy.mockResolvedValue(undefined);
-      mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
+        getJobSpy.mockResolvedValue(mockJob);
+        getTasksForJobSpy.mockResolvedValue(mockTasks);
+        abortJobSpy.mockResolvedValue(undefined);
+        mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-      await ingestionManager.abortIngestion(mockJob.id);
+        await ingestionManager.abortIngestion(mockJob.id);
 
-      expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
-      expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
-      expect(abortJobSpy).toHaveBeenCalledWith(mockJob.id);
-      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(resourceId, RasterProductTypes.ORTHOPHOTO);
-      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
-    });
+        expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
+        expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
+        expect(abortJobSpy).toHaveBeenCalledWith(mockJob.id);
+        expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(resourceId, RasterProductTypes.ORTHOPHOTO);
+        expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
+      }
+    );
 
     it('should successfully abort when no tasks exist for the requested job', async () => {
       const resourceId = rasterLayerMetadataGenerators.productId();
@@ -1019,10 +1017,7 @@ describe('IngestionManager', () => {
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
     });
 
-    it.each([
-      [OperationStatus.COMPLETED],
-      [OperationStatus.ABORTED],
-    ])('should reject abort for job with invalid status %s', async (status) => {
+    it.each([[OperationStatus.COMPLETED], [OperationStatus.ABORTED]])('should reject abort for job with invalid status %s', async (status) => {
       const mockJob = {
         ...generateAbortMockJob(),
         status: status,
@@ -1038,60 +1033,55 @@ describe('IngestionManager', () => {
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
     });
 
-    it.each([
-      [OperationStatus.FAILED],
-      [OperationStatus.SUSPENDED],
-      [OperationStatus.IN_PROGRESS],
-      [OperationStatus.PENDING],
-    ])('should throw Conflict Error when finalize task exists for job with status %s', async (status) => {
-      const finalizeTaskId = faker.string.uuid();
-      const mockJob = {
-        ...generateAbortMockJob(),
-        status: status,
-      };
-      const mockTasks = [
-        { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
-        { id: finalizeTaskId, type: 'finalize', status: OperationStatus.PENDING },
-      ];
+    it.each([[OperationStatus.FAILED], [OperationStatus.SUSPENDED], [OperationStatus.IN_PROGRESS], [OperationStatus.PENDING]])(
+      'should throw Conflict Error when finalize task exists for job with status %s',
+      async (status) => {
+        const finalizeTaskId = faker.string.uuid();
+        const mockJob = {
+          ...generateAbortMockJob(),
+          status: status,
+        };
+        const mockTasks = [
+          { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
+          { id: finalizeTaskId, type: 'finalize', status: OperationStatus.PENDING },
+        ];
 
-      getJobSpy.mockResolvedValue(mockJob);
-      getTasksForJobSpy.mockResolvedValue(mockTasks);
+        getJobSpy.mockResolvedValue(mockJob);
+        getTasksForJobSpy.mockResolvedValue(mockTasks);
 
-      const action = ingestionManager.abortIngestion(mockJob.id);
+        const action = ingestionManager.abortIngestion(mockJob.id);
 
-      await expect(action).rejects.toThrow(ConflictError);
-      expect(abortJobSpy).not.toHaveBeenCalled();
-      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
-    });
+        await expect(action).rejects.toThrow(ConflictError);
+        expect(abortJobSpy).not.toHaveBeenCalled();
+        expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
+      }
+    );
 
-    it.each([
-      ['validation'],
-      ['create-tasks'],
-      ['merge'],
-    ])('should allow abort when only non-finalize tasks exist (task type: %s)', async (taskType) => {
-      const resourceId = rasterLayerMetadataGenerators.productId();
-      const mockJob = {
-        ...generateAbortMockJob(),
-        resourceId,
-        status: OperationStatus.FAILED,
-      };
-      const mockTasks = [
-        { id: faker.string.uuid(), type: taskType, status: OperationStatus.COMPLETED },
-      ];
+    it.each([['validation'], ['create-tasks'], ['merge']])(
+      'should allow abort when only non-finalize tasks exist (task type: %s)',
+      async (taskType) => {
+        const resourceId = rasterLayerMetadataGenerators.productId();
+        const mockJob = {
+          ...generateAbortMockJob(),
+          resourceId,
+          status: OperationStatus.FAILED,
+        };
+        const mockTasks = [{ id: faker.string.uuid(), type: taskType, status: OperationStatus.COMPLETED }];
 
-      getJobSpy.mockResolvedValue(mockJob);
-      getTasksForJobSpy.mockResolvedValue(mockTasks);
-      abortJobSpy.mockResolvedValue(undefined);
-      mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
+        getJobSpy.mockResolvedValue(mockJob);
+        getTasksForJobSpy.mockResolvedValue(mockTasks);
+        abortJobSpy.mockResolvedValue(undefined);
+        mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-      await ingestionManager.abortIngestion(mockJob.id);
-      
-      expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
-      expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
-      expect(abortJobSpy).toHaveBeenCalledWith(mockJob.id);
-      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(resourceId, RasterProductTypes.ORTHOPHOTO);
-      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
-    });
+        await ingestionManager.abortIngestion(mockJob.id);
+
+        expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
+        expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
+        expect(abortJobSpy).toHaveBeenCalledWith(mockJob.id);
+        expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(resourceId, RasterProductTypes.ORTHOPHOTO);
+        expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
+      }
+    );
 
     it('should throw NotFoundError when job does not exist', async () => {
       const jobId = faker.string.uuid();
@@ -1105,49 +1095,45 @@ describe('IngestionManager', () => {
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
     });
 
-    it.each([
-      [OperationStatus.FAILED],
-      [OperationStatus.SUSPENDED],
-      [OperationStatus.IN_PROGRESS],
-      [OperationStatus.PENDING],
-    ])('should throw error when job has invalid productId for status %s', async (status) => {
-      const mockJob = {
-        ...generateAbortMockJob(),
-        resourceId: undefined,
-        status: status,
-      };
+    it.each([[OperationStatus.FAILED], [OperationStatus.SUSPENDED], [OperationStatus.IN_PROGRESS], [OperationStatus.PENDING]])(
+      'should throw error when job has invalid productId for status %s',
+      async (status) => {
+        const mockJob = {
+          ...generateAbortMockJob(),
+          resourceId: undefined,
+          status: status,
+        };
 
-      getJobSpy.mockResolvedValue(mockJob);
-      getTasksForJobSpy.mockResolvedValue([]);
-      abortJobSpy.mockResolvedValue(undefined);
+        getJobSpy.mockResolvedValue(mockJob);
+        getTasksForJobSpy.mockResolvedValue([]);
+        abortJobSpy.mockResolvedValue(undefined);
 
-      const action = ingestionManager.abortIngestion(mockJob.id);
+        const action = ingestionManager.abortIngestion(mockJob.id);
 
-      await expect(action).rejects.toThrow();
-      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
-    });
+        await expect(action).rejects.toThrow();
+        expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
+      }
+    );
 
-    it.each([
-      [OperationStatus.FAILED],
-      [OperationStatus.SUSPENDED],
-      [OperationStatus.IN_PROGRESS],
-      [OperationStatus.PENDING],
-    ])('should throw error when job has invalid productType for status %s', async (status) => {
-      const mockJob = {
-        ...generateAbortMockJob(),
-        productType: undefined,
-        status: status,
-      };
+    it.each([[OperationStatus.FAILED], [OperationStatus.SUSPENDED], [OperationStatus.IN_PROGRESS], [OperationStatus.PENDING]])(
+      'should throw error when job has invalid productType for status %s',
+      async (status) => {
+        const mockJob = {
+          ...generateAbortMockJob(),
+          productType: undefined,
+          status: status,
+        };
 
-      getJobSpy.mockResolvedValue(mockJob);
-      getTasksForJobSpy.mockResolvedValue([]);
-      abortJobSpy.mockResolvedValue(undefined);
+        getJobSpy.mockResolvedValue(mockJob);
+        getTasksForJobSpy.mockResolvedValue([]);
+        abortJobSpy.mockResolvedValue(undefined);
 
-      const action = ingestionManager.abortIngestion(mockJob.id);
+        const action = ingestionManager.abortIngestion(mockJob.id);
 
-      await expect(action).rejects.toThrow();
-      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
-    });
+        await expect(action).rejects.toThrow();
+        expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
+      }
+    );
 
     it('should propagate error when Job Manager abort fails', async () => {
       const mockJob = {
