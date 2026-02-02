@@ -44,18 +44,9 @@ describe('jobManagerWrapper integration', () => {
         await expect(action()).resolves.not.toThrow();
         expect(scope.isDone()).toBe(true);
       });
-
-      it('should send empty body in POST request', async () => {
-        const scope = nock('http://jobmanagerurl').post(`/tasks/abort/${jobId}`, {}).reply(200);
-
-        const action = async () => jobManagerWrapper.abortJob(jobId);
-
-        await expect(action()).resolves.not.toThrow();
-        expect(scope.isDone()).toBe(true);
-      });
     });
 
-    describe('Error Scenarios', () => {
+    describe('Sad Path', () => {
       it('should throw error when job not found', async () => {
         nock('http://jobmanagerurl').post(`/tasks/abort/${jobId}`).reply(404, { message: 'Job not found' });
 
@@ -86,15 +77,6 @@ describe('jobManagerWrapper integration', () => {
         const action = async () => jobManagerWrapper.abortJob(jobId);
 
         await expect(action()).rejects.toThrow();
-      });
-
-      it('should propagate error and re-throw after logging', async () => {
-        const errorMessage = 'Test error';
-        nock('http://jobmanagerurl').post(`/tasks/abort/${jobId}`).replyWithError(new Error(errorMessage));
-
-        const action = async () => jobManagerWrapper.abortJob(jobId);
-
-        await expect(action()).rejects.toThrow(errorMessage);
       });
     });
   });

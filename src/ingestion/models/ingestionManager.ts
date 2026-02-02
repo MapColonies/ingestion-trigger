@@ -700,7 +700,7 @@ export class IngestionManager {
     this.logger.info({ msg: 'starting abort ingestion process', logContext: logCtx, jobId });
 
     const job: IJobResponse<IngestionBaseJobParams, unknown> = await this.jobManagerWrapper.getJob<IngestionBaseJobParams, unknown>(jobId);
-
+    
     if (!this.isJobAbortable(job.status)) {
       throwInvalidJobStatusError(IngestionOperation.ABORT, jobId, job.status, this.logger, activeSpan);
     }
