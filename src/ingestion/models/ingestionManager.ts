@@ -209,9 +209,9 @@ export class IngestionManager {
       throwInvalidJobStatusError(jobId, retryJob.status, this.logger, activeSpan);
     }
 
-    const validationJobTypes = [this.ingestionNewJobType, this.updateJobType, this.swapUpdateJobType];
+    const ingestionJobType = [this.ingestionNewJobType, this.updateJobType, this.swapUpdateJobType];
 
-    if (!validationJobTypes.includes(retryJob.type)) {
+    if (!ingestionJobType.includes(retryJob.type)) {
       this.logger.info({ msg: 'performing soft reset', logContext: logCtx, jobId, jobType: retryJob.type });
       await this.softReset(jobId, logCtx);
 
