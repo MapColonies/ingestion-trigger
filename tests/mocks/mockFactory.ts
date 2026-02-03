@@ -229,7 +229,7 @@ export const generateChecksum = (): Checksum => {
 export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] =>
   faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
 
-export const generateAbortMockJob = (): { id: string; resourceId: string; productType: RasterProductTypes; parameters: Record<string, unknown> } => ({
+export const generateAbortMockJob = (): Partial<IJobResponse<unknown, unknown>> => ({
   id: faker.string.uuid(),
   resourceId: rasterLayerMetadataGenerators.productId(),
   productType: RasterProductTypes.ORTHOPHOTO,

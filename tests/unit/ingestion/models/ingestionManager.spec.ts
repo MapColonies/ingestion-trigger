@@ -835,7 +835,7 @@ describe('IngestionManager', () => {
       expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
-    it('should throw BadRequestError when job status is PENDING', async () => {
+    it('should throw ConflictError when job status is PENDING', async () => {
       const jobId = faker.string.uuid();
       const mockJob = {
         id: jobId,
@@ -853,13 +853,13 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
 
-      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
+      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(ConflictError);
       expect(getTasksForJobSpy).not.toHaveBeenCalled();
       expect(updateTaskSpy).not.toHaveBeenCalled();
       expect(resetJobSpy).not.toHaveBeenCalled();
     });
 
-    it('should throw BadRequestError when job status is IN_PROGRESS', async () => {
+    it('should throw ConflictError when job status is IN_PROGRESS', async () => {
       const jobId = faker.string.uuid();
       const mockJob = {
         id: jobId,
@@ -877,7 +877,7 @@ describe('IngestionManager', () => {
 
       getJobSpy.mockResolvedValue(mockJob);
 
-      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(BadRequestError);
+      await expect(ingestionManager.retryIngestion(jobId)).rejects.toThrow(ConflictError);
       expect(updateTaskSpy).not.toHaveBeenCalled();
       expect(resetJobSpy).not.toHaveBeenCalled();
     });
@@ -969,10 +969,8 @@ describe('IngestionManager', () => {
     it.each([[OperationStatus.FAILED], [OperationStatus.SUSPENDED], [OperationStatus.IN_PROGRESS], [OperationStatus.PENDING]])(
       'should successfully abort job with status %s',
       async (status) => {
-        const resourceId = rasterLayerMetadataGenerators.productId();
         const mockJob = {
           ...generateAbortMockJob(),
-          resourceId,
           status: status,
         };
         const mockTasks = [
@@ -990,16 +988,14 @@ describe('IngestionManager', () => {
         expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
         expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
         expect(abortJobSpy).toHaveBeenCalledWith(mockJob.id);
-        expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(resourceId, RasterProductTypes.ORTHOPHOTO);
+        expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(mockJob.resourceId, RasterProductTypes.ORTHOPHOTO);
         expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
       }
     );
 
     it('should successfully abort when no tasks exist for the requested job', async () => {
-      const resourceId = rasterLayerMetadataGenerators.productId();
       const mockJob = {
         ...generateAbortMockJob(),
-        resourceId,
         status: OperationStatus.FAILED,
       };
 
@@ -1013,7 +1009,7 @@ describe('IngestionManager', () => {
       expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
       expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
       expect(abortJobSpy).toHaveBeenCalledWith(mockJob.id);
-      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(resourceId, RasterProductTypes.ORTHOPHOTO);
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(mockJob.resourceId, RasterProductTypes.ORTHOPHOTO);
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
     });
 
@@ -1027,7 +1023,7 @@ describe('IngestionManager', () => {
 
       const action = ingestionManager.abortIngestion(mockJob.id);
 
-      await expect(action).rejects.toThrow(BadRequestError);
+      await expect(action).rejects.toThrow(ConflictError);
       expect(getTasksForJobSpy).not.toHaveBeenCalled();
       expect(abortJobSpy).not.toHaveBeenCalled();
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
@@ -1060,10 +1056,8 @@ describe('IngestionManager', () => {
     it.each([['validation'], ['create-tasks'], ['merge']])(
       'should allow abort when only non-finalize tasks exist (task type: %s)',
       async (taskType) => {
-        const resourceId = rasterLayerMetadataGenerators.productId();
         const mockJob = {
           ...generateAbortMockJob(),
-          resourceId,
           status: OperationStatus.FAILED,
         };
         const mockTasks = [{ id: faker.string.uuid(), type: taskType, status: OperationStatus.COMPLETED }];
@@ -1078,7 +1072,7 @@ describe('IngestionManager', () => {
         expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
         expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
         expect(abortJobSpy).toHaveBeenCalledWith(mockJob.id);
-        expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(resourceId, RasterProductTypes.ORTHOPHOTO);
+        expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(mockJob.resourceId, RasterProductTypes.ORTHOPHOTO);
         expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
       }
     );
