@@ -21,6 +21,7 @@ import {
   createNewLayerRequest,
   createUpdateJobRequest,
   createUpdateLayerRequest,
+  generateAbortMockJob,
   generateCallbackUrl,
   rasterLayerInputFilesGenerators,
   rasterLayerMetadataGenerators,
@@ -2229,13 +2230,9 @@ describe('Ingestion', () => {
       it.each([[OperationStatus.FAILED], [OperationStatus.SUSPENDED], [OperationStatus.IN_PROGRESS], [OperationStatus.PENDING]])(
         'should return 200 status code when aborting job with %s status',
         async (status) => {
-          const jobId = faker.string.uuid();
-          const productId = rasterLayerMetadataGenerators.productId();
-          const productType = rasterLayerMetadataGenerators.productType();
+          const mockJob = generateAbortMockJob();
           const abortJob = {
-            id: jobId,
-            resourceId: productId,
-            productType,
+            ...mockJob,
             status: status,
           };
           const tasks = [
@@ -2243,39 +2240,87 @@ describe('Ingestion', () => {
             { id: faker.string.uuid(), type: 'init', status: OperationStatus.COMPLETED },
           ];
 
-          nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, abortJob);
-          nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, tasks);
-          nock(jobManagerURL).post(`/tasks/abort/${jobId}`).reply(httpStatusCodes.OK);
-          nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
+          nock(jobManagerURL).get(`/jobs/${mockJob.id}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, abortJob);
+          nock(jobManagerURL).get(`/jobs/${mockJob.id}/tasks`).reply(httpStatusCodes.OK, tasks);
+          nock(jobManagerURL).post(`/tasks/abort/${mockJob.id}`).reply(httpStatusCodes.OK);
+          nock(polygonPartsManagerURL)
+            .delete('/polygonParts/validate')
+            .query({ productType: mockJob.productType, productId: mockJob.resourceId })
+            .reply(httpStatusCodes.NO_CONTENT);
 
-          const response = await requestSender.abortIngestion(jobId);
+          const response = await requestSender.abortIngestion(mockJob.id as string);
 
           expect(response).toSatisfyApiSpec();
           expect(response.status).toBe(httpStatusCodes.OK);
         }
       );
+
+      it('should return 200 status code when aborting job with no tasks', async () => {
+        const mockJob = generateAbortMockJob();
+        const abortJob = {
+          ...mockJob,
+          status: OperationStatus.FAILED,
+        };
+
+        nock(jobManagerURL).get(`/jobs/${mockJob.id}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, abortJob);
+        nock(jobManagerURL).get(`/jobs/${mockJob.id}/tasks`).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL).post(`/tasks/abort/${mockJob.id}`).reply(httpStatusCodes.OK);
+        nock(polygonPartsManagerURL)
+          .delete('/polygonParts/validate')
+          .query({ productType: mockJob.productType, productId: mockJob.resourceId })
+          .reply(httpStatusCodes.NO_CONTENT);
+
+        const response = await requestSender.abortIngestion(mockJob.id as string);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
+    });
+
+    describe('Bad Path', () => {
+      it.each([[OperationStatus.COMPLETED], [OperationStatus.ABORTED]])(
+        'should return 409 CONFLICT status code when job is in %s status',
+        async (status) => {
+          const mockJob = generateAbortMockJob();
+          const abortJob = {
+            ...mockJob,
+            status: status,
+          };
+
+          nock(jobManagerURL).get(`/jobs/${mockJob.id}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, abortJob);
+
+          const response = await requestSender.abortIngestion(mockJob.id as string);
+
+          expect(response).toSatisfyApiSpec();
+          expect(response.status).toBe(httpStatusCodes.CONFLICT);
+        }
+      );
+
+      it.each([[OperationStatus.FAILED], [OperationStatus.SUSPENDED], [OperationStatus.IN_PROGRESS], [OperationStatus.PENDING]])(
+        'should return 409 CONFLICT status code when job with %s status has finalize task',
+        async (status) => {
+          const mockJob = generateAbortMockJob();
+          const abortJob = {
+            ...mockJob,
+            status: status,
+          };
+          const tasks = [
+            { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
+            { id: faker.string.uuid(), type: configMock.get<string>('jobManager.finalizeTaskType'), status: OperationStatus.PENDING },
+          ];
+
+          nock(jobManagerURL).get(`/jobs/${mockJob.id}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, abortJob);
+          nock(jobManagerURL).get(`/jobs/${mockJob.id}/tasks`).reply(httpStatusCodes.OK, tasks);
+
+          const response = await requestSender.abortIngestion(mockJob.id as string);
+
+          expect(response).toSatisfyApiSpec();
+          expect(response.status).toBe(httpStatusCodes.CONFLICT);
+        }
+      );
     });
 
     describe('Sad Path', () => {
-      it('should return 409 CONFLICT status code when job is in COMPLETED status', async () => {
-        const jobId = faker.string.uuid();
-        const productId = rasterLayerMetadataGenerators.productId();
-        const productType = rasterLayerMetadataGenerators.productType();
-        const abortJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.COMPLETED,
-        };
-
-        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, abortJob);
-
-        const response = await requestSender.abortIngestion(jobId);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.CONFLICT);
-      });
-
       it('should return 404 NOT_FOUND status code when job does not exist', async () => {
         const jobId = faker.string.uuid();
 
