@@ -22,12 +22,14 @@ export class FileNotFoundError extends NotFoundError {
       ? `File '${names}' does not exist in path ${path}`
       : `File ${names} does not exist`;
     super(message);
+    Object.setPrototypeOf(this, FileNotFoundError.prototype);
   }
 }
 
 export class GdalInfoError extends UnsupportedEntityError {
   public constructor(message: string) {
     super(message);
+    Object.setPrototypeOf(this, GdalInfoError.prototype);
   }
 }
 
