@@ -1,53 +1,43 @@
 import { faker } from '@faker-js/faker';
-import { Request, Response, NextFunction } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { ValidateController } from '../../../../src/validate/controllers/validateController';
 import { FileNotFoundError } from '../../../../src/ingestion/errors/ingestionErrors';
-import { ValidateManager } from '../../../../src/validate/models/validateManager';
-import { SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
+import type { ValidateManager } from '../../../../src/validate/models/validateManager';
+import type { SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
 
 describe('ValidateController', () => {
-  let validateController: ValidateController;
-  let mockSchemasValidator: jest.Mocked<SchemasValidator>;
-  let mockValidateManager: jest.Mocked<ValidateManager>;
-  let mockRequest: any;
-  let mockResponse: any;
-  let mockNext: jest.MockedFunction<NextFunction>;
+  let controller: ValidateController;
+
+  const schemasValidator = {
+    validateGpkgsInputFilesRequestBody: jest.fn(),
+  } satisfies Partial<SchemasValidator>;
+
+  const validateManager = {
+    validateGpkgs: jest.fn(),
+  } satisfies Partial<ValidateManager>;
 
   beforeEach(() => {
-    mockSchemasValidator = {
-      validateGpkgsInputFilesRequestBody: jest.fn(),
-    } as unknown as jest.Mocked<SchemasValidator>;
-
-    mockValidateManager = {
-      validateGpkgs: jest.fn(),
-    } as unknown as jest.Mocked<ValidateManager>;
-
-    validateController = new ValidateController(mockSchemasValidator, mockValidateManager);
-
-    mockRequest = {
-      body: {},
-    };
-
-    mockResponse = {
-      status: jest.fn().mockReturnThis(),
-      send: jest.fn(),
-    };
-
-    mockNext = jest.fn();
+    controller = new ValidateController(schemasValidator as unknown as SchemasValidator, validateManager as unknown as ValidateManager);
+    jest.clearAllMocks();
   });
 
-  describe('validateGpkgs', () => {
-    it('should pass FileNotFoundError to next middleware with NOT_FOUND status', async () => {
-      const fileName = faker.system.fileName({ extensionCount: 0 }) + '.gpkg';
-      const error = new FileNotFoundError(fileName);
-      mockSchemasValidator.validateGpkgsInputFilesRequestBody.mockResolvedValue({ gpkgFilesPath: [fileName] });
-      mockValidateManager.validateGpkgs.mockRejectedValue(error);
+  it('maps FileNotFoundError to NOT_FOUND and calls next(error)', async () => {
+    const fileName = faker.system.fileName({ extensionCount: 0 }) + '.gpkg';
+    const err = new FileNotFoundError(fileName);
 
-      await validateController.validateGpkgs(mockRequest, mockResponse, mockNext);
+    schemasValidator.validateGpkgsInputFilesRequestBody.mockResolvedValue({ gpkgFilesPath: [fileName] });
+    validateManager.validateGpkgs.mockRejectedValue(err);
 
-      expect(mockNext).toHaveBeenCalledWith(error);
-      expect((error as any).status).toBe(StatusCodes.NOT_FOUND);
-    });
+    const req = { body: { gpkgFilesPath: [fileName] } };
+    const res = { status: jest.fn().mockReturnThis(), send: jest.fn() };
+    const next = jest.fn();
+
+    type AsyncHandler = (req: unknown, res: unknown, next: unknown) => Promise<void>;
+    await (controller.validateGpkgs as unknown as AsyncHandler)(req, res, next);
+
+    expect(next).toHaveBeenCalledWith(err);
+    expect((err as { status?: number }).status).toBe(StatusCodes.NOT_FOUND);
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.send).not.toHaveBeenCalled();
   });
 });

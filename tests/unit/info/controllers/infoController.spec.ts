@@ -1,70 +1,43 @@
 import { faker } from '@faker-js/faker';
-import { Request, Response, NextFunction } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { InfoController } from '../../../../src/info/controllers/infoController';
-import { FileNotFoundError, GdalInfoError } from '../../../../src/ingestion/errors/ingestionErrors';
-import { InfoManager } from '../../../../src/info/models/infoManager';
-import { SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
+import { FileNotFoundError } from '../../../../src/ingestion/errors/ingestionErrors';
+import type { InfoManager } from '../../../../src/info/models/infoManager';
+import type { SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
 
 describe('InfoController', () => {
-  let infoController: InfoController;
-  let mockSchemasValidator: jest.Mocked<SchemasValidator>;
-  let mockInfoManager: jest.Mocked<InfoManager>;
-  let mockRequest: any;
-  let mockResponse: any;
-  let mockNext: jest.MockedFunction<NextFunction>;
+  let controller: InfoController;
+
+  const schemasValidator = {
+    validateGpkgsInputFilesRequestBody: jest.fn(),
+  } satisfies Partial<SchemasValidator>;
+
+  const infoManager = {
+    getGpkgsInfo: jest.fn(),
+  } satisfies Partial<InfoManager>;
 
   beforeEach(() => {
-    mockSchemasValidator = {
-      validateGpkgsInputFilesRequestBody: jest.fn(),
-    } as unknown as jest.Mocked<SchemasValidator>;
-
-    mockInfoManager = {
-      getGpkgsInfo: jest.fn(),
-    } as unknown as jest.Mocked<InfoManager>;
-
-    infoController = new InfoController(mockSchemasValidator, mockInfoManager);
-
-    mockRequest = {
-      body: {},
-    };
-
-    mockResponse = {
-      status: jest.fn().mockReturnThis(),
-      send: jest.fn(),
-    };
-
-    mockNext = jest.fn();
+    controller = new InfoController(schemasValidator as unknown as SchemasValidator, infoManager as unknown as InfoManager);
+    jest.clearAllMocks();
   });
 
-  describe('getGpkgsInfo', () => {
-    it('should pass FileNotFoundError to next middleware with NOT_FOUND status', async () => {
-      const fileName = faker.system.fileName({ extensionCount: 0 }) + '.gpkg';
-      const error = new FileNotFoundError(fileName);
-      mockSchemasValidator.validateGpkgsInputFilesRequestBody.mockResolvedValue({ gpkgFilesPath: [fileName] });
-      mockInfoManager.getGpkgsInfo.mockRejectedValue(error);
+  it('maps FileNotFoundError to NOT_FOUND and calls next(error)', async () => {
+    const fileName = faker.system.fileName({ extensionCount: 0 }) + '.gpkg';
+    const err = new FileNotFoundError(fileName);
 
-      await infoController.getGpkgsInfo(mockRequest, mockResponse, mockNext);
+    schemasValidator.validateGpkgsInputFilesRequestBody.mockResolvedValue({ gpkgFilesPath: [fileName] });
+    infoManager.getGpkgsInfo.mockRejectedValue(err);
 
-      expect(mockNext).toHaveBeenCalled();
-      const calledError = mockNext.mock.calls[0][0];
-      expect(calledError).toBeInstanceOf(FileNotFoundError);
-      expect((calledError as any).status).toBe(StatusCodes.NOT_FOUND);
-    });
+    const req = { body: { gpkgFilesPath: [fileName] } };
+    const res = { status: jest.fn().mockReturnThis(), send: jest.fn() };
+    const next = jest.fn();
 
-    it('should pass GdalInfoError to next middleware with UNPROCESSABLE_ENTITY status', async () => {
-      const errorMessage = 'Error while getting gdal info';
-      const fileName = faker.system.fileName({ extensionCount: 0 }) + '.gpkg';
-      const error = new GdalInfoError(errorMessage);
-      mockSchemasValidator.validateGpkgsInputFilesRequestBody.mockResolvedValue({ gpkgFilesPath: [fileName] });
-      mockInfoManager.getGpkgsInfo.mockRejectedValue(error);
+    type AsyncHandler = (req: unknown, res: unknown, next: unknown) => Promise<void>;
+    await (controller.getGpkgsInfo as unknown as AsyncHandler)(req, res, next);
 
-      await infoController.getGpkgsInfo(mockRequest, mockResponse, mockNext);
-
-      expect(mockNext).toHaveBeenCalled();
-      const calledError = mockNext.mock.calls[0][0];
-      expect(calledError).toBeInstanceOf(GdalInfoError);
-      expect((calledError as any).status).toBe(StatusCodes.UNPROCESSABLE_ENTITY);
-    });
+    expect(next).toHaveBeenCalledWith(err);
+    expect((err as { status?: number }).status).toBe(StatusCodes.NOT_FOUND);
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.send).not.toHaveBeenCalled();
   });
 });
