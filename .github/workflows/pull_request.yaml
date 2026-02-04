@@ -35,6 +35,16 @@ jobs:
     strategy: *node-strategy
 
     steps:
+      - name: Check out TS Project Git repository
+        uses: actions/checkout@v6
+
+      - name: Init Nodejs
+        uses: MapColonies/shared-workflows/actions/init-npm@init-npm-v1
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Copy Schema
+        run: npm run copySchema
 
       - name: openapi-lint
         uses: MapColonies/shared-workflows/actions/openapi-lint@openapi-lint-v1.0.0

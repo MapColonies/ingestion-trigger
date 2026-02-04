@@ -9,6 +9,9 @@ info:
     name: MIT
     url: https://opensource.org/licenses/MIT
 security: []
+servers:
+  - url: http://localhost:8080
+    description: Local development server
 paths:
   /ingestion:
     post:
