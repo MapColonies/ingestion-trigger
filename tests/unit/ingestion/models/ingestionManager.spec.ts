@@ -527,6 +527,7 @@ describe('IngestionManager', () => {
       resetJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'resetJob');
       updateTaskSpy = jest.spyOn(JobManagerWrapper.prototype, 'updateTask');
       updateJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'updateJob');
+      mockPolygonPartsManagerClient.deleteValidationEntity.mockClear();
     });
 
     it('should reset job when validation task has no errors and job is Failed', async () => {
@@ -565,6 +566,7 @@ describe('IngestionManager', () => {
       const action = ingestionManager.retryIngestion(jobId);
 
       await expect(action).resolves.not.toThrow();
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
       expect(resetJobSpy).toHaveBeenCalledWith(jobId);
     });
 
@@ -604,6 +606,7 @@ describe('IngestionManager', () => {
       const action = ingestionManager.retryIngestion(jobId);
 
       await expect(action).resolves.not.toThrow();
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
       expect(resetJobSpy).toHaveBeenCalledWith(jobId);
     });
 
@@ -652,6 +655,7 @@ describe('IngestionManager', () => {
       const action = ingestionManager.retryIngestion(jobId);
 
       await expect(action).resolves.not.toThrow();
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(mockJob.resourceId, mockJob.productType);
       expect(updateTaskSpy).toHaveBeenCalledTimes(1);
 
       const taskCallArgs = updateTaskSpy.mock.calls[0] as [
@@ -727,6 +731,7 @@ describe('IngestionManager', () => {
       const action = ingestionManager.retryIngestion(jobId);
 
       await expect(action).resolves.not.toThrow();
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(mockJob.resourceId, mockJob.productType);
       expect(updateTaskSpy).toHaveBeenCalledTimes(1);
 
       const taskCallArgs = updateTaskSpy.mock.calls[0] as [
@@ -951,6 +956,7 @@ describe('IngestionManager', () => {
       const action = ingestionManager.retryIngestion(jobId);
 
       await expect(action).resolves.not.toThrow();
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
       expect(resetJobSpy).toHaveBeenCalledWith(jobId);
     });
   });
