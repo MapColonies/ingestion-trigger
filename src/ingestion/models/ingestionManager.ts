@@ -212,11 +212,11 @@ export class IngestionManager {
     const validationTask: ITaskResponse<IngestionValidationTaskParams> = await this.getValidationTask(jobId, logCtx);
     const { resourceId, productType } = this.parseAndValidateJobIdentifiers(retryJob.resourceId, retryJob.productType);
     await this.zodValidator.validate(ingestionValidationTaskParamsSchema, validationTask.parameters);
-    await this.polygonPartsManagerClient.deleteValidationEntity(resourceId, productType);
-
+    
     if (validationTask.parameters.isValid === true) {
       await this.softReset(jobId, logCtx);
     } else {
+      await this.polygonPartsManagerClient.deleteValidationEntity(resourceId, productType);
       const shouldConsiderChecksumChanges = validationTask.status === OperationStatus.COMPLETED;
       await this.hardReset(retryJob, validationTask, shouldConsiderChecksumChanges, logCtx);
     }
