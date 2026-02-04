@@ -10,7 +10,7 @@ RUN npm run build
 
 FROM node:24.0.0-alpine3.21 AS production
 
-RUN apt-get update && apt-get install -y dumb-init
+RUN apk add dumb-init
 
 ENV NODE_ENV=production
 ENV SERVER_PORT=8080
