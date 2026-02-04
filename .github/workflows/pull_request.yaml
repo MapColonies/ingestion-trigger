@@ -46,11 +46,8 @@ jobs:
       - name: Copy Schema
         run: npm run copySchema
 
-      - name: openapi-lint
-        uses: MapColonies/shared-workflows/actions/openapi-lint@openapi-lint-v1.0.0
-        with:
-          node_version: ${{ matrix.node }}
-          openapi_file: "./openapi3.yaml"
+      - name: Lint OpenAPI
+        run: npx @redocly/cli lint --format=github-actions ./openapi3.yaml
 
 
   tests:
