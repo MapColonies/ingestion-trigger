@@ -215,7 +215,7 @@ export class IngestionManager {
     const validationTask: ITaskResponse<IngestionValidationTaskParams> = await this.getValidationTask(jobId, logCtx);
     const { resourceId, productType } = this.parseAndValidateJobIdentifiers(retryJob.resourceId, retryJob.productType);
     await this.zodValidator.validate(ingestionValidationTaskParamsSchema, validationTask.parameters);
-    
+
     if (validationTask.parameters.isValid === true) {
       await this.softReset(jobId, logCtx);
     } else {
