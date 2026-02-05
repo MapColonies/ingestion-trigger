@@ -2111,8 +2111,8 @@ describe('Ingestion', () => {
   });
 
   describe('PUT /ingestion/:jobId/abort', () => {
-    const abortableStatuses = [OperationStatus.FAILED, OperationStatus.SUSPENDED, OperationStatus.IN_PROGRESS, OperationStatus.PENDING] as const;
-    const nonAbortableStatuses = [OperationStatus.COMPLETED, OperationStatus.ABORTED] as const;
+    const abortableStatuses = [OperationStatus.FAILED, OperationStatus.SUSPENDED, OperationStatus.IN_PROGRESS, OperationStatus.PENDING];
+    const nonAbortableStatuses = [OperationStatus.COMPLETED, OperationStatus.ABORTED];
 
     describe('Happy Path', () => {
       it.each(abortableStatuses)(
