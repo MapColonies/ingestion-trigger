@@ -28,7 +28,6 @@ import { trace } from '@opentelemetry/api';
 import type { RasterLayersCatalog } from '../../src/ingestion/schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../../src/ingestion/schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
-import type { IngestionBaseJobParams } from '../../src/ingestion/interfaces';
 import { getShapefileFiles } from '../../src/utils/shapefile';
 import type { DeepPartial, FlatRecordValues, ReplaceValueWithFunctionResponse as ReplaceValueWithGenerator } from '../utils/types';
 import { configMock } from './configMock';
