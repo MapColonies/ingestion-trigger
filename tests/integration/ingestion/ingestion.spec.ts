@@ -1569,7 +1569,7 @@ describe('Ingestion', () => {
       productType: RasterProductTypes;
       status: OperationStatus;
       inputFiles?: unknown;
-    }): IJobResponse<unknown,unknown> => {
+    }): IJobResponse<unknown, unknown> => {
       const { jobId, productId, productType, status, inputFiles = storedInputFiles } = options;
       return generateMockJob({
         id: jobId,
@@ -2115,29 +2115,26 @@ describe('Ingestion', () => {
     const nonAbortableStatuses = [OperationStatus.COMPLETED, OperationStatus.ABORTED];
 
     describe('Happy Path', () => {
-      it.each(abortableStatuses)(
-        'should return 200 status code when aborting job with %s status',
-        async (status) => {
-          const mockJob = generateMockJob({ status });
-          const tasks = [
-            { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
-            { id: faker.string.uuid(), type: 'init', status: OperationStatus.COMPLETED },
-          ];
+      it.each(abortableStatuses)('should return 200 status code when aborting job with %s status', async (status) => {
+        const mockJob = generateMockJob({ status });
+        const tasks = [
+          { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
+          { id: faker.string.uuid(), type: 'init', status: OperationStatus.COMPLETED },
+        ];
 
-          nock(jobManagerURL).get(`/jobs/${mockJob.id}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, mockJob);
-          nock(jobManagerURL).get(`/jobs/${mockJob.id}/tasks`).reply(httpStatusCodes.OK, tasks);
-          nock(jobManagerURL).post(`/tasks/abort/${mockJob.id}`).reply(httpStatusCodes.OK);
-          nock(polygonPartsManagerURL)
-            .delete('/polygonParts/validate')
-            .query({ productType: mockJob.productType, productId: mockJob.resourceId })
-            .reply(httpStatusCodes.NO_CONTENT);
+        nock(jobManagerURL).get(`/jobs/${mockJob.id}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, mockJob);
+        nock(jobManagerURL).get(`/jobs/${mockJob.id}/tasks`).reply(httpStatusCodes.OK, tasks);
+        nock(jobManagerURL).post(`/tasks/abort/${mockJob.id}`).reply(httpStatusCodes.OK);
+        nock(polygonPartsManagerURL)
+          .delete('/polygonParts/validate')
+          .query({ productType: mockJob.productType, productId: mockJob.resourceId })
+          .reply(httpStatusCodes.NO_CONTENT);
 
-          const response = await requestSender.abortIngestion(mockJob.id);
+        const response = await requestSender.abortIngestion(mockJob.id);
 
-          expect(response).toSatisfyApiSpec();
-          expect(response.status).toBe(httpStatusCodes.OK);
-        }
-      );
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
 
       it('should return 200 status code when aborting job with no tasks', async () => {
         const mockJob = generateMockJob({ status: OperationStatus.FAILED });
@@ -2158,38 +2155,32 @@ describe('Ingestion', () => {
     });
 
     describe('Bad Path', () => {
-      it.each(nonAbortableStatuses)(
-        'should return 409 CONFLICT status code when job is in %s status',
-        async (status) => {
-          const mockJob = generateMockJob({ status });
+      it.each(nonAbortableStatuses)('should return 409 CONFLICT status code when job is in %s status', async (status) => {
+        const mockJob = generateMockJob({ status });
 
-          nock(jobManagerURL).get(`/jobs/${mockJob.id}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, mockJob);
+        nock(jobManagerURL).get(`/jobs/${mockJob.id}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, mockJob);
 
-          const response = await requestSender.abortIngestion(mockJob.id);
+        const response = await requestSender.abortIngestion(mockJob.id);
 
-          expect(response).toSatisfyApiSpec();
-          expect(response.status).toBe(httpStatusCodes.CONFLICT);
-        }
-      );
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+      });
 
-      it.each(abortableStatuses)(
-        'should return 409 CONFLICT status code when job with %s status has finalize task',
-        async (status) => {
-          const mockJob = generateMockJob({ status });
-          const tasks = [
-            { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
-            { id: faker.string.uuid(), type: configMock.get<string>('jobManager.finalizeTaskType'), status: OperationStatus.PENDING },
-          ];
+      it.each(abortableStatuses)('should return 409 CONFLICT status code when job with %s status has finalize task', async (status) => {
+        const mockJob = generateMockJob({ status });
+        const tasks = [
+          { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
+          { id: faker.string.uuid(), type: configMock.get<string>('jobManager.finalizeTaskType'), status: OperationStatus.PENDING },
+        ];
 
-          nock(jobManagerURL).get(`/jobs/${mockJob.id}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, mockJob);
-          nock(jobManagerURL).get(`/jobs/${mockJob.id}/tasks`).reply(httpStatusCodes.OK, tasks);
+        nock(jobManagerURL).get(`/jobs/${mockJob.id}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, mockJob);
+        nock(jobManagerURL).get(`/jobs/${mockJob.id}/tasks`).reply(httpStatusCodes.OK, tasks);
 
-          const response = await requestSender.abortIngestion(mockJob.id);
+        const response = await requestSender.abortIngestion(mockJob.id);
 
-          expect(response).toSatisfyApiSpec();
-          expect(response.status).toBe(httpStatusCodes.CONFLICT);
-        }
-      );
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+      });
     });
 
     describe('Sad Path', () => {

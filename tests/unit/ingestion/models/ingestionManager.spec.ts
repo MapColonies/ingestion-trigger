@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
 import jsLogger from '@map-colonies/js-logger';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
-import { getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
+import { getMapServingLayerName } from '@map-colonies/raster-shared';
 import { trace } from '@opentelemetry/api';
 import { container } from 'tsyringe';
 import xxhashFactory from 'xxhash-wasm';
@@ -25,7 +25,6 @@ import {
   generateMockJob,
   generateNewLayerRequest,
   generateUpdateLayerRequest,
-  rasterLayerMetadataGenerators,
 } from '../../../mocks/mockFactory';
 import { ChecksumProcessor } from '../../../../src/utils/hash/interfaces';
 import { CHECKSUM_PROCESSOR } from '../../../../src/utils/hash/constants';

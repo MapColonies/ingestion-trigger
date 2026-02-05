@@ -230,9 +230,7 @@ export const generateChecksum = (): Checksum => {
 export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] =>
   faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
 
-export const generateMockJob = (
-  overrides: Partial<IJobResponse<unknown, unknown>> = {}
-): IJobResponse<unknown, unknown> => {
+export const generateMockJob = (overrides: Partial<IJobResponse<unknown, unknown>> = {}): IJobResponse<unknown, unknown> => {
   const defaults: IJobResponse<unknown, unknown> = {
     id: faker.string.uuid(),
     resourceId: rasterLayerMetadataGenerators.productId(),
