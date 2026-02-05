@@ -1,6 +1,6 @@
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
 import { Logger } from '@map-colonies/js-logger';
-import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Span } from '@opentelemetry/api';
 
 export class UnsupportedEntityError extends Error {

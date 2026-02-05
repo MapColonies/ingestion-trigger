@@ -20,9 +20,9 @@ import { ZodValidator } from '../../../../src/utils/validation/zodValidator';
 import { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import {
-  generateAbortMockJob,
   generateCatalogLayerResponse,
   generateChecksum,
+  generateMockJob,
   generateNewLayerRequest,
   generateUpdateLayerRequest,
   rasterLayerMetadataGenerators,
@@ -533,11 +533,9 @@ describe('IngestionManager', () => {
     it('should reset job when validation task has no errors and job is Failed', async () => {
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
-      const mockJob = {
+      const mockJob = generateMockJob({
         id: jobId,
         status: OperationStatus.FAILED,
-        productType: RasterProductTypes.ORTHOPHOTO,
-        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -545,7 +543,7 @@ describe('IngestionManager', () => {
             productShapefilePath: '/path/to/product.shp',
           },
         },
-      };
+      });
       const mockValidationTask = {
         id: taskId,
         jobId,
@@ -572,11 +570,9 @@ describe('IngestionManager', () => {
     it('should reset job when job status is SUSPENDED and validation passed', async () => {
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
-      const mockJob = {
+      const mockJob = generateMockJob({
         id: jobId,
         status: OperationStatus.SUSPENDED,
-        productType: RasterProductTypes.ORTHOPHOTO,
-        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -584,7 +580,7 @@ describe('IngestionManager', () => {
             productShapefilePath: '/path/to/product.shp',
           },
         },
-      };
+      });
       const mockValidationTask = {
         id: taskId,
         jobId,
@@ -614,11 +610,9 @@ describe('IngestionManager', () => {
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
 
-      const mockJob = {
+      const mockJob = generateMockJob({
         id: jobId,
         status: OperationStatus.SUSPENDED,
-        productType: RasterProductTypes.ORTHOPHOTO,
-        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -626,7 +620,7 @@ describe('IngestionManager', () => {
             productShapefilePath: '/path/to/product.shp',
           },
         },
-      };
+      });
       const mockValidationTask = {
         id: taskId,
         jobId,
@@ -689,11 +683,9 @@ describe('IngestionManager', () => {
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
 
-      const mockJob = {
+      const mockJob = generateMockJob({
         id: jobId,
         status: OperationStatus.FAILED,
-        productType: RasterProductTypes.ORTHOPHOTO,
-        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -701,7 +693,7 @@ describe('IngestionManager', () => {
             productShapefilePath: '/path/to/product.shp',
           },
         },
-      };
+      });
       const mockValidationTask = {
         id: taskId,
         jobId,
@@ -763,11 +755,9 @@ describe('IngestionManager', () => {
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
 
-      const mockJob = {
+      const mockJob = generateMockJob({
         id: jobId,
         status: OperationStatus.FAILED,
-        productType: RasterProductTypes.ORTHOPHOTO,
-        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -775,7 +765,7 @@ describe('IngestionManager', () => {
             productShapefilePath: '/path/to/product.shp',
           },
         },
-      };
+      });
       const mockValidationTask = {
         id: taskId,
         jobId,
@@ -801,11 +791,9 @@ describe('IngestionManager', () => {
     it('should throw BadRequestError when metadataShapefilePath is missing', async () => {
       const jobId = faker.string.uuid();
       const taskId = faker.string.uuid();
-      const mockJob = {
+      const mockJob = generateMockJob({
         id: jobId,
         status: OperationStatus.FAILED,
-        productType: RasterProductTypes.ORTHOPHOTO,
-        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -813,7 +801,7 @@ describe('IngestionManager', () => {
             productShapefilePath: '/path/to/product.shp',
           },
         },
-      };
+      });
       const mockValidationTask = {
         id: taskId,
         jobId,
@@ -837,11 +825,9 @@ describe('IngestionManager', () => {
 
     it('should throw ConflictError when job status is PENDING', async () => {
       const jobId = faker.string.uuid();
-      const mockJob = {
+      const mockJob = generateMockJob({
         id: jobId,
         status: OperationStatus.PENDING,
-        productType: RasterProductTypes.ORTHOPHOTO,
-        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -849,7 +835,7 @@ describe('IngestionManager', () => {
             productShapefilePath: '/path/to/product.shp',
           },
         },
-      };
+      });
 
       getJobSpy.mockResolvedValue(mockJob);
 
@@ -861,11 +847,9 @@ describe('IngestionManager', () => {
 
     it('should throw ConflictError when job status is IN_PROGRESS', async () => {
       const jobId = faker.string.uuid();
-      const mockJob = {
+      const mockJob = generateMockJob({
         id: jobId,
         status: OperationStatus.IN_PROGRESS,
-        productType: RasterProductTypes.ORTHOPHOTO,
-        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -873,7 +857,7 @@ describe('IngestionManager', () => {
             productShapefilePath: '/path/to/product.shp',
           },
         },
-      };
+      });
 
       getJobSpy.mockResolvedValue(mockJob);
 
@@ -884,11 +868,9 @@ describe('IngestionManager', () => {
 
     it('should throw NotFoundError when validation task is not found', async () => {
       const jobId = faker.string.uuid();
-      const mockJob = {
+      const mockJob = generateMockJob({
         id: jobId,
         status: OperationStatus.FAILED,
-        productType: RasterProductTypes.ORTHOPHOTO,
-        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -896,7 +878,7 @@ describe('IngestionManager', () => {
             productShapefilePath: '/path/to/product.shp',
           },
         },
-      };
+      });
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([]);
@@ -908,11 +890,9 @@ describe('IngestionManager', () => {
 
     it('should find validation task among multiple tasks', async () => {
       const jobId = faker.string.uuid();
-      const mockJob = {
+      const mockJob = generateMockJob({
         id: jobId,
         status: OperationStatus.FAILED,
-        productType: RasterProductTypes.ORTHOPHOTO,
-        resourceId: rasterLayerMetadataGenerators.productId(),
         parameters: {
           inputFiles: {
             gpkgFilesPath: ['/path/to/file.gpkg'],
@@ -920,7 +900,7 @@ describe('IngestionManager', () => {
             productShapefilePath: '/path/to/product.shp',
           },
         },
-      };
+      });
       const mockTasks = [
         {
           id: faker.string.uuid(),
@@ -969,10 +949,7 @@ describe('IngestionManager', () => {
     it.each([[OperationStatus.FAILED], [OperationStatus.SUSPENDED], [OperationStatus.IN_PROGRESS], [OperationStatus.PENDING]])(
       'should successfully abort job with status %s',
       async (status) => {
-        const mockJob = {
-          ...generateAbortMockJob(),
-          status: status,
-        };
+        const mockJob = generateMockJob({ status });
         const mockTasks = [
           { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
           { id: faker.string.uuid(), type: 'create-tasks', status: OperationStatus.FAILED },
@@ -983,7 +960,7 @@ describe('IngestionManager', () => {
         abortJobSpy.mockResolvedValue(undefined);
         mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-        await ingestionManager.abortIngestion(mockJob.id as string);
+        await ingestionManager.abortIngestion(mockJob.id);
 
         expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
         expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
@@ -994,17 +971,14 @@ describe('IngestionManager', () => {
     );
 
     it('should successfully abort when no tasks exist for the requested job', async () => {
-      const mockJob = {
-        ...generateAbortMockJob(),
-        status: OperationStatus.FAILED,
-      };
+      const mockJob = generateMockJob({ status: OperationStatus.FAILED });
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([]);
       abortJobSpy.mockResolvedValue(undefined);
       mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-      await ingestionManager.abortIngestion(mockJob.id as string);
+      await ingestionManager.abortIngestion(mockJob.id);
 
       expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
       expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
@@ -1014,14 +988,11 @@ describe('IngestionManager', () => {
     });
 
     it.each([[OperationStatus.COMPLETED], [OperationStatus.ABORTED]])('should reject abort for job with invalid status %s', async (status) => {
-      const mockJob = {
-        ...generateAbortMockJob(),
-        status: status,
-      };
+      const mockJob = generateMockJob({ status });
 
       getJobSpy.mockResolvedValue(mockJob);
 
-      const action = ingestionManager.abortIngestion(mockJob.id as string);
+      const action = ingestionManager.abortIngestion(mockJob.id);
 
       await expect(action).rejects.toThrow(ConflictError);
       expect(getTasksForJobSpy).not.toHaveBeenCalled();
@@ -1033,10 +1004,7 @@ describe('IngestionManager', () => {
       'should throw Conflict Error when finalize task exists for job with status %s',
       async (status) => {
         const finalizeTaskId = faker.string.uuid();
-        const mockJob = {
-          ...generateAbortMockJob(),
-          status: status,
-        };
+        const mockJob = generateMockJob({ status });
         const mockTasks = [
           { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
           { id: finalizeTaskId, type: 'finalize', status: OperationStatus.PENDING },
@@ -1045,7 +1013,7 @@ describe('IngestionManager', () => {
         getJobSpy.mockResolvedValue(mockJob);
         getTasksForJobSpy.mockResolvedValue(mockTasks);
 
-        const action = ingestionManager.abortIngestion(mockJob.id as string);
+        const action = ingestionManager.abortIngestion(mockJob.id);
 
         await expect(action).rejects.toThrow(ConflictError);
         expect(abortJobSpy).not.toHaveBeenCalled();
@@ -1056,10 +1024,7 @@ describe('IngestionManager', () => {
     it.each([['validation'], ['create-tasks'], ['merge']])(
       'should allow abort when only non-finalize tasks exist (task type: %s)',
       async (taskType) => {
-        const mockJob = {
-          ...generateAbortMockJob(),
-          status: OperationStatus.FAILED,
-        };
+        const mockJob = generateMockJob({ status: OperationStatus.FAILED });
         const mockTasks = [{ id: faker.string.uuid(), type: taskType, status: OperationStatus.COMPLETED }];
 
         getJobSpy.mockResolvedValue(mockJob);
@@ -1067,7 +1032,7 @@ describe('IngestionManager', () => {
         abortJobSpy.mockResolvedValue(undefined);
         mockPolygonPartsManagerClient.deleteValidationEntity.mockResolvedValue(undefined);
 
-        await ingestionManager.abortIngestion(mockJob.id as string);
+        await ingestionManager.abortIngestion(mockJob.id);
 
         expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
         expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
@@ -1092,17 +1057,13 @@ describe('IngestionManager', () => {
     it.each([[OperationStatus.FAILED], [OperationStatus.SUSPENDED], [OperationStatus.IN_PROGRESS], [OperationStatus.PENDING]])(
       'should throw error when job has invalid productId for status %s',
       async (status) => {
-        const mockJob = {
-          ...generateAbortMockJob(),
-          resourceId: undefined,
-          status: status,
-        };
+        const mockJob = generateMockJob({ resourceId: undefined, status });
 
         getJobSpy.mockResolvedValue(mockJob);
         getTasksForJobSpy.mockResolvedValue([]);
         abortJobSpy.mockResolvedValue(undefined);
 
-        const action = ingestionManager.abortIngestion(mockJob.id as string);
+        const action = ingestionManager.abortIngestion(mockJob.id);
 
         await expect(action).rejects.toThrow();
         expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
@@ -1112,17 +1073,13 @@ describe('IngestionManager', () => {
     it.each([[OperationStatus.FAILED], [OperationStatus.SUSPENDED], [OperationStatus.IN_PROGRESS], [OperationStatus.PENDING]])(
       'should throw error when job has invalid productType for status %s',
       async (status) => {
-        const mockJob = {
-          ...generateAbortMockJob(),
-          productType: undefined,
-          status: status,
-        };
+        const mockJob = generateMockJob({ productType: undefined, status });
 
         getJobSpy.mockResolvedValue(mockJob);
         getTasksForJobSpy.mockResolvedValue([]);
         abortJobSpy.mockResolvedValue(undefined);
 
-        const action = ingestionManager.abortIngestion(mockJob.id as string);
+        const action = ingestionManager.abortIngestion(mockJob.id);
 
         await expect(action).rejects.toThrow();
         expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
@@ -1130,31 +1087,25 @@ describe('IngestionManager', () => {
     );
 
     it('should propagate error when Job Manager abort fails', async () => {
-      const mockJob = {
-        ...generateAbortMockJob(),
-        status: OperationStatus.FAILED,
-      };
+      const mockJob = generateMockJob({ status: OperationStatus.FAILED });
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([]);
       abortJobSpy.mockRejectedValue(new Error('Job Manager failed'));
 
-      const action = ingestionManager.abortIngestion(mockJob.id as string);
+      const action = ingestionManager.abortIngestion(mockJob.id);
 
       await expect(action).rejects.toThrow(Error);
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
     });
 
     it('should handle getTasksForJob failure', async () => {
-      const mockJob = {
-        ...generateAbortMockJob(),
-        status: OperationStatus.FAILED,
-      };
+      const mockJob = generateMockJob({ status: OperationStatus.FAILED });
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockRejectedValue(new Error('Failed to fetch tasks'));
 
-      const action = ingestionManager.abortIngestion(mockJob.id as string);
+      const action = ingestionManager.abortIngestion(mockJob.id);
 
       await expect(action).rejects.toThrow(Error);
       expect(abortJobSpy).not.toHaveBeenCalled();

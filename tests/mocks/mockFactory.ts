@@ -229,12 +229,22 @@ export const generateChecksum = (): Checksum => {
 export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] =>
   faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
 
-export const generateAbortMockJob = (): Partial<IJobResponse<unknown, unknown>> => ({
-  id: faker.string.uuid(),
-  resourceId: rasterLayerMetadataGenerators.productId(),
-  productType: RasterProductTypes.ORTHOPHOTO,
-  parameters: {},
-});
+export const generateMockJob = (
+  overrides: Partial<IJobResponse<unknown, unknown>> = {}
+): Partial<IJobResponse<unknown, unknown>> & { id: string } => {
+  const defaults: Partial<IJobResponse<unknown, unknown>> & { id: string } = {
+    id: faker.string.uuid(),
+    resourceId: rasterLayerMetadataGenerators.productId(),
+    productType: RasterProductTypes.ORTHOPHOTO,
+    status: OperationStatus.PENDING,
+    parameters: {},
+  };
+
+  const merged: Partial<IJobResponse<unknown, unknown>> = { ...defaults, ...overrides };
+  const id = overrides.id ?? defaults.id;
+
+  return { ...merged, id };
+};
 
 export const rasterLayerMetadataGenerators: RasterLayerMetadataPropertiesGenerators = {
   id: (): string => faker.string.uuid(),
