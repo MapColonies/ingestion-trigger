@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { faker } from '@faker-js/faker';
-import { OperationStatus, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
+import { IJobResponse, OperationStatus, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { CORE_VALIDATIONS, getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
 import { SqliteError } from 'better-sqlite3';
 import httpStatusCodes from 'http-status-codes';
@@ -1569,7 +1569,7 @@ describe('Ingestion', () => {
       productType: RasterProductTypes;
       status: OperationStatus;
       inputFiles?: unknown;
-    }): ReturnType<typeof generateMockJob> => {
+    }): IJobResponse<unknown,unknown> => {
       const { jobId, productId, productType, status, inputFiles = storedInputFiles } = options;
       return generateMockJob({
         id: jobId,

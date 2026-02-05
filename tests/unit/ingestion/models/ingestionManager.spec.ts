@@ -965,7 +965,7 @@ describe('IngestionManager', () => {
         expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
         expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
         expect(abortJobSpy).toHaveBeenCalledWith(mockJob.id);
-        expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(mockJob.resourceId, RasterProductTypes.ORTHOPHOTO);
+        expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(mockJob.resourceId, mockJob.productType);
         expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
       }
     );
@@ -983,7 +983,7 @@ describe('IngestionManager', () => {
       expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
       expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
       expect(abortJobSpy).toHaveBeenCalledWith(mockJob.id);
-      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(mockJob.resourceId, RasterProductTypes.ORTHOPHOTO);
+      expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(mockJob.resourceId, mockJob.productType);
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
     });
 
@@ -1037,7 +1037,7 @@ describe('IngestionManager', () => {
         expect(getJobSpy).toHaveBeenCalledWith(mockJob.id);
         expect(getTasksForJobSpy).toHaveBeenCalledWith(mockJob.id);
         expect(abortJobSpy).toHaveBeenCalledWith(mockJob.id);
-        expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(mockJob.resourceId, RasterProductTypes.ORTHOPHOTO);
+        expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledWith(mockJob.resourceId, mockJob.productType);
         expect(mockPolygonPartsManagerClient.deleteValidationEntity).toHaveBeenCalledTimes(1);
       }
     );
