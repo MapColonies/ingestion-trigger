@@ -1,6 +1,6 @@
 import { relative } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import {
   IFindJobsByCriteriaBody,
@@ -691,7 +691,6 @@ export class IngestionManager {
     return !invalidStatuses.includes(status);
   }
 
-  @withSpanAsyncV4
   public async abortIngestion(jobId: string): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.abortIngestion.name };
     const activeSpan = trace.getActiveSpan();
@@ -712,7 +711,7 @@ export class IngestionManager {
       const errorMessage = `cannot abort job ${jobId} - job already in finalization stage and cannot be aborted`;
       this.logger.error({ msg: errorMessage, logContext: logCtx, jobId });
       activeSpan?.setStatus({ code: SpanStatusCode.ERROR, message: errorMessage });
-      throw new BadRequestError(errorMessage);
+      throw new ConflictError(errorMessage);
     }
 
     this.logger.info({ msg: 'successfully aborted ingestion job', logContext: logCtx, jobId });

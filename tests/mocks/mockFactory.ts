@@ -2,7 +2,7 @@
 import { join, relative } from 'node:path';
 import { faker } from '@faker-js/faker';
 import { RecordType, TileOutputFormat } from '@map-colonies/mc-model-types';
-import { OperationStatus, type ICreateJobBody, type IFindJobsByCriteriaBody } from '@map-colonies/mc-priority-queue';
+import { OperationStatus, type ICreateJobBody, type IFindJobsByCriteriaBody, type IJobResponse } from '@map-colonies/mc-priority-queue';
 import {
   Checksum,
   CORE_VALIDATIONS,
@@ -17,6 +17,7 @@ import {
   type InputFiles,
   type NewRasterLayerMetadata,
   type UpdateRasterLayerMetadata,
+  JobTypes,
 } from '@map-colonies/raster-shared';
 import { Domain, RecordStatus, TilesMimeFormat } from '@map-colonies/types';
 import { randomPolygon } from '@turf/turf';
@@ -227,6 +228,38 @@ export const generateChecksum = (): Checksum => {
 
 export const generateCallbackUrl = (): CallbackUrlsTargetArray[number] =>
   faker.internet.url({ protocol: faker.helpers.arrayElement(['http', 'https']) });
+
+export const generateMockJob = (overrides: Partial<IJobResponse<unknown, unknown>> = {}): IJobResponse<unknown, unknown> => {
+  const defaults: IJobResponse<unknown, unknown> = {
+    id: faker.string.uuid(),
+    resourceId: rasterLayerMetadataGenerators.productId(),
+    version: rasterLayerMetadataGenerators.productVersion(),
+    type: JobTypes.Ingestion_New,
+    domain: Domain.RASTER,
+    productName: rasterLayerMetadataGenerators.productName(),
+    productType: rasterLayerMetadataGenerators.productType(),
+    status: faker.helpers.enumValue(OperationStatus),
+    created: faker.date.past().toISOString(),
+    updated: faker.date.recent().toISOString(),
+    priority: faker.number.int({ min: 0, max: 5 }),
+    internalId: faker.string.uuid(),
+    producerName: rasterLayerMetadataGenerators.producerName(),
+    parameters: {},
+    percentage: faker.number.int({ min: 0, max: 100 }),
+    taskCount: 1,
+    completedTasks: 0,
+    inProgressTasks: 0,
+    failedTasks: 0,
+    pendingTasks: 1,
+    expiredTasks: 0,
+    abortedTasks: 0,
+    description: '',
+    reason: '',
+    isCleaned: false,
+  };
+
+  return { ...defaults, ...overrides };
+};
 
 export const rasterLayerMetadataGenerators: RasterLayerMetadataPropertiesGenerators = {
   id: (): string => faker.string.uuid(),

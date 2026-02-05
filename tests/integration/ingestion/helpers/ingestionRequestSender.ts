@@ -16,4 +16,8 @@ export class IngestionRequestSender {
   public async retryIngestion(jobId: string): Promise<supertest.Response> {
     return supertest.agent(this.app).put(`/ingestion/${jobId}/retry`).set('Content-Type', 'application/json');
   }
+
+  public async abortIngestion(jobId: string): Promise<supertest.Response> {
+    return supertest.agent(this.app).put(`/ingestion/${jobId}/abort`).set('Content-Type', 'application/json');
+  }
 }
