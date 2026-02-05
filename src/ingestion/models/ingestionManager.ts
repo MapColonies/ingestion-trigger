@@ -714,7 +714,7 @@ export class IngestionManager {
       throw new ConflictError(errorMessage);
     }
 
-    this.logger.info({ msg: 'successfully aborted ingestion job', logContext: logCtx, jobId });
+    this.logger.info({ msg: 'aborting job', logContext: logCtx, jobId });
     await this.jobManagerWrapper.abortJob(jobId);
 
     const { resourceId, productType } = this.parseAndValidateJobIdentifiers(job.resourceId, job.productType);
