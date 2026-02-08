@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-## [4.1.0-alpha.6](https://github.com/MapColonies/ingestion-trigger/compare/v4.0.0-alpha.6...v4.1.0-alpha.6) (2026-02-08)
+## [4.0.0](https://github.com/MapColonies/ingestion-trigger/compare/v4.0.0-alpha.6...v4.0.0) (2026-02-08)
 
 
 ### Features
