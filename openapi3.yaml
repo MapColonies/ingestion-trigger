@@ -178,7 +178,7 @@ paths:
         - ingestion
       summary: abort an active ingestion job
       description: >-
-        Aborts an ingestion job that is currently active or pending. The job cannot be aborted if it has already completed or if the finalize task has started (point of no return).
+        Aborts an ingestion job that is currently active or pending, preventing any further processing.
       parameters:
         - name: jobId
           in: path
@@ -205,7 +205,7 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '409':
-          description: Conflict - Job has reached finalize task (point of no return)
+          description: Conflict - Unable to abort job due to current state (e.g., already completed or in finalization)
           content:
             application/json:
               schema:
