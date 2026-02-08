@@ -50,7 +50,7 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '500':
-          description: Server error
+          description: Internal Server Error
           content:
             application/json:
               schema:
@@ -111,7 +111,7 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '500':
-          description: Invalid request
+          description: Internal Server Error
           content:
             application/json:
               schema:
@@ -165,7 +165,7 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '500':
-          description: Internal Server error
+          description: Internal Server Error
           content:
             application/json:
               schema:
@@ -219,7 +219,7 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '500':
-          description: Internal Server error
+          description: Internal Server Error
           content:
             application/json:
               schema:
@@ -249,7 +249,7 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/validateSourcesResponse
         '400':
-          description: Invalid request
+          description: Bad Request
           content:
             application/json:
               schema:
@@ -291,7 +291,7 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/sourcesInfoResponse
         '400':
-          description: Invalid request
+          description: Bad Request
           content:
             application/json:
               schema:
