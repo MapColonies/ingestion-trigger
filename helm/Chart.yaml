@@ -2,10 +2,9 @@ apiVersion: v2
 name: ingestion-trigger
 description: A Helm chart for ingestion-trigger service
 type: application
-version: 4.0.0-alpha.6
-appVersion: 4.0.0-alpha.6
+version: 4.1.0-alpha.6
+appVersion: 4.1.0-alpha.6
 dependencies:
   - name: mclabels
     version: 1.0.1
     repository: oci://acrarolibotnonprod.azurecr.io/helm/infra
-    

@@ -3,8 +3,9 @@ security: []
 info:
   title: ingestion-trigger
   description: >-
-    Service that designed to validate and trigger ingestion of new layers from raw data and update existing layers
-  version: 4.0.0-alpha.6
+    Service that designed to validate and trigger ingestion of new layers from
+    raw data and update existing layers
+  version: 4.1.0-alpha.6
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
@@ -124,7 +125,9 @@ paths:
         - ingestion
       summary: retry a failed or completed ingestion job with task failures
       description: >-
-        Retries an ingestion job that has failed or completed with errors.  This endpoint handles failures from any task in the ingestion workflow. The job must be in FAILED or COMPLETED status.
+        Retries an ingestion job that has failed or completed with errors.  This
+        endpoint handles failures from any task in the ingestion workflow. The
+        job must be in FAILED or COMPLETED status.
       parameters:
         - name: jobId
           in: path
@@ -137,7 +140,9 @@ paths:
         '200':
           description: OK
         '400':
-          description: Bad request - Job status is not FAILED, SUSPENDED or required parameters are missing
+          description: >-
+            Bad request - Job status is not FAILED, SUSPENDED or required
+            parameters are missing
           content:
             application/json:
               schema:
@@ -178,7 +183,8 @@ paths:
         - ingestion
       summary: abort an active ingestion job
       description: >-
-        Aborts an ingestion job that is currently active or pending, preventing any further processing.
+        Aborts an ingestion job that is currently active or pending, preventing
+        any further processing.
       parameters:
         - name: jobId
           in: path
@@ -205,7 +211,9 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '409':
-          description: Conflict - Unable to abort job due to current state (e.g., already completed or in finalization)
+          description: >-
+            Conflict - Unable to abort job due to current state (e.g., already
+            completed or in finalization)
           content:
             application/json:
               schema:
@@ -239,7 +247,8 @@ paths:
             schema:
               $ref: '#/components/schemas/GpkgInputFiles'
             example:
-              gpkgFilesPath: ['path/to/blue_marble.gpkg']
+              gpkgFilesPath:
+                - path/to/blue_marble.gpkg
       responses:
         '200':
           description: OK
@@ -318,7 +327,6 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
-
 components:
   schemas:
     CallbackUrls:
@@ -328,7 +336,8 @@ components:
         type: string
         pattern: ^https?:\/\/[^\s/$.?#].[^\s]*$
         description: callback url for ingestion status notifications
-      example: ['https://my-dns-for-callback']
+      example:
+        - https://my-dns-for-callback
     GpkgFilesPath:
       type: array
       minItems: 1
@@ -337,7 +346,8 @@ components:
         type: string
         pattern: ^(\/?[\w-]+)(\/[\w-]+)*\/[\wא-ת\.-]+\.gpkg$
         description: gpkg source file paths
-      example: ['path/to/example.gpkg']
+      example:
+        - path/to/example.gpkg
     IngestionNewLayerMetadata:
       type: object
       required:
@@ -441,12 +451,12 @@ components:
       type: string
       pattern: ^(\/?[\w-]+)(\/[\w-]+)*\/ShapeMetadata\.shp$
       description: metadata shape file path
-      example: 'path/to/ShapeMetadata.shp'
+      example: path/to/ShapeMetadata.shp
     ProductShapefilePath:
       type: string
       pattern: ^(\/?[\w-]+)(\/[\w-]+)*\/Product\.shp$
       description: product shape file path
-      example: 'path/to/Product.shp'
+      example: path/to/Product.shp
     SuccessfulIngestionResponse:
       type: object
       required:
