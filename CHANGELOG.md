@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.0.0](https://github.com/MapColonies/ingestion-trigger/compare/v4.0.0-alpha.6...v4.0.0) (2026-02-08)
+
+
+### Features
+
+* added abort api endpoint (MAPCO-8328) ([#59](https://github.com/MapColonies/ingestion-trigger/issues/59)) ([345d894](https://github.com/MapColonies/ingestion-trigger/commit/345d894e5df36cd248819989271fe106439196d5))
+
+
+### Bug Fixes
+
+* fix validaiton table deletion (MAPCO-9740) ([#62](https://github.com/MapColonies/ingestion-trigger/issues/62)) ([444db18](https://github.com/MapColonies/ingestion-trigger/commit/444db1884c082f484d10320db4b691757d7f8255))
+* update helm labels to match selector for mclabels integration ([#58](https://github.com/MapColonies/ingestion-trigger/issues/58)) ([0199724](https://github.com/MapColonies/ingestion-trigger/commit/019972455aef02dbe2ce7c488a2b622217b7953e))
+
 ## [4.0.0-alpha.2](https://github.com/MapColonies/ingestion-trigger/compare/v4.0.0-alpha.1...v4.0.0-alpha.2) (2025-11-16)
 
 
