@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { faker } from '@faker-js/faker';
-import { OperationStatus, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
+import { IJobResponse, OperationStatus, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { CORE_VALIDATIONS, getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
 import { SqliteError } from 'better-sqlite3';
 import httpStatusCodes from 'http-status-codes';
@@ -22,6 +22,7 @@ import {
   createUpdateJobRequest,
   createUpdateLayerRequest,
   generateCallbackUrl,
+  generateMockJob,
   rasterLayerInputFilesGenerators,
   rasterLayerMetadataGenerators,
 } from '../../mocks/mockFactory';
@@ -1562,21 +1563,32 @@ describe('Ingestion', () => {
       productShapefilePath: `product/${validInputFiles.inputFiles.productShapefilePath}/Product.shp`,
     };
 
+    const createRetryJob = (options: {
+      jobId: string;
+      productId: string;
+      productType: RasterProductTypes;
+      status: OperationStatus;
+      inputFiles?: unknown;
+    }): IJobResponse<unknown, unknown> => {
+      const { jobId, productId, productType, status, inputFiles = storedInputFiles } = options;
+      return generateMockJob({
+        id: jobId,
+        resourceId: productId,
+        productType,
+        status,
+        parameters: {
+          inputFiles,
+        },
+      });
+    };
+
     describe('Happy Path', () => {
       it('should return 200 status code when validation is valid and job is FAILED - easy reset job', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.FAILED,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.FAILED });
         const validationTask = {
           id: taskId,
           jobId,
@@ -1604,15 +1616,7 @@ describe('Ingestion', () => {
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.SUSPENDED,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.SUSPENDED });
         const validationTask = {
           id: taskId,
           jobId,
@@ -1640,15 +1644,7 @@ describe('Ingestion', () => {
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.FAILED,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.FAILED });
         // Simulate old state with fewer checksums (3 items) - new files were added
         const oldChecksums = validInputFiles.checksums.slice(0, 3);
         const validationTask = {
@@ -1690,114 +1686,74 @@ describe('Ingestion', () => {
     });
 
     describe('Bad Path', () => {
-      it('should return 400 BAD_REQUEST status code when job is in PENDING status', async () => {
+      it('should return 409 CONFLICT status code when job is in PENDING status', async () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.PENDING,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.PENDING });
 
         nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
 
         const response = await requestSender.retryIngestion(jobId);
 
         expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
       });
 
-      it('should return 400 BAD_REQUEST status code when job is in IN_PROGRESS status', async () => {
+      it('should return 409 CONFLICT status code when job is in IN_PROGRESS status', async () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.IN_PROGRESS,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.IN_PROGRESS });
 
         nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
 
         const response = await requestSender.retryIngestion(jobId);
 
         expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
       });
 
-      it('should return 400 BAD_REQUEST status code when job is in COMPLETED status', async () => {
+      it('should return 409 CONFLICT status code when job is in COMPLETED status', async () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.COMPLETED,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.COMPLETED });
 
         nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
 
         const response = await requestSender.retryIngestion(jobId);
 
         expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
       });
 
-      it('should return 400 BAD_REQUEST status code when job is in EXPIRED status', async () => {
+      it('should return 409 CONFLICT status code when job is in EXPIRED status', async () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.EXPIRED,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.EXPIRED });
 
         nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
 
         const response = await requestSender.retryIngestion(jobId);
 
         expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
       });
 
-      it('should return 400 BAD_REQUEST status code when job is in ABORTED status', async () => {
+      it('should return 409 CONFLICT status code when job is in ABORTED status', async () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.ABORTED,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.ABORTED });
 
         nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
 
         const response = await requestSender.retryIngestion(jobId);
 
         expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
       });
     });
 
@@ -1806,15 +1762,7 @@ describe('Ingestion', () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.FAILED,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.FAILED });
         const otherTask = {
           id: faker.string.uuid(),
           jobId,
@@ -1838,15 +1786,7 @@ describe('Ingestion', () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.FAILED,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.FAILED });
 
         nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, []);
@@ -1864,15 +1804,7 @@ describe('Ingestion', () => {
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.FAILED,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.FAILED });
         const validationTask = {
           id: taskId,
           jobId,
@@ -1901,15 +1833,7 @@ describe('Ingestion', () => {
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.FAILED,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.FAILED });
         const validationTask = {
           id: taskId,
           jobId,
@@ -1937,18 +1861,16 @@ describe('Ingestion', () => {
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
+        const retryJob = createRetryJob({
+          jobId,
+          productId,
           productType,
           status: OperationStatus.FAILED,
-          parameters: {
-            inputFiles: {
-              // Invalid structure - missing required fields
-              invalidField: 'invalid',
-            },
+          inputFiles: {
+            // Invalid structure - missing required fields
+            invalidField: 'invalid',
           },
-        };
+        });
         const validationTask = {
           id: taskId,
           jobId,
@@ -1989,15 +1911,7 @@ describe('Ingestion', () => {
         const jobId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.FAILED,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.FAILED });
 
         nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
@@ -2013,15 +1927,7 @@ describe('Ingestion', () => {
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.FAILED,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.FAILED });
         const oldChecksums = validInputFiles.checksums.slice(0, 3);
         const validationTask = {
           id: taskId,
@@ -2050,15 +1956,7 @@ describe('Ingestion', () => {
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.FAILED,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.FAILED });
         const oldChecksums = validInputFiles.checksums.slice(0, 3);
         const validationTask = {
           id: taskId,
@@ -2101,15 +1999,7 @@ describe('Ingestion', () => {
         const taskId = faker.string.uuid();
         const productId = rasterLayerMetadataGenerators.productId();
         const productType = rasterLayerMetadataGenerators.productType();
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
-          productType,
-          status: OperationStatus.FAILED,
-          parameters: {
-            inputFiles: storedInputFiles,
-          },
-        };
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.FAILED });
         // Simulate old state with fewer checksums (3 items) - new files were added
         const oldChecksums = validInputFiles.checksums.slice(0, 3);
         const validationTask = {
@@ -2146,15 +2036,13 @@ describe('Ingestion', () => {
           metadataShapefilePath: 'metadata/nonexistent-shapefile/ShapeMetadata.shp',
           productShapefilePath: `product/${validInputFiles.inputFiles.productShapefilePath}/Product.shp`,
         };
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
+        const retryJob = createRetryJob({
+          jobId,
+          productId,
           productType,
           status: OperationStatus.FAILED,
-          parameters: {
-            inputFiles: nonExistentInputFiles,
-          },
-        };
+          inputFiles: nonExistentInputFiles,
+        });
         const oldChecksums = validInputFiles.checksums.slice(0, 3);
         const validationTask = {
           id: taskId,
@@ -2189,15 +2077,13 @@ describe('Ingestion', () => {
           metadataShapefilePath: `metadata/${validInputFiles.inputFiles.metadataShapefilePath}/ShapeMetadata.shp`,
           productShapefilePath: `product/${validInputFiles.inputFiles.productShapefilePath}/Product.shp`,
         };
-        const retryJob = {
-          id: jobId,
-          resourceId: productId,
+        const retryJob = createRetryJob({
+          jobId,
+          productId,
           productType,
           status: OperationStatus.FAILED,
-          parameters: {
-            inputFiles: nonExistentInputFiles,
-          },
-        };
+          inputFiles: nonExistentInputFiles,
+        });
         const oldChecksums = validInputFiles.checksums.slice(0, 3);
         const validationTask = {
           id: taskId,
@@ -2220,6 +2106,93 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
         expect(response.body).toHaveProperty('message');
         expect((response.body as { message: string }).message).toContain('nonexistent-file.gpkg');
+      });
+    });
+  });
+
+  describe('PUT /ingestion/:jobId/abort', () => {
+    const abortableStatuses = [OperationStatus.FAILED, OperationStatus.SUSPENDED, OperationStatus.IN_PROGRESS, OperationStatus.PENDING];
+    const nonAbortableStatuses = [OperationStatus.COMPLETED, OperationStatus.ABORTED];
+
+    describe('Happy Path', () => {
+      it.each(abortableStatuses)('should return 200 status code when aborting job with %s status', async (status) => {
+        const mockJob = generateMockJob({ status });
+        const tasks = [
+          { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
+          { id: faker.string.uuid(), type: 'init', status: OperationStatus.COMPLETED },
+        ];
+
+        nock(jobManagerURL).get(`/jobs/${mockJob.id}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, mockJob);
+        nock(jobManagerURL).get(`/jobs/${mockJob.id}/tasks`).reply(httpStatusCodes.OK, tasks);
+        nock(jobManagerURL).post(`/tasks/abort/${mockJob.id}`).reply(httpStatusCodes.OK);
+        nock(polygonPartsManagerURL)
+          .delete('/polygonParts/validate')
+          .query({ productType: mockJob.productType, productId: mockJob.resourceId })
+          .reply(httpStatusCodes.NO_CONTENT);
+
+        const response = await requestSender.abortIngestion(mockJob.id);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
+
+      it('should return 200 status code when aborting job with no tasks', async () => {
+        const mockJob = generateMockJob({ status: OperationStatus.FAILED });
+
+        nock(jobManagerURL).get(`/jobs/${mockJob.id}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, mockJob);
+        nock(jobManagerURL).get(`/jobs/${mockJob.id}/tasks`).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL).post(`/tasks/abort/${mockJob.id}`).reply(httpStatusCodes.OK);
+        nock(polygonPartsManagerURL)
+          .delete('/polygonParts/validate')
+          .query({ productType: mockJob.productType, productId: mockJob.resourceId })
+          .reply(httpStatusCodes.NO_CONTENT);
+
+        const response = await requestSender.abortIngestion(mockJob.id);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
+    });
+
+    describe('Bad Path', () => {
+      it.each(nonAbortableStatuses)('should return 409 CONFLICT status code when job is in %s status', async (status) => {
+        const mockJob = generateMockJob({ status });
+
+        nock(jobManagerURL).get(`/jobs/${mockJob.id}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, mockJob);
+
+        const response = await requestSender.abortIngestion(mockJob.id);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+      });
+
+      it.each(abortableStatuses)('should return 409 CONFLICT status code when job with %s status has finalize task', async (status) => {
+        const mockJob = generateMockJob({ status });
+        const tasks = [
+          { id: faker.string.uuid(), type: 'validation', status: OperationStatus.COMPLETED },
+          { id: faker.string.uuid(), type: configMock.get<string>('jobManager.finalizeTaskType'), status: OperationStatus.PENDING },
+        ];
+
+        nock(jobManagerURL).get(`/jobs/${mockJob.id}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, mockJob);
+        nock(jobManagerURL).get(`/jobs/${mockJob.id}/tasks`).reply(httpStatusCodes.OK, tasks);
+
+        const response = await requestSender.abortIngestion(mockJob.id);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+      });
+    });
+
+    describe('Sad Path', () => {
+      it('should return 404 NOT_FOUND status code when job does not exist', async () => {
+        const jobId = faker.string.uuid();
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.NOT_FOUND);
+
+        const response = await requestSender.abortIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
       });
     });
   });

@@ -6,11 +6,12 @@ import { inject, injectable } from 'tsyringe';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { FileNotFoundError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
-import type { IRetryRequestParams, IRecordRequestParams, ResponseId } from '../interfaces';
+import type { IRetryRequestParams, IRecordRequestParams, IAbortRequestParams, ResponseId } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 
 type NewLayerHandler = RequestHandler<undefined, ResponseId, unknown>;
 type RetryIngestionHandler = RequestHandler<IRetryRequestParams, void, unknown>;
+type AbortIngestionHandler = RequestHandler<IAbortRequestParams, void, unknown>;
 type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseId, unknown>;
 
 @injectable()
@@ -68,6 +69,28 @@ export class IngestionController {
       const response = await this.ingestionManager.retryIngestion(req.params.jobId);
 
       res.status(StatusCodes.OK).send(response);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
+      }
+      if (error instanceof NotFoundError) {
+        (error as HttpError).status = StatusCodes.NOT_FOUND; //404
+      }
+      if (error instanceof ConflictError) {
+        (error as HttpError).status = StatusCodes.CONFLICT; //409
+      }
+      if (error instanceof UnsupportedEntityError) {
+        (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
+      }
+      next(error);
+    }
+  };
+
+  public abortIngestion: AbortIngestionHandler = async (req, res, next) => {
+    try {
+      await this.ingestionManager.abortIngestion(req.params.jobId);
+
+      res.status(StatusCodes.OK).send();
     } catch (error) {
       if (error instanceof ValidationError) {
         (error as HttpError).status = StatusCodes.BAD_REQUEST; //400

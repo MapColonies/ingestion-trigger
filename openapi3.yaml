@@ -50,7 +50,7 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '500':
-          description: Server error
+          description: Internal Server Error
           content:
             application/json:
               schema:
@@ -111,7 +111,7 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '500':
-          description: Invalid request
+          description: Internal Server Error
           content:
             application/json:
               schema:
@@ -157,8 +157,69 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '422':
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '500':
-          description: Internal Server error
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+  /ingestion/{jobId}/abort:
+    put:
+      operationId: abortIngestion
+      tags:
+        - ingestion
+      summary: abort an active ingestion job
+      description: >-
+        Aborts an ingestion job that is currently active or pending, preventing any further processing.
+      parameters:
+        - name: jobId
+          in: path
+          description: The id of the job to abort
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK - Job aborted successfully
+        '400':
+          description: Bad request - Job status does not allow abort (COMPLETED or ABORTED)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '404':
+          description: Not Found - Job does not exist
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '409':
+          description: Conflict - Unable to abort job due to current state (e.g., already completed or in finalization)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '422':
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '500':
+          description: Internal Server Error
           content:
             application/json:
               schema:
@@ -188,7 +249,7 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/validateSourcesResponse
         '400':
-          description: Invalid request
+          description: Bad Request
           content:
             application/json:
               schema:
@@ -230,7 +291,7 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/sourcesInfoResponse
         '400':
-          description: Invalid request
+          description: Bad Request
           content:
             application/json:
               schema:
@@ -257,6 +318,7 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+
 components:
   schemas:
     CallbackUrls:

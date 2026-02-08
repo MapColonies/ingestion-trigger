@@ -39,6 +39,7 @@ import { getShapefileFiles } from '../../utils/shapefile';
 import { ZodValidator } from '../../utils/validation/zodValidator';
 import { ValidateManager } from '../../validate/models/validateManager';
 import { ChecksumError, throwInvalidJobStatusError } from '../errors/ingestionErrors';
+import { IngestionOperation } from '../interfaces';
 import type { IngestionBaseJobParams, ResponseId } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
@@ -68,6 +69,7 @@ export class IngestionManager {
   private readonly updateJobType: string;
   private readonly swapUpdateJobType: string;
   private readonly validationTaskType: string;
+  private readonly finalizeTaskType: string;
   private readonly sourceMount: string;
   private readonly jobTrackerServiceUrl: string;
 
@@ -97,6 +99,7 @@ export class IngestionManager {
     this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
     this.swapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
     this.validationTaskType = config.get<string>('jobManager.validationTaskType');
+    this.finalizeTaskType = config.get<string>('jobManager.finalizeTaskType');
     this.sourceMount = config.get<string>('storageExplorer.layerSourceDir');
     this.jobTrackerServiceUrl = config.get<string>('services.jobTrackerServiceURL');
   }
@@ -206,13 +209,13 @@ export class IngestionManager {
     const retryJob: IJobResponse<IngestionBaseJobParams, unknown> = await this.jobManagerWrapper.getJob<IngestionBaseJobParams, unknown>(jobId);
 
     if (!this.isJobRetryable(retryJob.status)) {
-      throwInvalidJobStatusError(jobId, retryJob.status, this.logger, activeSpan);
+      throwInvalidJobStatusError(IngestionOperation.RETRY, jobId, retryJob.status, this.logger, activeSpan);
     }
 
     const validationTask: ITaskResponse<IngestionValidationTaskParams> = await this.getValidationTask(jobId, logCtx);
     const { resourceId, productType } = this.parseAndValidateJobIdentifiers(retryJob.resourceId, retryJob.productType);
     await this.zodValidator.validate(ingestionValidationTaskParamsSchema, validationTask.parameters);
-    
+
     if (validationTask.parameters.isValid === true) {
       await this.softReset(jobId, logCtx);
     } else {
@@ -680,6 +683,44 @@ export class IngestionManager {
   private isJobRetryable(status: OperationStatus): boolean {
     const validStatuses = [OperationStatus.FAILED, OperationStatus.SUSPENDED];
     return validStatuses.includes(status);
+  }
+
+  @withSpanV4
+  private isJobAbortable(status: OperationStatus): boolean {
+    const invalidStatuses = [OperationStatus.COMPLETED, OperationStatus.ABORTED];
+    return !invalidStatuses.includes(status);
+  }
+
+  public async abortIngestion(jobId: string): Promise<void> {
+    const logCtx: LogContext = { ...this.logContext, function: this.abortIngestion.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('ingestionManager.abortIngestion');
+
+    this.logger.info({ msg: 'starting abort ingestion process', logContext: logCtx, jobId });
+
+    const job: IJobResponse<IngestionBaseJobParams, unknown> = await this.jobManagerWrapper.getJob<IngestionBaseJobParams, unknown>(jobId);
+
+    if (!this.isJobAbortable(job.status)) {
+      throwInvalidJobStatusError(IngestionOperation.ABORT, jobId, job.status, this.logger, activeSpan);
+    }
+
+    const tasks = await this.jobManagerWrapper.getTasksForJob(jobId);
+    const hasFinalize = tasks.some((task) => task.type === this.finalizeTaskType);
+
+    if (hasFinalize) {
+      const errorMessage = `cannot abort job ${jobId} - job already in finalization stage and cannot be aborted`;
+      this.logger.error({ msg: errorMessage, logContext: logCtx, jobId });
+      activeSpan?.setStatus({ code: SpanStatusCode.ERROR, message: errorMessage });
+      throw new ConflictError(errorMessage);
+    }
+
+    this.logger.info({ msg: 'aborting job', logContext: logCtx, jobId });
+    await this.jobManagerWrapper.abortJob(jobId);
+
+    const { resourceId, productType } = this.parseAndValidateJobIdentifiers(job.resourceId, job.productType);
+    this.logger.debug({ msg: 'deleting validation entity', logContext: logCtx, jobId, resourceId, productType });
+    await this.polygonPartsManagerClient.deleteValidationEntity(resourceId, productType);
+    activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.abortIngestion.success', { abortSuccess: true, jobId });
   }
 
   private convertChecksumsToRelativePaths(checksums: IChecksum[]): IChecksum[] {

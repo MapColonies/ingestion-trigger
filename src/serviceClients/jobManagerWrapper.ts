@@ -60,4 +60,19 @@ export class JobManagerWrapper extends JobManagerClient {
       throw err;
     }
   }
+
+  @withSpanAsyncV4
+  public async abortJob(jobId: string): Promise<void> {
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('jobManagerWrapper.abortJob');
+
+    try {
+      await this.post(`${this.baseUrl}/tasks/abort/${jobId}`, {});
+      this.logger.info({ msg: 'successfully aborted job', jobId });
+    } catch (err) {
+      const message = `failed to abort job with id: ${jobId}`;
+      this.logger.error({ msg: message, err, jobId });
+      throw err;
+    }
+  }
 }

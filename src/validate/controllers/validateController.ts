@@ -1,8 +1,6 @@
 import { RequestHandler } from 'express';
-import type { HttpError } from 'express-openapi-validator/dist/framework/types';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
-import { FileNotFoundError } from '../../ingestion/errors/ingestionErrors';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import type { ValidateGpkgsResponse } from '../interfaces';
 import { ValidateManager } from '../models/validateManager';
@@ -22,9 +20,6 @@ export class ValidateController {
       const response = await this.validateManager.validateGpkgs(validGpkgInputFilesRequestBody);
       res.status(StatusCodes.OK).send(response);
     } catch (error) {
-      if (error instanceof FileNotFoundError) {
-        (error as HttpError).status = StatusCodes.NOT_FOUND; //404
-      }
       next(error);
     }
   };

@@ -1,6 +1,6 @@
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
 import { Logger } from '@map-colonies/js-logger';
-import { BadRequestError, NotFoundError } from '@map-colonies/error-types';
+import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Span } from '@opentelemetry/api';
 
 export class UnsupportedEntityError extends Error {
@@ -43,13 +43,12 @@ export class ValidationError extends Error {
   }
 }
 
-export function throwInvalidJobStatusError(jobId: string, currentStatus: OperationStatus, logger: Logger, span?: Span): never {
-  const validStatuses = [OperationStatus.FAILED, OperationStatus.SUSPENDED];
-  const message = `Cannot retry job with id: ${jobId} because its status is: ${currentStatus}. Expected status: ${validStatuses.join(' or ')}`;
+export function throwInvalidJobStatusError(operation: string, jobId: string, currentStatus: OperationStatus, logger: Logger, span?: Span): never {
+  const message = `Cannot ${operation} job with id: ${jobId} because its status is: ${currentStatus}`;
 
-  logger.error({ msg: message, jobId, currentStatus, validStatuses });
+  logger.error({ msg: message, jobId, currentStatus });
 
-  const error = new BadRequestError(message);
+  const error = new ConflictError(message);
   span?.setAttribute('exception.type', error.status);
   throw error;
 }
