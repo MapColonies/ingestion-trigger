@@ -1,4 +1,6 @@
-import { buffer, combine, feature, featureCollection } from '@turf/turf';
+import { buffer } from '@turf/buffer';
+import { combine } from '@turf/combine';
+import { feature, featureCollection } from '@turf/helpers';
 import { Feature, MultiPolygon, Polygon } from 'geojson';
 import { InfoData } from '../ingestion/schemas/infoDataSchema';
 
