@@ -68,10 +68,10 @@ const registerDefaultConfig = (): void => {
       },
     },
     storageExplorer: {
-      layerSourceDir: 'tests/mocks',
+      layerSourceDir: 'tests/mocks/testFiles',
       displayNameDir: '\\layerSources',
       watchDirectory: 'watch',
-      validFileExtensions: ['gpkg'],
+      validFileExtensions: ['gpkg', 'shp', 'shx', 'dbf', 'prj', 'cpg'],
     },
 
     validationValuesByInfo: {
@@ -86,13 +86,14 @@ const registerDefaultConfig = (): void => {
       mapProxyApiServiceUrl: 'http://mapproxyapiserviceurl',
       catalogServiceURL: 'http://catalogserviceurl',
       jobTrackerServiceURL: 'http://jobTrackerServiceUrl',
+      polygonPartsManagerURL: 'http://polygonPartsManagerServiceUrl',
     },
     jobManager: {
       jobDomain: 'RASTER',
       ingestionNewJobType: 'Ingestion_New',
       ingestionUpdateJobType: 'Ingestion_Update',
       ingestionSwapUpdateJobType: 'Ingestion_Swap_Update',
-      initTaskType: 'init',
+      validationTaskType: 'validation',
       supportedIngestionSwapTypes: [
         {
           productType: 'RasterVectorBest',

@@ -1,19 +1,18 @@
+import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { RequestHandler } from 'express';
-import { InputFiles, NewRasterLayer, UpdateRasterLayer } from '@map-colonies/mc-model-types';
+import { HttpError } from 'express-openapi-validator/dist/framework/types';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
-import { HttpError } from 'express-openapi-validator/dist/framework/types';
-import { ConflictError } from '@map-colonies/error-types';
+import { GpkgError } from '../../serviceClients/database/errors';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
-import { SourcesValidationResponse, ResponseStatus, IRecordRequestParams } from '../interfaces';
+import { FileNotFoundError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
+import type { IRetryRequestParams, IRecordRequestParams, IAbortRequestParams, ResponseId } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
-import { InfoData } from '../schemas/infoDataSchema';
-import { FileNotFoundError, GdalInfoError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
 
-type SourcesValidationHandler = RequestHandler<undefined, SourcesValidationResponse, unknown>;
-type SourcesInfoHandler = RequestHandler<undefined, InfoData[], unknown>;
-type NewLayerHandler = RequestHandler<undefined, ResponseStatus, unknown>;
-type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseStatus, unknown>;
+type NewLayerHandler = RequestHandler<undefined, ResponseId, unknown>;
+type RetryIngestionHandler = RequestHandler<IRetryRequestParams, void, unknown>;
+type AbortIngestionHandler = RequestHandler<IAbortRequestParams, void, unknown>;
+type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseId, unknown>;
 
 @injectable()
 export class IngestionController {
@@ -22,20 +21,20 @@ export class IngestionController {
     private readonly ingestionManager: IngestionManager
   ) {}
 
-  public createLayer: NewLayerHandler = async (req, res, next) => {
+  public newLayer: NewLayerHandler = async (req, res, next) => {
     try {
-      const validNewLayerRequestBody: NewRasterLayer = await this.schemasValidator.validateNewLayerRequest(req.body);
-      await this.ingestionManager.ingestNewLayer(validNewLayerRequestBody);
+      const validNewLayerRequestBody = await this.schemasValidator.validateNewLayerRequest(req.body);
+      const response = await this.ingestionManager.newLayer(validNewLayerRequestBody);
 
-      res.status(StatusCodes.OK).send({ status: 'success' });
+      res.status(StatusCodes.OK).send(response);
     } catch (error) {
       if (error instanceof ValidationError) {
         (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
-      }
-      if (error instanceof ConflictError) {
+      } else if (error instanceof FileNotFoundError) {
+        (error as HttpError).status = StatusCodes.NOT_FOUND; //404
+      } else if (error instanceof ConflictError) {
         (error as HttpError).status = StatusCodes.CONFLICT; //409
-      }
-      if (error instanceof UnsupportedEntityError) {
+      } else if (error instanceof UnsupportedEntityError) {
         (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
       }
       next(error);
@@ -44,15 +43,38 @@ export class IngestionController {
 
   public updateLayer: UpdateLayerHandler = async (req, res, next) => {
     try {
-      const catalogId = req.params.id;
-      const updateLayerRequestBody: unknown = req.body;
-      const validUpdateLayerRequestBody: UpdateRasterLayer = await this.schemasValidator.validateUpdateLayerRequest(updateLayerRequestBody);
-      await this.ingestionManager.updateLayer(catalogId, validUpdateLayerRequestBody);
+      const { paramsId: catalogId, reqBody: validUpdateLayerRequestBody } = await this.schemasValidator.validateUpdateLayerRequest({
+        reqBody: req.body,
+        paramsId: req.params.id,
+      });
+      const response = await this.ingestionManager.updateLayer(catalogId, validUpdateLayerRequestBody);
 
-      res.status(StatusCodes.OK).send({ status: 'success' });
+      res.status(StatusCodes.OK).send(response);
     } catch (error) {
       if (error instanceof ValidationError) {
         (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
+      } else if (error instanceof FileNotFoundError) {
+        (error as HttpError).status = StatusCodes.NOT_FOUND; //404
+      } else if (error instanceof ConflictError) {
+        (error as HttpError).status = StatusCodes.CONFLICT; //409
+      } else if (error instanceof UnsupportedEntityError || error instanceof GpkgError) {
+        (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
+      }
+      next(error);
+    }
+  };
+
+  public retryIngestion: RetryIngestionHandler = async (req, res, next) => {
+    try {
+      const response = await this.ingestionManager.retryIngestion(req.params.jobId);
+
+      res.status(StatusCodes.OK).send(response);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
+      }
+      if (error instanceof NotFoundError) {
+        (error as HttpError).status = StatusCodes.NOT_FOUND; //404
       }
       if (error instanceof ConflictError) {
         (error as HttpError).status = StatusCodes.CONFLICT; //409
@@ -64,34 +86,25 @@ export class IngestionController {
     }
   };
 
-  public validateSources: SourcesValidationHandler = async (req, res, next): Promise<void> => {
+  public abortIngestion: AbortIngestionHandler = async (req, res, next) => {
     try {
-      const validInputFilesRequestBody: InputFiles = await this.schemasValidator.validateInputFilesRequestBody(req.body);
+      await this.ingestionManager.abortIngestion(req.params.jobId);
 
-      const validationResponse = await this.ingestionManager.validateSources(validInputFilesRequestBody);
-
-      res.status(StatusCodes.OK).send(validationResponse);
+      res.status(StatusCodes.OK).send();
     } catch (error) {
+      if (error instanceof ValidationError) {
+        (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
+      }
+      if (error instanceof NotFoundError) {
+        (error as HttpError).status = StatusCodes.NOT_FOUND; //404
+      }
+      if (error instanceof ConflictError) {
+        (error as HttpError).status = StatusCodes.CONFLICT; //409
+      }
+      if (error instanceof UnsupportedEntityError) {
+        (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
+      }
       next(error);
-    }
-  };
-
-  public getSourcesGdalInfo: SourcesInfoHandler = async (req, res, next): Promise<void> => {
-    try {
-      const validInputFilesRequestBody: InputFiles = await this.schemasValidator.validateInputFilesRequestBody(req.body);
-      const filesGdalInfoData = await this.ingestionManager.getInfoData(validInputFilesRequestBody);
-
-      res.status(StatusCodes.OK).send(filesGdalInfoData);
-    } catch (err) {
-      if (err instanceof FileNotFoundError) {
-        (err as HttpError).status = StatusCodes.NOT_FOUND;
-      }
-
-      if (err instanceof GdalInfoError) {
-        (err as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY;
-      }
-
-      next(err);
     }
   };
 }

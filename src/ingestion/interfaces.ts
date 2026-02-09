@@ -1,16 +1,33 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
+import { ICreateJobResponse } from '@map-colonies/mc-priority-queue';
+import { ingestionBaseJobParamsSchema } from '@map-colonies/raster-shared';
+import z from 'zod';
 
 export interface SourcesValidationResponse {
   isValid: boolean;
   message: string;
 }
 
-export interface ResponseStatus {
-  status: string;
+export interface ResponseId {
+  jobId: ICreateJobResponse['id'];
+  taskId: ICreateJobResponse['taskIds'][number];
 }
 
 export interface IRecordRequestParams {
   id: string;
+}
+
+export interface IRetryRequestParams {
+  jobId: string;
+}
+
+export interface IAbortRequestParams {
+  jobId: string;
+}
+
+export enum IngestionOperation {
+  RETRY = 'retry',
+  ABORT = 'abort',
 }
 
 export interface PixelRange {
@@ -44,6 +61,4 @@ export interface TileSize {
   height: number;
 }
 
-export interface ITaskParameters {
-  blockDuplication?: boolean;
-}
+export type IngestionBaseJobParams = z.infer<typeof ingestionBaseJobParamsSchema>;

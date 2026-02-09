@@ -35,10 +35,10 @@
     }
   },
   "storageExplorer": {
-    "layerSourceDir": "/layerSources",
+    "layerSourceDir": "",
     "displayNameDir": "\\layerSources",
     "watchDirectory": "watch",
-    "validFileExtensions": ["gpkg"]
+    "validFileExtensions": ["gpkg", "shp", "shx", "dbf", "prj", "cpg"]
   },
   "validationValuesByInfo": {
     "crs": [4326],
@@ -47,18 +47,23 @@
     "resolutionFixedPointTolerance": 12,
     "extentBufferInMeters": 50
   },
+  "productReader": {
+    "maxVerticesPerChunk": 10000
+  },
   "services": {
     "jobManagerURL": "",
     "mapProxyApiServiceUrl": "",
     "catalogServiceURL": "",
-    "jobTrackerServiceURL": ""
+    "jobTrackerServiceURL": "",
+    "polygonPartsManagerURL": ""
   },
   "jobManager": {
     "jobDomain": "RASTER",
     "ingestionNewJobType": "Ingestion_New",
     "ingestionUpdateJobType": "Ingestion_Update",
     "ingestionSwapUpdateJobType": "Ingestion_Swap_Update",
-    "initTaskType": "init",
+    "validationTaskType": "validation",
+    "finalizeTaskType": "finalize",
     "supportedIngestionSwapTypes": [
       {
         "productType": "RasterVectorBest",

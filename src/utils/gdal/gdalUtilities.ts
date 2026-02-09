@@ -6,7 +6,7 @@ import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../../common/constants';
 import { InfoData } from '../../ingestion/schemas/infoDataSchema';
 import { GdalInfo } from '../../ingestion/schemas/gdalDataSchema';
-import { LogContext } from '../logger/logContext';
+import { LogContext } from '../../common/interfaces';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../validation/schemasValidator';
 import { GdalInfoError } from '../../ingestion/errors/ingestionErrors';
 

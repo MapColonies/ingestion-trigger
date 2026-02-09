@@ -6,10 +6,10 @@ const ingestionRouterFactory: FactoryFunction<Router> = (dependencyContainer) =>
   const router = Router();
   const controller = dependencyContainer.resolve(IngestionController);
 
-  router.post('/', controller.createLayer.bind(controller));
+  router.post('/', controller.newLayer.bind(controller));
   router.put('/:id', controller.updateLayer.bind(controller));
-  router.post('/validateSources', controller.validateSources.bind(controller));
-  router.post('/sourcesInfo', controller.getSourcesGdalInfo.bind(controller));
+  router.put('/:jobId/retry', controller.retryIngestion.bind(controller));
+  router.put('/:jobId/abort', controller.abortIngestion.bind(controller));
 
   return router;
 };

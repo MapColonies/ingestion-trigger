@@ -1,10 +1,11 @@
 openapi: 3.0.1
+security: []
 info:
   title: ingestion-trigger
   description: >-
     Service that designed to validate and trigger ingestion of new layers from
     raw data and update existing layers
-  version: 3.2.5
+  version: 4.0.0
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
@@ -12,28 +13,23 @@ security: []
 paths:
   /ingestion:
     post:
-      operationId: newIngestion
+      operationId: ingestNewLayer
       tags:
         - ingestion
       summary: start a process of creating new layer from raw data
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              $ref: >-
-                ./Schema/ingestionTrigger/rasterLayer.yaml#/components/schemas/NewRasterLayer
-            examples:
-              NewRasterLayerExample:
-                $ref: >-
-                  ./Schema/ingestionTrigger/rasterLayerExample.yaml#/components/examples/NewRasterLayerExample
+              $ref: '#/components/schemas/IngestionNewLayerRequest'
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: >-
-                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/successMessage
+                $ref: '#/components/schemas/SuccessfulIngestionResponse'
         '400':
           description: Bad request
           content:
@@ -56,7 +52,7 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '500':
-          description: Server error
+          description: Internal Server Error
           content:
             application/json:
               schema:
@@ -67,34 +63,27 @@ paths:
       operationId: updateLayer
       tags:
         - ingestion
-      summary: start a process of creating update to exists layer from raw data
+      summary: start a process of updating an existing layer from raw data
       parameters:
         - name: id
           in: path
           description: The id of the layer to update
           required: true
           schema:
-            type: string
-            format: uuid
-          example: 5f7b3b3b-3b3b-3b3b-3b3b-3b3b3b3b3b3b
+            $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/LayerId
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              $ref: >-
-                ./Schema/ingestionTrigger/rasterLayer.yaml#/components/schemas/UpdateRasterLayer
-            examples:
-              UpdateRasterLayerExample:
-                $ref: >-
-                  ./Schema/ingestionTrigger/rasterLayerExample.yaml#/components/examples/UpdateRasterLayerExample
+              $ref: '#/components/schemas/IngestionUpdateLayerRequest'
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: >-
-                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/successMessage
+                $ref: '#/components/schemas/SuccessfulIngestionResponse'
         '400':
           description: Bad request
           content:
@@ -124,40 +113,58 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '500':
-          description: Invalid request
+          description: Internal Server Error
           content:
             application/json:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
-  /ingestion/validateSources:
-    post:
-      operationId: validateSources
+  /ingestion/{jobId}/retry:
+    put:
+      operationId: retryIngestion
       tags:
         - ingestion
-      summary: checks that all provided files have valid raw data
-      requestBody:
-        description: A json object containing array of files and origin source path
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: >-
-                ./Schema/ingestionTrigger/inputFiles/rasterLayerInputFiles.yaml#/components/schemas/InputFiles
-            example:
-              originDirectory: string
-              fileNames:
-                - example.gpkg
+      summary: retry a failed or completed ingestion job with task failures
+      description: >-
+        Retries an ingestion job that has failed or completed with errors.  This
+        endpoint handles failures from any task in the ingestion workflow. The
+        job must be in FAILED or COMPLETED status.
+      parameters:
+        - name: jobId
+          in: path
+          description: The id of the job to retry
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
           description: OK
+        '400':
+          description: >-
+            Bad request - Job status is not FAILED, SUSPENDED or required
+            parameters are missing
           content:
             application/json:
               schema:
                 $ref: >-
-                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/validateSourcesResponse
-        '400':
-          description: Invalid request
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '404':
+          description: Not Found - Job tasks not found
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '409':
+          description: Conflict - Shapefile has not changed
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '422':
+          description: Unprocessable Content
           content:
             application/json:
               schema:
@@ -170,20 +177,121 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
-  /ingestion/sourcesInfo:
-    post:
-      operationId: getGdalInfo
+  /ingestion/{jobId}/abort:
+    put:
+      operationId: abortIngestion
       tags:
         - ingestion
-      summary: returns the GDAL info for the provided source files
+      summary: abort an active ingestion job
+      description: >-
+        Aborts an ingestion job that is currently active or pending, preventing
+        any further processing.
+      parameters:
+        - name: jobId
+          in: path
+          description: The id of the job to abort
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK - Job aborted successfully
+        '400':
+          description: Bad request - Job status does not allow abort (COMPLETED or ABORTED)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '404':
+          description: Not Found - Job does not exist
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '409':
+          description: >-
+            Conflict - Unable to abort job due to current state (e.g., already
+            completed or in finalization)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '422':
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+  /validate/gpkgs:
+    post:
+      operationId: validateGpkgs
+      tags:
+        - validate
+      summary: checks that all provided gpkgs files have valid raw data
       requestBody:
-        description: A json object containing array of files and origin source path
+        description: A json object containing array of gpkg files paths
         required: true
         content:
           application/json:
             schema:
-              $ref: >-
-                ./Schema/ingestionTrigger/inputFiles/rasterLayerInputFiles.yaml#/components/schemas/InputFiles
+              $ref: '#/components/schemas/GpkgInputFiles'
+            example:
+              gpkgFilesPath:
+                - path/to/blue_marble.gpkg
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/validateSourcesResponse
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '404':
+          description: Files not found
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+  /info/gpkgs:
+    post:
+      operationId: getGpkgsInfo
+      tags:
+        - info
+      summary: returns the GDAL info for the provided gpkg files
+      requestBody:
+        description: A json object containing array of gpkg file paths
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GpkgInputFiles'
       responses:
         '200':
           description: OK
@@ -193,7 +301,7 @@ paths:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/sourcesInfoResponse
         '400':
-          description: Invalid request
+          description: Bad Request
           content:
             application/json:
               schema:
@@ -220,3 +328,145 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+components:
+  schemas:
+    CallbackUrls:
+      type: array
+      minItems: 1
+      items:
+        type: string
+        pattern: ^https?:\/\/[^\s/$.?#].[^\s]*$
+        description: callback url for ingestion status notifications
+      example:
+        - https://my-dns-for-callback
+    GpkgFilesPath:
+      type: array
+      minItems: 1
+      maxItems: 1
+      items:
+        type: string
+        pattern: ^(\/?[\w-]+)(\/[\w-]+)*\/[\wא-ת\.-]+\.gpkg$
+        description: gpkg source file paths
+      example:
+        - path/to/example.gpkg
+    IngestionNewLayerMetadata:
+      type: object
+      required:
+        - classification
+        - productId
+        - productName
+        - productType
+        - srs
+        - srsName
+        - transparency
+        - region
+      properties:
+        productId:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProductId
+        productName:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProductName
+        productType:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProductType
+        productSubType:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProductSubType
+        region:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Region
+        srs:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Srs
+        srsName:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/SrsName
+        transparency:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Transparency
+        producerName:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/ProducerName
+        scale:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Scale
+        description:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Description
+        classification:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Classification
+    IngestionNewLayerRequest:
+      type: object
+      required:
+        - metadata
+        - inputFiles
+        - ingestionResolution
+      properties:
+        metadata:
+          $ref: '#/components/schemas/IngestionNewLayerMetadata'
+        inputFiles:
+          $ref: '#/components/schemas/InputFiles'
+        ingestionResolution:
+          $ref: '#/components/schemas/IngestionResolution'
+        callbackUrls:
+          $ref: '#/components/schemas/CallbackUrls'
+    IngestionResolution:
+      type: number
+      format: double
+      minimum: 1.67638063430786e-7
+      maximum: 0.703125
+      description: requested ingestion resolution
+    IngestionUpdateLayerMetadata:
+      type: object
+      required:
+        - classification
+      properties:
+        classification:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Classification
+    IngestionUpdateLayerRequest:
+      type: object
+      required:
+        - metadata
+        - inputFiles
+        - ingestionResolution
+      properties:
+        metadata:
+          $ref: '#/components/schemas/IngestionUpdateLayerMetadata'
+        inputFiles:
+          $ref: '#/components/schemas/InputFiles'
+        ingestionResolution:
+          $ref: '#/components/schemas/IngestionResolution'
+        callbackUrls:
+          $ref: '#/components/schemas/CallbackUrls'
+    InputFiles:
+      type: object
+      required:
+        - gpkgFilesPath
+        - metadataShapefilePath
+        - productShapefilePath
+      properties:
+        gpkgFilesPath:
+          $ref: '#/components/schemas/GpkgFilesPath'
+        metadataShapefilePath:
+          $ref: '#/components/schemas/MetadataShapefilePath'
+        productShapefilePath:
+          $ref: '#/components/schemas/ProductShapefilePath'
+    GpkgInputFiles:
+      type: object
+      required:
+        - gpkgFilesPath
+      properties:
+        gpkgFilesPath:
+          $ref: '#/components/schemas/GpkgFilesPath'
+    MetadataShapefilePath:
+      type: string
+      pattern: ^(\/?[\w-]+)(\/[\w-]+)*\/ShapeMetadata\.shp$
+      description: metadata shape file path
+      example: path/to/ShapeMetadata.shp
+    ProductShapefilePath:
+      type: string
+      pattern: ^(\/?[\w-]+)(\/[\w-]+)*\/Product\.shp$
+      description: product shape file path
+      example: path/to/Product.shp
+    SuccessfulIngestionResponse:
+      type: object
+      required:
+        - jobId
+        - taskId
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid

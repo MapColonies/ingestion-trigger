@@ -17,10 +17,12 @@ data:
   LOG_LEVEL: {{ .Values.env.logLevel | quote }}
   LOG_PRETTY_PRINT_ENABLED: {{ .Values.env.logPrettyPrintEnabled | quote }}
   JOB_DOMAIN: {{ .Values.global.domain | quote }}
+  PRODUCT_READER_MAX_VERTICES_PER_CHUNK: {{ .Values.env.productReader.maxVerticesPerChunk | quote }}
   JOB_MANAGER_URL: {{ $serviceUrls.jobManager | quote }}
   MAP_PROXY_API_SERVICE_URL: {{ $serviceUrls.mapproxyApi | quote }}
   CATALOG_SERVICE_URL: {{ $serviceUrls.catalogManager | quote }}
   JOB_TRACKER_SERVICE_URL: {{ $serviceUrls.jobTracker | quote }}
+  POLYGON_PARTS_MANAGER_URL: {{ $serviceUrls.polygonPartsManager | quote }}
   STORAGE_EXPLORER_DISPLAY_NAME_DIR: {{ .Values.env.storageExplorer.displayNameDir | quote }}
   STORAGE_EXPLORER_LAYER_SOURCE_DIR: {{ .Values.env.storageExplorer.layerSourceDir | quote }}
   STORAGE_EXPLORER_WATCH_DIRECTORY: {{ .Values.env.storageExplorer.watchDirectory | quote }}
@@ -34,7 +36,8 @@ data:
   INGESTION_NEW_JOB_TYPE: {{ $jobDefinitions.jobs.new.type | quote }}
   INGESTION_UPDATE_JOB_TYPE: {{ $jobDefinitions.jobs.update.type | quote }}
   INGESTION_SWAP_UPDATE_JOB_TYPE: {{ $jobDefinitions.jobs.swapUpdate.type | quote }}
-  INIT_TASK_TYPE: {{ $jobDefinitions.tasks.init.type | quote }}
+  VALIDATION_TASK_TYPE: {{ $jobDefinitions.tasks.validation.type | quote }}
+  FINALIZE_TASK_TYPE: {{ $jobDefinitions.tasks.finalize.type | quote }}
   CRS: {{ .Values.env.validationValuesByInfo.crs | toJson | quote}}
   FILE_FORMAT: {{ .Values.env.validationValuesByInfo.fileFormat | toJson | quote}}
   TILE_SIZE: {{ .Values.env.validationValuesByInfo.tileSize | quote}}
@@ -50,3 +53,4 @@ data:
   {{ end }}
   npm_config_cache: /tmp/
 {{- end }}
+# TODO: check if values should be clean up

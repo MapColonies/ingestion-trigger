@@ -1,18 +1,20 @@
-import express, { Router } from 'express';
-import bodyParser from 'body-parser';
-import compression from 'compression';
-import { OpenapiViewerRouter, OpenapiRouterConfig } from '@map-colonies/openapi-express-viewer';
 import { getErrorHandlerMiddleware } from '@map-colonies/error-express-handler';
-import { middleware as OpenApiMiddleware } from 'express-openapi-validator';
-import { inject, injectable } from 'tsyringe';
-import { Logger } from '@map-colonies/js-logger';
 import httpLogger from '@map-colonies/express-access-log-middleware';
+import { Logger } from '@map-colonies/js-logger';
+import { OpenapiRouterConfig, OpenapiViewerRouter } from '@map-colonies/openapi-express-viewer';
 import getStorageExplorerMiddleware from '@map-colonies/storage-explorer-middleware';
 import { collectMetricsExpressMiddleware, getTraceContexHeaderMiddleware } from '@map-colonies/telemetry';
+import bodyParser from 'body-parser';
+import compression from 'compression';
+import express, { Router } from 'express';
+import { middleware as OpenApiMiddleware } from 'express-openapi-validator';
+import { inject, injectable } from 'tsyringe';
 import { SERVICES } from './common/constants';
 import { IConfig } from './common/interfaces';
-import { makeInsensitive } from './utils/stringCapitalizationPermutations';
+import { INFO_ROUTER_SYMBOL } from './info/routes/infoRouter';
 import { INGESTION_ROUTER_SYMBOL } from './ingestion/routes/ingestionRouter';
+import { makeInsensitive } from './utils/stringCapitalizationPermutations';
+import { VALIDATE_ROUTER_SYMBOL } from './validate/routes/validateRouter';
 
 @injectable()
 export class ServerBuilder {
@@ -21,7 +23,9 @@ export class ServerBuilder {
   public constructor(
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(INGESTION_ROUTER_SYMBOL) private readonly ingestionRouter: Router
+    @inject(VALIDATE_ROUTER_SYMBOL) private readonly validateRouter: Router,
+    @inject(INGESTION_ROUTER_SYMBOL) private readonly ingestionRouter: Router,
+    @inject(INFO_ROUTER_SYMBOL) private readonly infoRouter: Router
   ) {
     this.serverInstance = express();
   }
@@ -45,6 +49,9 @@ export class ServerBuilder {
 
   private buildRoutes(): void {
     this.serverInstance.use('/ingestion', this.ingestionRouter);
+    this.serverInstance.use('/info', this.infoRouter);
+    this.serverInstance.use('/validate', this.validateRouter);
+
     this.buildDocsRoutes();
   }
 

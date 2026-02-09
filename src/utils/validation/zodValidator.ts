@@ -11,7 +11,6 @@ export class ZodValidator {
   public async validate<T extends z.ZodSchema>(schema: T, data: unknown): Promise<z.infer<T>> {
     this.logger.debug({ message: 'Validating data', schema: schema.description, data });
     const result = await schema.safeParseAsync(data);
-
     if (!result.success) {
       const schemaName: string = schema.description ?? 'Unknown Schema';
       const error = result.error.formErrors;

@@ -1,5 +1,4 @@
-import { IRasterCatalogUpsertRequestBody, ProductType, TileOutputFormat } from '@map-colonies/mc-model-types';
-import { Polygon } from 'geojson';
+import type { RasterProductTypes } from '@map-colonies/raster-shared';
 
 export interface IConfig {
   get: <T>(setting: string) => T;
@@ -13,29 +12,13 @@ export interface OpenApiConfig {
   uiPath: string;
 }
 
-export interface IFindResponseRecord extends IRasterCatalogUpsertRequestBody {
-  id: string;
-}
-
-export type FindRecordResponse = IFindResponseRecord[];
-
-export interface IUpdateRecordResponse {
-  id: string;
-  status: string;
-}
-
 export interface ISupportedIngestionSwapTypes {
-  productType: ProductType;
+  productType: RasterProductTypes;
   productSubType: string;
 }
 
-export interface LayerDetails {
-  productId: string;
-  productVersion: string;
-  productType: ProductType;
-  productSubType: string;
-  tileOutputFormat: TileOutputFormat;
-  displayPath: string;
-  productName: string;
-  footprint: Polygon;
+export interface LogContext {
+  fileName: string;
+  class: string;
+  function?: string;
 }
