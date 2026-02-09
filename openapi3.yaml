@@ -1,5 +1,4 @@
 openapi: 3.0.1
-security: []
 info:
   title: ingestion-trigger
   description: >-
