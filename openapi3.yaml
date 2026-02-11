@@ -1,5 +1,4 @@
 openapi: 3.0.1
-security: []
 info:
   title: ingestion-trigger
   description: >-
@@ -9,6 +8,7 @@ info:
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
+security: []
 paths:
   /ingestion:
     post:

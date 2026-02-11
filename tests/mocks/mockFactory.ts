@@ -20,7 +20,7 @@ import {
   JobTypes,
 } from '@map-colonies/raster-shared';
 import { Domain, RecordStatus, TilesMimeFormat } from '@map-colonies/types';
-import { randomPolygon } from '@turf/turf';
+import { randomPolygon } from '@turf/random';
 import type { BBox, Polygon } from 'geojson';
 import merge from 'lodash.merge';
 import { randexp } from 'randexp';
