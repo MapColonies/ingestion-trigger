@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.1.0](https://github.com/MapColonies/ingestion-trigger/compare/v4.0.0...v4.1.0) (2026-02-11)
+
+
+### Features
+
+* upgrade node to 24 and update workflows (MAPCO-7224) ([#63](https://github.com/MapColonies/ingestion-trigger/issues/63)) ([aa85126](https://github.com/MapColonies/ingestion-trigger/commit/aa85126316108ba63db23774da706ecbdb71f30e))
+
 ## [4.0.0](https://github.com/MapColonies/ingestion-trigger/compare/v4.0.0-alpha.6...v4.0.0) (2026-02-08)
 
 

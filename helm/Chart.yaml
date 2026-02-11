@@ -2,8 +2,8 @@ apiVersion: v2
 name: ingestion-trigger
 description: A Helm chart for ingestion-trigger service
 type: application
-version: 4.0.0
-appVersion: 4.0.0
+version: 4.1.0
+appVersion: 4.1.0
 dependencies:
   - name: mclabels
     version: 1.0.1
