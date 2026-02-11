@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.1.1](https://github.com/MapColonies/ingestion-trigger/compare/v4.1.0...v4.1.1) (2026-02-11)
+
+
+### Bug Fixes
+
+* dockerfile didnt include gdal ([#75](https://github.com/MapColonies/ingestion-trigger/issues/75)) ([82c5b06](https://github.com/MapColonies/ingestion-trigger/commit/82c5b062ae6d4ad9a52f1e8fdd300abfb7c499af))
+
 ## [4.1.0](https://github.com/MapColonies/ingestion-trigger/compare/v4.0.0...v4.1.0) (2026-02-11)
 
 
