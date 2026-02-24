@@ -1,26 +1,21 @@
 import { constants, createReadStream } from 'node:fs';
 import { Readable } from 'node:stream';
 import jsLogger, { Logger } from '@map-colonies/js-logger';
-import { trace, Tracer } from '@opentelemetry/api';
+import { trace } from '@opentelemetry/api';
 import { Checksum } from '../../../src/utils/hash/checksum';
 import { ChecksumError } from '../../../src/ingestion/errors/ingestionErrors';
 import type { ChecksumProcessor } from '../../../src/utils/hash/interfaces';
-import { tracerMock } from '../../mocks/mockFactory';
 
 jest.mock('node:fs');
-jest.mock('@opentelemetry/api');
 
 describe('Checksum', () => {
   let checksum: Checksum;
   let mockLogger: Logger;
-  let mockTracer: Tracer;
   let mockChecksumProcessor: jest.Mocked<ChecksumProcessor>;
   let mockChecksumProcessorInit: jest.Mock;
 
   beforeEach(() => {
     mockLogger = jsLogger({ enabled: false });
-
-    mockTracer = tracerMock;
 
     mockChecksumProcessor = {
       algorithm: 'XXH64',
@@ -31,11 +26,7 @@ describe('Checksum', () => {
 
     mockChecksumProcessorInit = jest.fn().mockResolvedValue(mockChecksumProcessor);
 
-    (trace.getActiveSpan as jest.Mock) = jest.fn().mockReturnValue({
-      updateName: jest.fn(),
-    });
-
-    checksum = new Checksum(mockLogger, mockTracer, mockChecksumProcessorInit);
+    checksum = new Checksum(mockLogger, trace.getTracer('testTracer'), mockChecksumProcessorInit);
   });
 
   afterEach(() => {
