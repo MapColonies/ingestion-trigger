@@ -24,7 +24,7 @@ import {
   type InputFiles,
   type RasterProductTypes,
 } from '@map-colonies/raster-shared';
-import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
+import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/tracing-utils';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import { container, inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';

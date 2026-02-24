@@ -7,7 +7,7 @@ import type {
   IngestionUpdateJobParams,
   IngestionValidationTaskParams,
 } from '@map-colonies/raster-shared';
-import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { withSpanAsyncV4 } from '@map-colonies/tracing-utils';
 import { trace, Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';

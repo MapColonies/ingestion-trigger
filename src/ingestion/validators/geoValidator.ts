@@ -1,10 +1,10 @@
 import { Logger } from '@map-colonies/js-logger';
-import { withSpanV4 } from '@map-colonies/telemetry';
+import { withSpanV4 } from '@map-colonies/tracing-utils';
 import { Tracer, trace } from '@opentelemetry/api';
 import booleanContains from '@turf/boolean-contains';
-import { IConfig } from 'config';
 import { Geometry, Polygon } from 'geojson';
 import { inject, injectable } from 'tsyringe';
+import { IConfig } from '../../common/interfaces';
 import { SERVICES } from '../../common/constants';
 import { LogContext } from '../../common/interfaces';
 import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';

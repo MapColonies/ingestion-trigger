@@ -1,9 +1,9 @@
 import { getErrorHandlerMiddleware } from '@map-colonies/error-express-handler';
-import httpLogger from '@map-colonies/express-access-log-middleware';
+import { httpLogger } from '@map-colonies/express-access-log-middleware';
 import { Logger } from '@map-colonies/js-logger';
 import { OpenapiRouterConfig, OpenapiViewerRouter } from '@map-colonies/openapi-express-viewer';
 import getStorageExplorerMiddleware from '@map-colonies/storage-explorer-middleware';
-import { collectMetricsExpressMiddleware, getTraceContexHeaderMiddleware } from '@map-colonies/telemetry';
+import { collectMetricsExpressMiddleware } from '@map-colonies/prometheus';
 import bodyParser from 'body-parser';
 import compression from 'compression';
 import express, { Router } from 'express';
@@ -64,7 +64,6 @@ export class ServerBuilder {
     }
 
     this.serverInstance.use(bodyParser.json(this.config.get<bodyParser.Options>('server.request.payload')));
-    this.serverInstance.use(getTraceContexHeaderMiddleware());
 
     const ignorePathRegex = new RegExp(`^${this.config.get<string>('openapiConfig.basePath')}|(explorer)/.*`, 'i');
     const apiSpecPath = this.config.get<string>('openapiConfig.filePath');
