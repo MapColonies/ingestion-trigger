@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { zoomLevelToResolutionDeg } from '@map-colonies/mc-utils';
 import { Geometry } from 'geojson';
 import { DependencyContainer } from 'tsyringe';
-import { IConfig } from 'config';
+import { IConfig } from '../../common/interfaces';
 import { PixelRange } from '../interfaces';
 import { SERVICES } from '../../common/constants';
 

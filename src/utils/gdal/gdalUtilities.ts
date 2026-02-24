@@ -2,7 +2,7 @@ import { inject, injectable } from 'tsyringe';
 import { Logger } from '@map-colonies/js-logger';
 import * as gdal from 'gdal-async';
 import { trace, Tracer } from '@opentelemetry/api';
-import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { withSpanAsyncV4 } from '@map-colonies/tracing-utils';
 import { SERVICES } from '../../common/constants';
 import { InfoData } from '../../ingestion/schemas/infoDataSchema';
 import { GdalInfo } from '../../ingestion/schemas/gdalDataSchema';

@@ -1,7 +1,7 @@
 import { constants as fsConstants, promises as fsPromises } from 'node:fs';
 import { basename, dirname } from 'node:path';
 import { Logger } from '@map-colonies/js-logger';
-import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
+import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/tracing-utils';
 import { trace, Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';

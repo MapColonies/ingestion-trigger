@@ -1,5 +1,5 @@
 import jsLogger, { LoggerOptions } from '@map-colonies/js-logger';
-import { Metrics, getOtelMixin } from '@map-colonies/telemetry';
+import { getOtelMixin } from '@map-colonies/tracing-utils';
 import { metrics as OtelMetrics, trace } from '@opentelemetry/api';
 import config from 'config';
 import { instancePerContainerCachingFactory } from 'tsyringe';
@@ -8,7 +8,7 @@ import xxhashFactory from 'xxhash-wasm';
 import type { HashAlgorithm } from '@map-colonies/raster-shared';
 import { SERVICES, SERVICE_NAME } from './common/constants';
 import { InjectionObject, registerDependencies } from './common/dependencyRegistration';
-import { tracing } from './common/tracing';
+import { getTracing } from './common/tracing';
 import { INFO_ROUTER_SYMBOL, infoRouterFactory } from './info/routes/infoRouter';
 import { INGESTION_ROUTER_SYMBOL, ingestionRouterFactory } from './ingestion/routes/ingestionRouter';
 import { CHECKSUM_PROCESSOR } from './utils/hash/constants';
@@ -25,8 +25,7 @@ export const registerExternalValues = (options?: RegisterOptions): DependencyCon
   const loggerConfig = config.get<LoggerOptions>('telemetry.logger');
   const logger = jsLogger({ ...loggerConfig, prettyPrint: loggerConfig.prettyPrint, mixin: getOtelMixin() });
 
-  const metrics = new Metrics();
-  metrics.start();
+  const tracingInstance = getTracing();
 
   const tracer = trace.getTracer(SERVICE_NAME);
 
@@ -54,7 +53,7 @@ export const registerExternalValues = (options?: RegisterOptions): DependencyCon
       token: 'onSignal',
       provider: {
         useValue: async (): Promise<void> => {
-          await Promise.all([tracing.stop(), metrics.stop()]);
+          await tracingInstance.stop();
         },
       },
     },

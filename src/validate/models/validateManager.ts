@@ -1,5 +1,5 @@
 import type { Logger } from '@map-colonies/js-logger';
-import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { withSpanAsyncV4 } from '@map-colonies/tracing-utils';
 import { SpanStatusCode, type Tracer, trace } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';

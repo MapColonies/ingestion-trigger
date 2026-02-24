@@ -1,9 +1,9 @@
 import { inject, injectable } from 'tsyringe';
-import { IConfig } from 'config';
 import { Logger } from '@map-colonies/js-logger';
 import { Tracer } from '@opentelemetry/api';
-import { withSpanV4 } from '@map-colonies/telemetry';
+import { withSpanV4 } from '@map-colonies/tracing-utils';
 import { SERVICES } from '../../common/constants';
+import { IConfig } from '../../common/interfaces';
 import { SQLiteClient } from '../../serviceClients/database/SQLiteClient';
 import { InvalidIndexError, UnsupportedGridError, UnsupportedTileSizeError } from '../../serviceClients/database/errors';
 import { LogContext } from '../../common/interfaces';

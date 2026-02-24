@@ -1,7 +1,7 @@
 import { constants, createReadStream } from 'node:fs';
 import { Readable } from 'node:stream';
 import type { Logger } from '@map-colonies/js-logger';
-import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { withSpanAsyncV4 } from '@map-colonies/tracing-utils';
 import { trace, type Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import type { Checksum as IChecksum } from '@map-colonies/raster-shared';

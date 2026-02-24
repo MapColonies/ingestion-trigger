@@ -2,7 +2,7 @@ import { Logger } from '@map-colonies/js-logger';
 import { HttpClient, IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { inject, injectable } from 'tsyringe';
 import { trace, Tracer } from '@opentelemetry/api';
-import { withSpanAsyncV4 } from '@map-colonies/telemetry';
+import { withSpanAsyncV4 } from '@map-colonies/tracing-utils';
 import { NotFoundError } from '@map-colonies/error-types';
 import { RasterProductTypes } from '@map-colonies/raster-shared';
 import { IConfig } from '../common/interfaces';

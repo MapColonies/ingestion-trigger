@@ -1,5 +1,5 @@
 import { Logger } from '@map-colonies/js-logger';
-import { withSpanV4 } from '@map-colonies/telemetry';
+import { withSpanV4 } from '@map-colonies/tracing-utils';
 import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
 import Database, { Database as SQLiteDB, SqliteError } from 'better-sqlite3';
 import { inject, injectable } from 'tsyringe';
