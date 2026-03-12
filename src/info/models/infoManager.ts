@@ -1,14 +1,15 @@
-import { Logger } from '@map-colonies/js-logger';
+import type { Logger } from '@map-colonies/js-logger';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
-import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
+import { SpanStatusCode, trace } from '@opentelemetry/api';
+import type { Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import type { IConfig } from '../../common/interfaces';
 import { LogContext } from '../../common/interfaces';
-import { InfoDataWithFile } from '../../ingestion/schemas/infoDataSchema';
+import type { InfoDataWithFile } from '../../ingestion/schemas/infoDataSchema';
 import { SourceValidator } from '../../ingestion/validators/sourceValidator';
 import { getAbsoluteGpkgFilesPath } from '../../utils/paths';
-import { GpkgInputFiles } from '../../utils/validation/schemasValidator';
+import type { GpkgInputFiles } from '../../utils/validation/schemasValidator';
 import { GdalInfoManager } from './gdalInfoManager';
 
 @injectable()

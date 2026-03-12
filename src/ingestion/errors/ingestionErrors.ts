@@ -1,5 +1,5 @@
 import { OperationStatus } from '@map-colonies/mc-priority-queue';
-import { Logger } from '@map-colonies/js-logger';
+import type { Logger } from '@map-colonies/js-logger';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Span } from '@opentelemetry/api';
 
@@ -19,8 +19,8 @@ export class FileNotFoundError extends NotFoundError {
         ? `Files '${names}' do not exist in path ${path}`
         : `Files ${names} do not exist`
       : path !== undefined
-      ? `File '${names}' does not exist in path ${path}`
-      : `File ${names} does not exist`;
+        ? `File '${names}' does not exist in path ${path}`
+        : `File ${names} does not exist`;
     super(message);
   }
 }

@@ -1,7 +1,8 @@
-import { Logger } from '@map-colonies/js-logger';
+import type { Logger } from '@map-colonies/js-logger';
 import { HttpClient, IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
-import { trace, Tracer } from '@opentelemetry/api';
+import { trace } from '@opentelemetry/api';
+import type { Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
 import type { IConfig } from '../common/interfaces';
@@ -11,7 +12,7 @@ import type { RasterLayersCatalog } from '../ingestion/schemas/layerCatalogSchem
 export class CatalogClient extends HttpClient {
   public constructor(
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
-    @inject(SERVICES.LOGGER) protected readonly logger: Logger,
+    @inject(SERVICES.LOGGER) protected override readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer
   ) {
     super(

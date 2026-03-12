@@ -655,7 +655,7 @@ describe('IngestionManager', () => {
       const taskCallArgs = updateTaskSpy.mock.calls[0] as [
         string,
         string,
-        { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } }
+        { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } },
       ];
       const [taskCalledJobId, taskCalledTaskId, taskCalledParams] = taskCallArgs;
 
@@ -729,7 +729,7 @@ describe('IngestionManager', () => {
       const taskCallArgs = updateTaskSpy.mock.calls[0] as [
         string,
         string,
-        { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } }
+        { status: string; attempts: number; parameters: { isValid: boolean; checksums: unknown[] } },
       ];
       const [taskCalledJobId, taskCalledTaskId, taskCalledParams] = taskCallArgs;
 

@@ -49,7 +49,7 @@ describe('ValidateManager', () => {
 
     it('should throw file not fount error when file does not exists', async () => {
       const validateGpkgRequest = { gpkgFilesPath: generateInputFiles().gpkgFilesPath };
-      const expectedError = validateGpkgRequest.gpkgFilesPath[0];
+      const expectedError = validateGpkgRequest.gpkgFilesPath[0]!;
       sourceValidator.validateFilesExist.mockRejectedValue(new FileNotFoundError(expectedError));
 
       const promise = validateManager.validateGpkgs(validateGpkgRequest);

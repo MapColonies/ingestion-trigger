@@ -1,10 +1,11 @@
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
-import { RequestHandler } from 'express';
+import type { RequestHandler } from 'express';
 import { HttpError } from 'express-openapi-validator/dist/framework/types';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
 import { GpkgError } from '../../serviceClients/database/errors';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL } from '../../utils/validation/schemasValidator';
+import type { SchemasValidator } from '../../utils/validation/schemasValidator';
 import { FileNotFoundError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
 import type { IRetryRequestParams, IRecordRequestParams, IAbortRequestParams, ResponseId } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';

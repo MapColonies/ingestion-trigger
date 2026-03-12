@@ -116,6 +116,9 @@ reports
 # OpenAPI output bundledAPI
 bundledApi.yaml
 
+# Temporary schema files
+Schema/
+
 # Local configs
 config/*local*.json
 

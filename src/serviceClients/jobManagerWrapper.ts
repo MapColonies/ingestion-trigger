@@ -1,5 +1,6 @@
-import { Logger } from '@map-colonies/js-logger';
-import { ICreateJobBody, ICreateJobResponse, JobManagerClient } from '@map-colonies/mc-priority-queue';
+import type { Logger } from '@map-colonies/js-logger';
+import { JobManagerClient } from '@map-colonies/mc-priority-queue';
+import type { ICreateJobBody, ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { IHttpRetryConfig } from '@map-colonies/mc-utils';
 import type {
   IngestionNewJobParams,
@@ -8,7 +9,8 @@ import type {
   IngestionValidationTaskParams,
 } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
-import { trace, Tracer } from '@opentelemetry/api';
+import { trace } from '@opentelemetry/api';
+import type { Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
 import type { IConfig } from '../common/interfaces';
@@ -17,7 +19,7 @@ import type { IConfig } from '../common/interfaces';
 export class JobManagerWrapper extends JobManagerClient {
   public constructor(
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
-    @inject(SERVICES.LOGGER) protected readonly logger: Logger,
+    @inject(SERVICES.LOGGER) protected override readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer
   ) {
     super(
@@ -62,7 +64,7 @@ export class JobManagerWrapper extends JobManagerClient {
   }
 
   @withSpanAsyncV4
-  public async abortJob(jobId: string): Promise<void> {
+  public override async abortJob(jobId: string): Promise<void> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('jobManagerWrapper.abortJob');
 

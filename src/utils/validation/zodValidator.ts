@@ -1,5 +1,5 @@
 import { BadRequestError } from '@map-colonies/error-types';
-import { Logger } from '@map-colonies/js-logger';
+import type { Logger } from '@map-colonies/js-logger';
 import { inject, injectable } from 'tsyringe';
 import { ZodError, z } from 'zod';
 import { SERVICES } from '../../common/constants';

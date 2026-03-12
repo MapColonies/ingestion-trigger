@@ -59,7 +59,7 @@ describe('InfoManager', () => {
     });
 
     it('should throw an file not found error if file is not exist', async () => {
-      sourceValidator.validateFilesExist.mockRejectedValue(new FileNotFoundError(generateInputFiles().gpkgFilesPath[0]));
+      sourceValidator.validateFilesExist.mockRejectedValue(new FileNotFoundError(generateInputFiles().gpkgFilesPath[0]!));
 
       await expect(infoManager.getGpkgsInfo(generateInputFiles())).rejects.toThrow(NotFoundError);
     });

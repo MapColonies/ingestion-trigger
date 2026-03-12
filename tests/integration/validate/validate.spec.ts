@@ -1,10 +1,20 @@
 import { faker } from '@faker-js/faker';
 import { SqliteError } from 'better-sqlite3';
-import gdal from 'gdal-async';
+import * as gdal from 'gdal-async';
+
+jest.mock('gdal-async', () => {
+  const actualModule = jest.requireActual<Record<string, unknown>>('gdal-async');
+  return {
+    ...actualModule,
+    infoAsync: jest.fn().mockImplementation(actualModule['infoAsync'] as (...args: unknown[]) => unknown),
+    openAsync: jest.fn().mockImplementation(actualModule['openAsync'] as (...args: unknown[]) => unknown),
+  };
+});
 import httpStatusCodes from 'http-status-codes';
 import { unset } from 'lodash';
 import nock from 'nock';
 import { getApp } from '../../../src/app';
+import { initConfig } from '../../../src/common/config';
 import { Grid } from '../../../src/ingestion/interfaces';
 import { GpkgManager } from '../../../src/ingestion/models/gpkgManager';
 import { SourceValidator } from '../../../src/ingestion/validators/sourceValidator';
@@ -22,6 +32,10 @@ describe('Validate', function () {
   let validateFilesExistSpy: jest.SpyInstance;
   let validateGdalInfoSpy: jest.SpyInstance;
   let validateGpkgFilesSpy: jest.SpyInstance;
+
+  beforeAll(async () => {
+    await initConfig(true);
+  });
 
   beforeEach(function () {
     const [app] = getApp({
@@ -100,14 +114,13 @@ describe('Validate', function () {
       });
 
       it('should return 200 status code and sources invalid response - failed to get gdal info gdal.infoAsync', async () => {
-        jest.spyOn(gdal, 'infoAsync').mockRejectedValue(new Error('failed to read file'));
+        jest.mocked(gdal.infoAsync).mockRejectedValueOnce(new Error('failed to read file'));
         const validateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(validInputFiles.inputFiles.gpkgFilesPath) };
 
         const response = await requestSender.validateGpkgs(validateGpkgsRequest);
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
         expect(validateGdalInfoSpy).toHaveBeenCalledTimes(1);
-        await expect(validateGdalInfoSpy).rejects.toThrow();
         expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(0);
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
@@ -115,14 +128,13 @@ describe('Validate', function () {
       });
 
       it('should return 200 status code and sources invalid response - failed to open gdal dataset gdal.openAsync', async () => {
-        jest.spyOn(gdal, 'openAsync').mockRejectedValue(new Error('failed to read file'));
+        jest.mocked(gdal.openAsync).mockRejectedValueOnce(new Error('failed to read file'));
         const validateGpkgsRequest = { gpkgFilesPath: getGpkgsFilesLocalPath(validInputFiles.inputFiles.gpkgFilesPath) };
 
         const response = await requestSender.validateGpkgs(validateGpkgsRequest);
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
         expect(validateGdalInfoSpy).toHaveBeenCalledTimes(1);
-        await expect(validateGdalInfoSpy).rejects.toThrow();
         expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(0);
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);

@@ -1,10 +1,10 @@
 import jsLogger from '@map-colonies/js-logger';
-import { IConfig } from 'config';
 import { trace } from '@opentelemetry/api';
 import { HttpClient } from '@map-colonies/mc-utils';
 import { faker } from '@faker-js/faker';
 import { randexp } from 'randexp';
 import { INGESTION_VALIDATIONS, RasterProductTypes } from '@map-colonies/raster-shared';
+import type { IConfig } from '../../../src/common/interfaces';
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
 import { CatalogClient } from '../../../src/serviceClients/catalogClient';
 

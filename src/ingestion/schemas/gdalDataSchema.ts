@@ -4,7 +4,6 @@ import { Geometry } from 'geojson';
 export const gdalInfoSchema = z
   .object({
     stac: z.object({
-      // eslint-disable-next-line @typescript-eslint/naming-convention
       'proj:epsg': z.number(),
     }),
     geoTransform: z.array(z.number()),
