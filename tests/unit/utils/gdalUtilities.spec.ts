@@ -105,6 +105,5 @@ describe('gdalUtilities', () => {
       const action = async () => gdalUtilities.getInfoData(filePath);
       await expect(action).rejects.toThrow(Error);
     });
-
   });
 });
