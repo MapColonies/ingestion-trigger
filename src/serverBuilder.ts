@@ -1,16 +1,17 @@
 import { getErrorHandlerMiddleware } from '@map-colonies/error-express-handler';
-import httpLogger from '@map-colonies/express-access-log-middleware';
-import { Logger } from '@map-colonies/js-logger';
+import { httpLogger } from '@map-colonies/express-access-log-middleware';
+import type { Logger } from '@map-colonies/js-logger';
 import { OpenapiRouterConfig, OpenapiViewerRouter } from '@map-colonies/openapi-express-viewer';
 import getStorageExplorerMiddleware from '@map-colonies/storage-explorer-middleware';
-import { collectMetricsExpressMiddleware, getTraceContexHeaderMiddleware } from '@map-colonies/telemetry';
+import { collectMetricsExpressMiddleware } from '@map-colonies/prometheus';
 import bodyParser from 'body-parser';
 import compression from 'compression';
 import express, { Router } from 'express';
 import { middleware as OpenApiMiddleware } from 'express-openapi-validator';
 import { inject, injectable } from 'tsyringe';
+import { Registry } from 'prom-client';
 import { SERVICES } from './common/constants';
-import { IConfig } from './common/interfaces';
+import type { IConfig } from './common/interfaces';
 import { INFO_ROUTER_SYMBOL } from './info/routes/infoRouter';
 import { INGESTION_ROUTER_SYMBOL } from './ingestion/routes/ingestionRouter';
 import { makeInsensitive } from './utils/stringCapitalizationPermutations';
@@ -23,6 +24,7 @@ export class ServerBuilder {
   public constructor(
     @inject(SERVICES.CONFIG) private readonly config: IConfig,
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
+    @inject(SERVICES.METRICS) private readonly metricsRegistry: Registry,
     @inject(VALIDATE_ROUTER_SYMBOL) private readonly validateRouter: Router,
     @inject(INGESTION_ROUTER_SYMBOL) private readonly ingestionRouter: Router,
     @inject(INFO_ROUTER_SYMBOL) private readonly infoRouter: Router
@@ -56,15 +58,14 @@ export class ServerBuilder {
   }
 
   private registerPreRoutesMiddleware(): void {
-    this.serverInstance.use(collectMetricsExpressMiddleware({}));
-    this.serverInstance.use(httpLogger({ logger: this.logger, ignorePaths: ['/metrics'] }));
+    this.serverInstance.use(collectMetricsExpressMiddleware({ registry: this.metricsRegistry }));
+    this.serverInstance.use(httpLogger({ logger: this.logger }));
 
     if (this.config.get<boolean>('server.response.compression.enabled')) {
       this.serverInstance.use(compression(this.config.get<compression.CompressionFilter>('server.response.compression.options')));
     }
 
     this.serverInstance.use(bodyParser.json(this.config.get<bodyParser.Options>('server.request.payload')));
-    this.serverInstance.use(getTraceContexHeaderMiddleware());
 
     const ignorePathRegex = new RegExp(`^${this.config.get<string>('openapiConfig.basePath')}|(explorer)/.*`, 'i');
     const apiSpecPath = this.config.get<string>('openapiConfig.filePath');

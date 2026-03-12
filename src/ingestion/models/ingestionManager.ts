@@ -1,11 +1,11 @@
 import { relative } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
-import { Logger } from '@map-colonies/js-logger';
+import type { Logger } from '@map-colonies/js-logger';
 import {
-  IFindJobsByCriteriaBody,
-  IJobResponse,
-  IUpdateTaskBody,
+  type IFindJobsByCriteriaBody,
+  type IJobResponse,
+  type IUpdateTaskBody,
   OperationStatus,
   type ICreateJobBody,
   type ITaskResponse,
@@ -25,10 +25,11 @@ import {
   type RasterProductTypes,
 } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
-import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
+import { SpanStatusCode, trace } from '@opentelemetry/api';
+import type { Tracer } from '@opentelemetry/api';
 import { container, inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { IConfig, ISupportedIngestionSwapTypes, LogContext } from '../../common/interfaces';
+import type { IConfig, ISupportedIngestionSwapTypes, LogContext } from '../../common/interfaces';
 import { InfoManager } from '../../info/models/infoManager';
 import { CatalogClient } from '../../serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
@@ -116,7 +117,7 @@ export class IngestionManager {
       inputFiles: {
         gpkgFilesPath: newLayer.inputFiles.gpkgFilesPath.map((gpkgFilePath, index) => {
           return {
-            absolute: absoluteInputFilesPath.inputFiles.gpkgFilesPath[index],
+            absolute: absoluteInputFilesPath.inputFiles.gpkgFilesPath[index]!,
             relative: gpkgFilePath,
           };
         }),
@@ -147,7 +148,7 @@ export class IngestionManager {
     });
     activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.newLayer.success', { triggerSuccess: true, jobId, taskId });
 
-    return { jobId, taskId };
+    return { jobId, taskId: taskId! };
   }
 
   @withSpanAsyncV4
@@ -164,7 +165,7 @@ export class IngestionManager {
       inputFiles: {
         gpkgFilesPath: updateLayer.inputFiles.gpkgFilesPath.map((gpkgFilePath, index) => {
           return {
-            absolute: absoluteInputFilesPath.inputFiles.gpkgFilesPath[index],
+            absolute: absoluteInputFilesPath.inputFiles.gpkgFilesPath[index]!,
             relative: gpkgFilePath,
           };
         }),
@@ -195,7 +196,7 @@ export class IngestionManager {
     });
     activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId });
 
-    return { jobId, taskId };
+    return { jobId, taskId: taskId! };
   }
 
   @withSpanAsyncV4
@@ -554,7 +555,7 @@ export class IngestionManager {
       throw error;
     }
 
-    return rasterLayersCatalog[0].metadata;
+    return rasterLayersCatalog[0]!.metadata;
   }
 
   @withSpanAsyncV4
@@ -660,7 +661,6 @@ export class IngestionManager {
     this.logger.debug({ msg: `calculating checksum for: ${filePath}`, logContext: logCtx });
 
     try {
-      // eslint-disable-next-line @typescript-eslint/await-thenable
       const checksum = container.resolve(Checksum);
       return await checksum.calculate(filePath);
     } catch (err) {

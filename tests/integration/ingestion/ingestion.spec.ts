@@ -8,6 +8,7 @@ import { matches, merge, set, unset } from 'lodash';
 import nock from 'nock';
 import { randexp } from 'randexp';
 import { getApp } from '../../../src/app';
+import { initConfig } from '../../../src/common/config';
 import { type ResponseId } from '../../../src/ingestion/interfaces';
 import type { IngestionNewLayer } from '../../../src/ingestion/schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../../../src/ingestion/schemas/updateLayerSchema';
@@ -38,6 +39,10 @@ describe('Ingestion', () => {
   let polygonPartsManagerURL: string;
   let jobResponse: ICreateJobResponse;
   let requestSender: IngestionRequestSender;
+
+  beforeAll(async () => {
+    await initConfig(true);
+  });
 
   beforeEach(() => {
     const [app] = getApp({
@@ -92,7 +97,7 @@ describe('Ingestion', () => {
           .reply(httpStatusCodes.NOT_FOUND);
         const expectedResponseBody: ResponseId = {
           jobId: jobResponse.id,
-          taskId: jobResponse.taskIds[0],
+          taskId: jobResponse.taskIds[0]!,
         };
 
         const response = await requestSender.ingestNewLayer(layerRequest);
@@ -132,7 +137,7 @@ describe('Ingestion', () => {
           .reply(httpStatusCodes.NOT_FOUND);
         const expectedResponseBody: ResponseId = {
           jobId: jobResponse.id,
-          taskId: jobResponse.taskIds[0],
+          taskId: jobResponse.taskIds[0]!,
         };
 
         const response = await requestSender.ingestNewLayer(layerRequest);
@@ -792,7 +797,7 @@ describe('Ingestion', () => {
           .reply(httpStatusCodes.OK);
         const expectedResponseBody: ResponseId = {
           jobId: jobResponse.id,
-          taskId: jobResponse.taskIds[0],
+          taskId: jobResponse.taskIds[0]!,
         };
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
@@ -830,7 +835,7 @@ describe('Ingestion', () => {
           .reply(httpStatusCodes.OK);
         const expectedResponseBody: ResponseId = {
           jobId: jobResponse.id,
-          taskId: jobResponse.taskIds[0],
+          taskId: jobResponse.taskIds[0]!,
         };
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
@@ -870,7 +875,7 @@ describe('Ingestion', () => {
           .reply(httpStatusCodes.OK);
         const expectedResponseBody: ResponseId = {
           jobId: jobResponse.id,
-          taskId: jobResponse.taskIds[0],
+          taskId: jobResponse.taskIds[0]!,
         };
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
@@ -912,7 +917,7 @@ describe('Ingestion', () => {
           .reply(httpStatusCodes.OK);
         const expectedResponseBody: ResponseId = {
           jobId: jobResponse.id,
-          taskId: jobResponse.taskIds[0],
+          taskId: jobResponse.taskIds[0]!,
         };
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
@@ -1671,7 +1676,7 @@ describe('Ingestion', () => {
         nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
         nock(jobManagerURL).patch(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.OK);
         nock(jobManagerURL).patch(`/jobs/${jobId}`).reply(httpStatusCodes.OK);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+
         nock(jobManagerURL)
           // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
           .put(`/jobs/${jobId}/tasks/${taskId}`, requestBodyForTaskRessting as any)

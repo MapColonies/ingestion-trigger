@@ -1,7 +1,7 @@
 import config from 'config';
 import get from 'lodash.get';
 import has from 'lodash.has';
-import { IConfig } from '../../src/common/interfaces';
+import type { IConfig } from '../../src/common/interfaces';
 
 let mockConfig: Record<string, unknown> = {};
 const getMock = jest.fn();

@@ -1,11 +1,12 @@
 import { constants as fsConstants, promises as fsPromises } from 'node:fs';
 import { basename, dirname } from 'node:path';
-import { Logger } from '@map-colonies/js-logger';
+import type { Logger } from '@map-colonies/js-logger';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
-import { trace, Tracer } from '@opentelemetry/api';
+import { trace } from '@opentelemetry/api';
+import type { Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { IConfig } from '../../common/interfaces';
+import type { IConfig } from '../../common/interfaces';
 import { GdalInfoManager } from '../../info/models/gdalInfoManager';
 import { LogContext } from '../../common/interfaces';
 import { FileNotFoundError } from '../errors/ingestionErrors';

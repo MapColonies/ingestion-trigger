@@ -2,11 +2,17 @@ import jsLogger from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import httpStatusCodes from 'http-status-codes';
 import { getApp } from '../../../src/app';
+import { initConfig } from '../../../src/common/config';
 import { SERVICES } from '../../../src/common/constants';
 import { DocsRequestSender } from './helpers/docsRequestSender';
 
 describe('docs', function () {
   let requestSender: DocsRequestSender;
+
+  beforeAll(async () => {
+    await initConfig(true);
+  });
+
   beforeEach(function () {
     const [app] = getApp({
       override: [

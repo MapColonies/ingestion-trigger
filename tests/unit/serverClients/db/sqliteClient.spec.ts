@@ -25,7 +25,7 @@ describe('SQLClient', () => {
     getDbSpy = jest.spyOn(SQLiteClient.prototype, 'getDB');
     mockDB = { close: jest.fn } as unknown as SQLiteDB;
 
-    sqlClient = new SQLiteClient(jsLogger({ enabled: false }), trace.getTracer('testTracer'), rasterLayerInputFilesGenerators.gpkgFilesPath()[0]);
+    sqlClient = new SQLiteClient(jsLogger({ enabled: false }), trace.getTracer('testTracer'), rasterLayerInputFilesGenerators.gpkgFilesPath()[0]!);
   });
 
   describe('getGrid', () => {

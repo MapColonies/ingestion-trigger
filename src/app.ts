@@ -1,5 +1,5 @@
-import { Application } from 'express';
-import { DependencyContainer } from 'tsyringe';
+import type { Application } from 'express';
+import type { DependencyContainer } from 'tsyringe';
 import { registerExternalValues, RegisterOptions } from './containerConfig';
 import { ServerBuilder } from './serverBuilder';
 

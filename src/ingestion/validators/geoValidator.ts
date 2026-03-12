@@ -1,15 +1,16 @@
-import { Logger } from '@map-colonies/js-logger';
+import type { Logger } from '@map-colonies/js-logger';
 import { withSpanV4 } from '@map-colonies/telemetry';
-import { Tracer, trace } from '@opentelemetry/api';
+import { trace } from '@opentelemetry/api';
+import type { Tracer } from '@opentelemetry/api';
 import booleanContains from '@turf/boolean-contains';
-import { IConfig } from 'config';
-import { Geometry, Polygon } from 'geojson';
+import type { Geometry, Polygon } from 'geojson';
 import { inject, injectable } from 'tsyringe';
+import type { IConfig } from '../../common/interfaces';
 import { SERVICES } from '../../common/constants';
 import { LogContext } from '../../common/interfaces';
 import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';
 import { UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
-import { InfoDataWithFile } from '../schemas/infoDataSchema';
+import type { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { ProductFeatureGeometry } from '../schemas/productFeatureSchema';
 
 @injectable()
