@@ -17,7 +17,7 @@ describe('GdalInfoManager', () => {
 
   beforeAll(async () => {
     await initConfig(true);
-  }); 
+  });
 
   beforeEach(() => {
     registerDefaultConfig();
