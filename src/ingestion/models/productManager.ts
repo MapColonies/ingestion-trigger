@@ -1,5 +1,5 @@
 import { Logger } from '@map-colonies/js-logger';
-import { ChunkProcessor, ReaderOptions, ShapefileChunk, ShapefileChunkReader } from '@map-colonies/mc-utils';
+import { ChunkProcessor, ReaderOptions, ShapefileChunk, ShapefileChunkReader } from '@map-colonies/shapefile-reader';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { trace, Tracer } from '@opentelemetry/api';
 import { Feature } from 'geojson';
