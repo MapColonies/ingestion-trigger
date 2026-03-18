@@ -1,10 +1,7 @@
 {{- $chartName := include "ingestion-trigger.name" . -}}
 {{- $configmapName := include "configmap.fullname" . }}
-{{- $tracingUrl := include "ingestion-trigger.tracingUrl" . -}}
-{{- $metricsUrl := include "ingestion-trigger.metricsUrl" . -}}
-{{- $tracingEnabled := include "ingestion-trigger.tracingEnabled" . -}}
-{{- $metricsEnabled := include "ingestion-trigger.metricsEnabled" . -}}
-{{- $metricsBuckets := include "ingestion-trigger.metricsBuckets" . -}}
+{{- $tracing := (include "common.tracing.merged" .) | fromYaml }}
+{{- $metrics := (include "common.metrics.merged" .) | fromYaml }}
 {{- $serviceUrls := (include "common.serviceUrls.merged" .) | fromYaml }}
 {{- $jobDefinitions := (include "common.jobDefinitions.merged" .) | fromYaml }}
 {{- $storage := (include "common.storage.merged" .) | fromYaml }}
@@ -46,14 +43,14 @@ data:
   TILE_SIZE: {{ .Values.env.validationValuesByInfo.tileSize | quote}}
   RESOLUTION_FIXED_POINT_TOLERANCE: {{ .Values.env.validationValuesByInfo.resolutionFixedPointTolerance | quote }}
   EXTENT_BUFFER_IN_METERS: {{ .Values.env.validationValuesByInfo.extentBufferInMeters | quote }}
-  TELEMETRY_TRACING_ENABLED: {{ $tracingEnabled | quote }}
-  {{ if $tracingEnabled }}
-  TELEMETRY_TRACING_URL: {{ $tracingUrl }}
+  TELEMETRY_TRACING_ENABLED: {{ $tracing.enabled | quote }}
+  {{ if $tracing.enabled }}
+  TELEMETRY_TRACING_URL: {{ $tracing.url }}
   {{ end }}
-  TELEMETRY_METRICS_ENABLED: {{ $metricsEnabled | quote }}
-  {{ if $metricsEnabled }}
-  TELEMETRY_METRICS_URL: {{ $metricsUrl }}
-  TELEMETRY_METRICS_BUCKETS: {{ $metricsBuckets | toJson | quote }}
+  TELEMETRY_METRICS_ENABLED: {{ $metrics.enabled | quote }}
+  {{ if $metrics.enabled }}
+  TELEMETRY_METRICS_URL: {{ $metrics.url }}
+  TELEMETRY_METRICS_BUCKETS: {{ $metrics.buckets | toJson | quote }}
   {{ end }}
   npm_config_cache: /tmp/
 {{- end }}
