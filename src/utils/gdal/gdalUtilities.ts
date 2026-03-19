@@ -1,15 +1,13 @@
 import { inject, injectable } from 'tsyringe';
 import type { Logger } from '@map-colonies/js-logger';
 import * as gdal from 'gdal-async';
-import { trace } from '@opentelemetry/api';
-import type { Tracer } from '@opentelemetry/api';
+import { trace, type Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../../common/constants';
 import { InfoData } from '../../ingestion/schemas/infoDataSchema';
 import { GdalInfo } from '../../ingestion/schemas/gdalDataSchema';
 import { LogContext } from '../../common/interfaces';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL } from '../validation/schemasValidator';
-import type { SchemasValidator } from '../validation/schemasValidator';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, type SchemasValidator } from '../validation/schemasValidator';
 import { GdalInfoError } from '../../ingestion/errors/ingestionErrors';
 
 @injectable()

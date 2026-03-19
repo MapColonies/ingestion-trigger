@@ -1,8 +1,7 @@
 import type { RequestHandler } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL } from '../../utils/validation/schemasValidator';
-import type { SchemasValidator } from '../../utils/validation/schemasValidator';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, type SchemasValidator } from '../../utils/validation/schemasValidator';
 import type { ValidateGpkgsResponse } from '../interfaces';
 import { ValidateManager } from '../models/validateManager';
 

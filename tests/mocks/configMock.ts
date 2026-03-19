@@ -1,20 +1,22 @@
 import config from 'config';
 import get from 'lodash.get';
 import has from 'lodash.has';
-import type { IConfig } from '../../src/common/interfaces';
+import type { ConfigType } from '../../src/common/config';
 
 let mockConfig: Record<string, unknown> = {};
 const getMock = jest.fn();
 const hasMock = jest.fn();
 
-const configMock: IConfig = {
+const configMock = {
   get: getMock,
   has: hasMock,
-};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as unknown as { get: <T = any>(key: string) => T; has: (key: string) => boolean } & ConfigType;
 
 const init = (): void => {
   getMock.mockImplementation((key: string): unknown => {
-    return mockConfig[key] ?? config.get(key);
+     
+    return mockConfig[key] ?? (config.get(key));
   });
 };
 
@@ -32,10 +34,15 @@ const clear = (): void => {
 
 const setConfigValues = (values: Record<string, unknown>): void => {
   getMock.mockImplementation((key: string) => {
-    const value: unknown = (get as (object: Record<string, unknown>, path: string) => unknown)(values, key) ?? config.get(key);
+     
+    const value: unknown = (get as (object: Record<string, unknown>, path: string) => unknown)(values, key) ?? (config.get(key));
     return value;
   });
-  hasMock.mockImplementation((key: string) => (has as (object: Record<string, unknown>, path: string) => boolean)(values, key) || config.has(key));
+  hasMock.mockImplementation(
+    (key: string) =>
+       
+      (has as (object: Record<string, unknown>, path: string) => boolean)(values, key) || (config.has(key))
+  );
 };
 
 const registerDefaultConfig = (): void => {

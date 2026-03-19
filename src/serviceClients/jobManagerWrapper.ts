@@ -1,6 +1,5 @@
 import type { Logger } from '@map-colonies/js-logger';
-import { JobManagerClient } from '@map-colonies/mc-priority-queue';
-import type { ICreateJobBody, ICreateJobResponse } from '@map-colonies/mc-priority-queue';
+import { JobManagerClient, type ICreateJobBody, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { IHttpRetryConfig } from '@map-colonies/mc-utils';
 import type {
   IngestionNewJobParams,
@@ -9,25 +8,24 @@ import type {
   IngestionValidationTaskParams,
 } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
-import { trace } from '@opentelemetry/api';
-import type { Tracer } from '@opentelemetry/api';
+import { trace, type Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
-import type { IConfig } from '../common/interfaces';
+import type { ConfigType } from '../common/config';
 
 @injectable()
 export class JobManagerWrapper extends JobManagerClient {
   public constructor(
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.LOGGER) protected override readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer
   ) {
     super(
       logger,
-      config.get<string>('services.jobManagerURL'),
-      config.get<IHttpRetryConfig>('httpRetry'),
+      config.get('services.jobManagerURL') as unknown as string,
+      config.get('httpRetry') as IHttpRetryConfig,
       'jobManagerClient',
-      config.get<boolean>('disableHttpClientLogs')
+      config.get('disableHttpClientLogs') as boolean
     );
   }
 

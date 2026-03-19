@@ -1,6 +1,5 @@
 import type { Logger } from '@map-colonies/js-logger';
-import { context, SpanKind, trace } from '@opentelemetry/api';
-import type { Tracer } from '@opentelemetry/api';
+import { context, SpanKind, trace, type Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import { createSpanMetadata } from '../../common/tracing';

@@ -62,7 +62,7 @@ export class Checksum {
         } catch (err) {
           this.logger.error({ msg: 'error processing checksum for a chunk', err, logContext: logCtx });
           stream.destroy();
-          reject(err);
+          reject(err instanceof Error ? err : new Error(String(err)));
         }
       });
       stream.on('end', () => {
@@ -74,7 +74,7 @@ export class Checksum {
         } catch (err) {
           this.logger.error({ msg: 'error processing checksum result', err, logContext: logCtx });
           stream.destroy();
-          reject(err);
+          reject(err instanceof Error ? err : new Error(String(err)));
         }
       });
       stream.on('error', (err) => {

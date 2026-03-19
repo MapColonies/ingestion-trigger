@@ -3,7 +3,7 @@ import type { Logger } from '@map-colonies/js-logger';
 import type { Tracer } from '@opentelemetry/api';
 import { withSpanV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../../common/constants';
-import type { IConfig } from '../../common/interfaces';
+import type { ConfigType } from '../../common/config';
 import { SQLiteClient } from '../../serviceClients/database/SQLiteClient';
 import { InvalidIndexError, UnsupportedGridError, UnsupportedTileSizeError } from '../../serviceClients/database/errors';
 import { LogContext } from '../../common/interfaces';
@@ -14,7 +14,7 @@ export class GpkgManager {
   private readonly logContext: LogContext;
   private readonly validTileSize: number;
   public constructor(
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer
   ) {
@@ -22,7 +22,7 @@ export class GpkgManager {
       fileName: __filename,
       class: GpkgManager.name,
     };
-    this.validTileSize = this.config.get<number>('validationValuesByInfo.tileSize');
+    this.validTileSize = this.config.get('validationValuesByInfo.tileSize') as unknown as number;
   }
 
   @withSpanV4

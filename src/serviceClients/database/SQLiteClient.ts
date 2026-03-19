@@ -1,13 +1,11 @@
 import type { Logger } from '@map-colonies/js-logger';
 import { withSpanV4 } from '@map-colonies/telemetry';
-import { SpanStatusCode, trace } from '@opentelemetry/api';
-import type { Tracer } from '@opentelemetry/api';
-import Database, { SqliteError } from 'better-sqlite3';
+import { SpanStatusCode, trace, type Tracer } from '@opentelemetry/api';
+import betterSqlite3, { SqliteError } from 'better-sqlite3';
 import type { Database as SQLiteDB } from 'better-sqlite3';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { Grid, matrixRatioToGrid } from '../../ingestion/interfaces';
-import type { IMatrixValues, TileSize } from '../../ingestion/interfaces';
+import { Grid, matrixRatioToGrid, type IMatrixValues, type TileSize } from '../../ingestion/interfaces';
 import { LogContext } from '../../common/interfaces';
 import { GpkgError } from './errors';
 
@@ -31,7 +29,7 @@ export class SQLiteClient {
   @withSpanV4
   public getDB(fileMustExistFlag: boolean): SQLiteDB {
     try {
-      return new Database(this.fullPath, { fileMustExist: fileMustExistFlag });
+      return new betterSqlite3(this.fullPath, { fileMustExist: fileMustExistFlag });
     } catch (err) {
       const message = `Failed to open database file: ${this.fullPath} with SQLiteDB`;
       const logCtx = { ...this.logContext, function: this.getDB.name };

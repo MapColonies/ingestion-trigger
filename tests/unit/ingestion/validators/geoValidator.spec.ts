@@ -2,7 +2,6 @@ import jsLogger from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import booleanContains from '@turf/boolean-contains';
 import * as turfBuffer from '@turf/buffer';
-import type { IConfig } from '../../../../src/common/interfaces';
 import { UnsupportedEntityError, ValidationError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { InfoDataWithFile } from '../../../../src/ingestion/schemas/infoDataSchema';
 import { GeoValidator } from '../../../../src/ingestion/validators/geoValidator';
@@ -22,7 +21,7 @@ describe('GeoValidator', () => {
 
   beforeEach(() => {
     registerDefaultConfig();
-    geoValidator = new GeoValidator(jsLogger({ enabled: false }), configMock as unknown as IConfig, trace.getTracer('testTracer'));
+    geoValidator = new GeoValidator(jsLogger({ enabled: false }), configMock, trace.getTracer('testTracer'));
     booleanContainsMock = booleanContains as jest.Mock;
     bufferSpy = jest.spyOn(turfBuffer, 'buffer');
   });

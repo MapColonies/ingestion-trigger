@@ -4,7 +4,6 @@ import { HttpClient } from '@map-colonies/mc-utils';
 import { faker } from '@faker-js/faker';
 import { randexp } from 'randexp';
 import { INGESTION_VALIDATIONS, RasterProductTypes } from '@map-colonies/raster-shared';
-import type { IConfig } from '../../../src/common/interfaces';
 import { configMock, registerDefaultConfig, clear as clearConfig } from '../../mocks/configMock';
 import { CatalogClient } from '../../../src/serviceClients/catalogClient';
 
@@ -17,7 +16,7 @@ describe('CatalogClient', () => {
   beforeEach(() => {
     registerDefaultConfig();
 
-    catalogClient = new CatalogClient(configMock as unknown as IConfig, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
+    catalogClient = new CatalogClient(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
     postSpy = jest.spyOn(HttpClient.prototype as unknown as { post: jest.Mock }, 'post');
   });
 

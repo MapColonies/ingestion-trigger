@@ -2,25 +2,24 @@ import type { Logger } from '@map-colonies/js-logger';
 import { NotFoundError } from '@map-colonies/error-types';
 import { HttpClient, IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { inject, injectable } from 'tsyringe';
-import { trace } from '@opentelemetry/api';
-import type { Tracer } from '@opentelemetry/api';
+import { trace, type Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
-import type { IConfig } from '../common/interfaces';
+import type { ConfigType } from '../common/config';
 import { SERVICES } from '../common/constants';
 
 @injectable()
 export class MapProxyClient extends HttpClient {
   public constructor(
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.LOGGER) protected override readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer
   ) {
     super(
       logger,
-      config.get<string>('services.mapProxyApiServiceUrl'),
+      config.get('services.mapProxyApiServiceUrl') as unknown as string,
       'LayerPublisher',
-      config.get<IHttpRetryConfig>('httpRetry'),
-      config.get<boolean>('disableHttpClientLogs')
+      config.get('httpRetry') as IHttpRetryConfig,
+      config.get('disableHttpClientLogs') as boolean
     );
   }
 

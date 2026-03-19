@@ -45,7 +45,7 @@ describe('SourceValidator', () => {
     });
 
     it('should throw NotFoundError when a file does not exist', async () => {
-      fspAccessSpy.mockImplementation(async () => Promise.reject());
+      fspAccessSpy.mockImplementation(async () => Promise.reject(new Error('file not found')));
       const { gpkgFilesPath } = generateInputFiles();
 
       const promise = sourceValidator.validateFilesExist(gpkgFilesPath);

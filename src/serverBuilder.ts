@@ -11,7 +11,7 @@ import { middleware as OpenApiMiddleware } from 'express-openapi-validator';
 import { inject, injectable } from 'tsyringe';
 import { Registry } from 'prom-client';
 import { SERVICES } from './common/constants';
-import type { IConfig } from './common/interfaces';
+import type { ConfigType } from './common/config';
 import { INFO_ROUTER_SYMBOL } from './info/routes/infoRouter';
 import { INGESTION_ROUTER_SYMBOL } from './ingestion/routes/ingestionRouter';
 import { makeInsensitive } from './utils/stringCapitalizationPermutations';
@@ -22,7 +22,7 @@ export class ServerBuilder {
   private readonly serverInstance: express.Application;
 
   public constructor(
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.METRICS) private readonly metricsRegistry: Registry,
     @inject(VALIDATE_ROUTER_SYMBOL) private readonly validateRouter: Router,
@@ -42,11 +42,11 @@ export class ServerBuilder {
 
   private buildDocsRoutes(): void {
     const openapiRouter = new OpenapiViewerRouter({
-      ...this.config.get<OpenapiRouterConfig>('openapiConfig'),
-      filePathOrSpec: this.config.get<string>('openapiConfig.filePath'),
+      ...(this.config.get('openapiConfig') as unknown as OpenapiRouterConfig),
+      filePathOrSpec: this.config.get('openapiConfig.filePath'),
     });
     openapiRouter.setup();
-    this.serverInstance.use(this.config.get<string>('openapiConfig.basePath'), openapiRouter.getRouter());
+    this.serverInstance.use(this.config.get('openapiConfig.basePath'), openapiRouter.getRouter());
   }
 
   private buildRoutes(): void {
@@ -61,14 +61,14 @@ export class ServerBuilder {
     this.serverInstance.use(collectMetricsExpressMiddleware({ registry: this.metricsRegistry }));
     this.serverInstance.use(httpLogger({ logger: this.logger }));
 
-    if (this.config.get<boolean>('server.response.compression.enabled')) {
-      this.serverInstance.use(compression(this.config.get<compression.CompressionFilter>('server.response.compression.options')));
+    if (this.config.get('server.response.compression.enabled')) {
+      this.serverInstance.use(compression(this.config.get('server.response.compression.options') as unknown as compression.CompressionFilter));
     }
 
-    this.serverInstance.use(bodyParser.json(this.config.get<bodyParser.Options>('server.request.payload')));
+    this.serverInstance.use(bodyParser.json(this.config.get('server.request.payload') as unknown as bodyParser.Options));
 
-    const ignorePathRegex = new RegExp(`^${this.config.get<string>('openapiConfig.basePath')}|(explorer)/.*`, 'i');
-    const apiSpecPath = this.config.get<string>('openapiConfig.filePath');
+    const ignorePathRegex = new RegExp(`^${this.config.get('openapiConfig.basePath')}|(explorer)/.*`, 'i');
+    const apiSpecPath = this.config.get('openapiConfig.filePath');
     this.serverInstance.use(OpenApiMiddleware({ apiSpec: apiSpecPath, validateRequests: true, ignorePaths: ignorePathRegex }));
     this.filePickerHandlerMiddleware();
   }
@@ -78,8 +78,8 @@ export class ServerBuilder {
   }
 
   private filePickerHandlerMiddleware(): void {
-    const physicalDirPath = this.config.get<string>('storageExplorer.layerSourceDir');
-    const displayNameDir = this.config.get<string>('storageExplorer.displayNameDir');
+    const physicalDirPath = this.config.get('storageExplorer.layerSourceDir') as unknown as string;
+    const displayNameDir = this.config.get('storageExplorer.displayNameDir') as unknown as string;
     const mountDirs = [
       {
         physical: physicalDirPath,
@@ -91,7 +91,7 @@ export class ServerBuilder {
   }
 
   private getFileExtensions(): string[] {
-    const rawExtensions = this.config.get<string[]>('storageExplorer.validFileExtensions');
+    const rawExtensions = this.config.get('storageExplorer.validFileExtensions') as unknown as string[];
     const extensions = rawExtensions.map((ext) => ext.trim());
     return makeInsensitive(...extensions);
   }

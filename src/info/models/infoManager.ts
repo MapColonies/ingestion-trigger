@@ -1,10 +1,9 @@
 import type { Logger } from '@map-colonies/js-logger';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
-import { SpanStatusCode, trace } from '@opentelemetry/api';
-import type { Tracer } from '@opentelemetry/api';
+import { SpanStatusCode, trace, type Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import type { IConfig } from '../../common/interfaces';
+import type { ConfigType } from '../../common/config';
 import { LogContext } from '../../common/interfaces';
 import type { InfoDataWithFile } from '../../ingestion/schemas/infoDataSchema';
 import { SourceValidator } from '../../ingestion/validators/sourceValidator';
@@ -19,7 +18,7 @@ export class InfoManager {
 
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     private readonly sourceValidator: SourceValidator,
     private readonly gdalInfoManager: GdalInfoManager
@@ -28,7 +27,7 @@ export class InfoManager {
       fileName: __filename,
       class: InfoManager.name,
     };
-    this.sourceMount = config.get<string>('storageExplorer.layerSourceDir');
+    this.sourceMount = config.get('storageExplorer.layerSourceDir') as unknown as string;
   }
 
   @withSpanAsyncV4

@@ -4,12 +4,12 @@ import { createServer } from 'http';
 import { createTerminus } from '@godaddy/terminus';
 import type { Logger } from '@map-colonies/js-logger';
 import { container } from 'tsyringe';
-import config from 'config';
-import { DEFAULT_SERVER_PORT, SERVICES } from './common/constants';
-
+import { SERVICES } from './common/constants';
+import { getConfig } from './common/config';
 import { getApp } from './app';
 
-const port: number = config.get<number>('server.port') || DEFAULT_SERVER_PORT;
+const config = getConfig();
+const port: number = config.get('server.port');
 
 const [app] = getApp();
 

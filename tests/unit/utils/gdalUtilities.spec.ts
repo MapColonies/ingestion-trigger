@@ -1,6 +1,11 @@
 import jsLogger from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
-import * as gdal from 'gdal-async';
+import { getApp } from '../../../src/app';
+import { initConfig } from '../../../src/common/config';
+import { InfoData } from '../../../src/ingestion/schemas/infoDataSchema';
+import { GdalUtilities } from '../../../src/utils/gdal/gdalUtilities';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../src/utils/validation/schemasValidator';
+import { registerDefaultConfig } from '../../mocks/configMock';
 
 jest.mock('gdal-async', () => {
   const actualModule = jest.requireActual<Record<string, unknown>>('gdal-async');
@@ -10,13 +15,6 @@ jest.mock('gdal-async', () => {
     openAsync: jest.fn().mockImplementation(actualModule['openAsync'] as (...args: unknown[]) => unknown),
   };
 });
-
-import { getApp } from '../../../src/app';
-import { initConfig } from '../../../src/common/config';
-import { InfoData } from '../../../src/ingestion/schemas/infoDataSchema';
-import { GdalUtilities } from '../../../src/utils/gdal/gdalUtilities';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../src/utils/validation/schemasValidator';
-import { registerDefaultConfig } from '../../mocks/configMock';
 
 let gdalUtilities: GdalUtilities;
 

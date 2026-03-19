@@ -1,15 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { SqliteError } from 'better-sqlite3';
 import * as gdal from 'gdal-async';
-
-jest.mock('gdal-async', () => {
-  const actualModule = jest.requireActual<Record<string, unknown>>('gdal-async');
-  return {
-    ...actualModule,
-    infoAsync: jest.fn().mockImplementation(actualModule['infoAsync'] as (...args: unknown[]) => unknown),
-    openAsync: jest.fn().mockImplementation(actualModule['openAsync'] as (...args: unknown[]) => unknown),
-  };
-});
 import httpStatusCodes from 'http-status-codes';
 import { unset } from 'lodash';
 import nock from 'nock';
@@ -26,6 +17,15 @@ import { validInputFiles } from '../../mocks/static/exampleData';
 import type { DeepPartial, DeepRequired, FlattenKeyTupleUnion } from '../../utils/types';
 import { getTestContainerConfig, resetContainer } from './helpers/containerConfig';
 import { ValidateRequestSender } from './helpers/validateRequestSender';
+
+jest.mock('gdal-async', () => {
+  const actualModule = jest.requireActual<Record<string, unknown>>('gdal-async');
+  return {
+    ...actualModule,
+    infoAsync: jest.fn().mockImplementation(actualModule['infoAsync'] as (...args: unknown[]) => unknown),
+    openAsync: jest.fn().mockImplementation(actualModule['openAsync'] as (...args: unknown[]) => unknown),
+  };
+});
 
 describe('Validate', function () {
   let requestSender: ValidateRequestSender;

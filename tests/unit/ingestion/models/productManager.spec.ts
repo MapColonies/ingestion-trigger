@@ -3,12 +3,11 @@ import { BadRequestError } from '@map-colonies/error-types';
 import jsLogger from '@map-colonies/js-logger';
 import { ShapefileChunkReader } from '@map-colonies/mc-utils';
 import { trace } from '@opentelemetry/api';
-import config from 'config';
 import type { Feature, MultiPolygon, Point, Polygon } from 'geojson';
 import { UnsupportedEntityError, ValidationError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { ProductManager } from '../../../../src/ingestion/models/productManager';
 import type { SchemasValidator } from '../../../../src/utils/validation/schemasValidator';
-import { registerDefaultConfig } from '../../../mocks/configMock';
+import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { generateInputFiles } from '../../../mocks/mockFactory';
 
 describe('ProductManager', () => {
@@ -19,7 +18,7 @@ describe('ProductManager', () => {
 
   beforeEach(() => {
     productManager = new ProductManager(
-      config,
+      configMock,
       jsLogger({ enabled: false }),
       trace.getTracer('testTracer'),
       mockSchemaValidator as unknown as SchemasValidator

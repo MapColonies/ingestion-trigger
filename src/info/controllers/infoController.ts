@@ -2,8 +2,7 @@ import type { RequestHandler } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { inject, injectable } from 'tsyringe';
 import { InfoData } from '../../ingestion/schemas/infoDataSchema';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL } from '../../utils/validation/schemasValidator';
-import type { GpkgInputFiles, SchemasValidator } from '../../utils/validation/schemasValidator';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, type GpkgInputFiles, type SchemasValidator } from '../../utils/validation/schemasValidator';
 import { InfoManager } from '../models/infoManager';
 
 type SourcesInfoHandler = RequestHandler<undefined, InfoData[], unknown>;

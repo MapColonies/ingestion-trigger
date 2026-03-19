@@ -76,8 +76,6 @@ tracing:
 
 metrics:
   enabled: false
-  url: ''
-  buckets: []
 
 configManagement:
   offlineMode: false

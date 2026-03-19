@@ -1,11 +1,10 @@
 import type { Logger } from '@map-colonies/js-logger';
 import { withSpanV4 } from '@map-colonies/telemetry';
-import { trace } from '@opentelemetry/api';
-import type { Tracer } from '@opentelemetry/api';
+import { trace, type Tracer } from '@opentelemetry/api';
 import booleanContains from '@turf/boolean-contains';
 import type { Geometry, Polygon } from 'geojson';
 import { inject, injectable } from 'tsyringe';
-import type { IConfig } from '../../common/interfaces';
+import type { ConfigType } from '../../common/config';
 import { SERVICES } from '../../common/constants';
 import { LogContext } from '../../common/interfaces';
 import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';
@@ -19,14 +18,14 @@ export class GeoValidator {
   private readonly extentBufferInMeters: number;
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer
   ) {
     this.logContext = {
       fileName: __filename,
       class: GeoValidator.name,
     };
-    this.extentBufferInMeters = this.config.get<number>('validationValuesByInfo.extentBufferInMeters');
+    this.extentBufferInMeters = this.config.get('validationValuesByInfo.extentBufferInMeters') as unknown as number;
   }
 
   @withSpanV4

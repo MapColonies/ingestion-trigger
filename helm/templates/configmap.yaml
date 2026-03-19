@@ -48,10 +48,10 @@ data:
   TELEMETRY_TRACING_URL: {{ $tracing.url }}
   {{ end }}
   TELEMETRY_METRICS_ENABLED: {{ $metrics.enabled | quote }}
-  {{ if $metrics.enabled }}
-  TELEMETRY_METRICS_URL: {{ $metrics.url }}
-  TELEMETRY_METRICS_BUCKETS: {{ $metrics.buckets | toJson | quote }}
-  {{ end }}
+  CONFIG_SERVER_URL: {{ .Values.configManagement.serverUrl | quote }}
+  CONFIG_NAME: {{ .Values.configManagement.name | quote }}
+  CONFIG_VERSION: {{ .Values.configManagement.version | quote }}
+  OFFLINE_MODE: {{ .Values.configManagement.offlineMode | quote }}
   npm_config_cache: /tmp/
 {{- end }}
 # TODO: check if values should be clean up
