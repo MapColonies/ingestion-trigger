@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { BadRequestError } from '@map-colonies/error-types';
 import jsLogger from '@map-colonies/js-logger';
-import { ShapefileChunkReader } from '@map-colonies/mc-utils';
+import { ShapefileChunkReader } from '@map-colonies/shapefile-reader';
 import { trace } from '@opentelemetry/api';
 import type { Feature, MultiPolygon, Point, Polygon } from 'geojson';
 import { UnsupportedEntityError, ValidationError } from '../../../../src/ingestion/errors/ingestionErrors';
