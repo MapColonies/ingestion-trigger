@@ -15,8 +15,7 @@ const configMock = {
 
 const init = (): void => {
   getMock.mockImplementation((key: string): unknown => {
-     
-    return mockConfig[key] ?? (config.get(key));
+    return mockConfig[key] ?? config.get(key);
   });
 };
 
@@ -34,15 +33,10 @@ const clear = (): void => {
 
 const setConfigValues = (values: Record<string, unknown>): void => {
   getMock.mockImplementation((key: string) => {
-     
-    const value: unknown = (get as (object: Record<string, unknown>, path: string) => unknown)(values, key) ?? (config.get(key));
+    const value: unknown = (get as (object: Record<string, unknown>, path: string) => unknown)(values, key) ?? config.get(key);
     return value;
   });
-  hasMock.mockImplementation(
-    (key: string) =>
-       
-      (has as (object: Record<string, unknown>, path: string) => boolean)(values, key) || (config.has(key))
-  );
+  hasMock.mockImplementation((key: string) => (has as (object: Record<string, unknown>, path: string) => boolean)(values, key) || config.has(key));
 };
 
 const registerDefaultConfig = (): void => {
