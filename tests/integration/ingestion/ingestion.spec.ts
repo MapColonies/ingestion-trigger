@@ -1688,6 +1688,51 @@ describe('Ingestion', () => {
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
       });
+
+      it('should return 200 status code when polygon parts manager returns 404 (entity already cleaned up)', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.FAILED });
+        // Simulate old state with fewer checksums (3 items) - new files were added
+        const oldChecksums = validInputFiles.checksums.slice(0, 3);
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: false,
+            checksums: oldChecksums,
+          },
+        };
+        const requestBodyForTaskRessting = {
+          parameters: { isValid: false, checksums: validInputFiles.checksums },
+          status: OperationStatus.PENDING,
+          attempts: 0,
+          percentage: 0,
+          reason: '',
+        };
+        const requestBodyForJobRessting = { status: OperationStatus.PENDING, reason: '' };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NOT_FOUND);
+        nock(jobManagerURL).patch(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.OK);
+        nock(jobManagerURL).patch(`/jobs/${jobId}`).reply(httpStatusCodes.OK);
+
+        nock(jobManagerURL)
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+          .put(`/jobs/${jobId}/tasks/${taskId}`, requestBodyForTaskRessting as any)
+          .reply(httpStatusCodes.OK);
+        nock(jobManagerURL).put(`/jobs/${jobId}`, requestBodyForJobRessting).reply(httpStatusCodes.OK);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
     });
 
     describe('Bad Path', () => {
@@ -2111,6 +2156,33 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
         expect(response.body).toHaveProperty('message');
         expect((response.body as { message: string }).message).toContain('nonexistent-file.gpkg');
+      });
+
+      it('should return 500 INTERNAL_SERVER_ERROR status code when polygon parts manager fails to delete validation entity', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.FAILED });
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: false,
+            checksums: validInputFiles.checksums,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
       });
     });
   });
