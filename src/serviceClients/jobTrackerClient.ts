@@ -1,4 +1,3 @@
-import type { IConfig } from 'config';
 import type { Logger } from '@map-colonies/js-logger';
 import { ITaskResponse } from '@map-colonies/mc-priority-queue';
 import { context, SpanStatusCode, trace } from '@opentelemetry/api';
@@ -7,6 +6,7 @@ import { HttpClient } from '@map-colonies/mc-utils';
 import type { IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
+import type { IConfig } from '../common/interfaces';
 
 @injectable()
 export class JobTrackerClient extends HttpClient {
