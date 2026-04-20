@@ -30,6 +30,7 @@ import { ChecksumProcessor } from '../../../../src/utils/hash/interfaces';
 import { CHECKSUM_PROCESSOR } from '../../../../src/utils/hash/constants';
 import { SourceValidator } from '../../../../src/ingestion/validators/sourceValidator';
 import { PolygonPartsManagerClient } from '../../../../src/serviceClients/polygonPartsManagerClient';
+import { JobTrackerClient } from '../../../../src/serviceClients/jobTrackerClient';
 
 describe('IngestionManager', () => {
   let ingestionManager: IngestionManager;
@@ -62,6 +63,10 @@ describe('IngestionManager', () => {
   const mockPolygonPartsManagerClient = {
     deleteValidationEntity: jest.fn(),
   } satisfies Partial<PolygonPartsManagerClient>;
+
+  const mockJobTrackerClient = {
+    notify: jest.fn(),
+  } satisfies Partial<JobTrackerClient>;
 
   let createIngestionJobSpy: jest.SpyInstance;
   let findJobsSpy: jest.SpyInstance;
@@ -114,6 +119,7 @@ describe('IngestionManager', () => {
       catalogClient,
       jobManagerWrapper,
       mapProxyClient,
+      mockJobTrackerClient as unknown as JobTrackerClient,
       productManager as unknown as ProductManager,
       zodValidator as unknown as ZodValidator
     );
@@ -1115,6 +1121,136 @@ describe('IngestionManager', () => {
       await expect(action).rejects.toThrow(Error);
       expect(abortJobSpy).not.toHaveBeenCalled();
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
+    });
+  });
+  describe('bypassValidationErrors', () => {
+    let getJobSpy: jest.SpyInstance;
+    let getTasksForJobSpy: jest.SpyInstance;
+    let updateJobSpy: jest.SpyInstance;
+    let updateTaskSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      getJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'getJob');
+      getTasksForJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'getTasksForJob');
+      updateJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'updateJob');
+      updateTaskSpy = jest.spyOn(JobManagerWrapper.prototype, 'updateTask');
+    });
+
+    it('should bypass validation errors successfully', async () => {
+      const mockJobId = faker.string.uuid();
+      const mockJob = generateMockJob();
+      const mockTask = {
+        id: faker.string.uuid(),
+        type: configMock.get<string>('jobManager.validationTaskType'),
+        status: OperationStatus.SUSPENDED,
+        parameters: {
+          isValid: false,
+          checksums: [],
+          errorsSummary: {
+            thresholds: { resolution: { exceeded: false } },
+            errorsCount: { errorType1: 1 },
+          },
+        },
+        jobId: mockJobId,
+      };
+
+      const body = {
+        allowedValidationErrors: ['errorType1'],
+        approver: 'admin',
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockTask]);
+      zodValidator.validate.mockResolvedValue(undefined);
+      calcualteChecksumSpy.mockResolvedValue([]);
+
+      jest.spyOn(ingestionManager as any, 'validateAndGetAbsoluteInputFiles').mockResolvedValue({
+        gpkgFilesPath: [],
+        metadataShapefilePath: 'some/path',
+        productShapefilePath: 'some/path',
+      });
+
+      updateJobSpy.mockResolvedValue(undefined);
+      updateTaskSpy.mockResolvedValue(undefined);
+      mockJobTrackerClient.notify.mockResolvedValue(undefined);
+
+      await ingestionManager.bypassValidationErrors(body, mockJobId);
+
+      expect(updateTaskSpy).toHaveBeenCalledWith(
+        mockJobId,
+        mockTask.id,
+        expect.objectContaining({
+          status: OperationStatus.COMPLETED,
+        })
+      );
+
+      expect(updateJobSpy).toHaveBeenCalledWith(
+        mockJobId,
+        expect.objectContaining({
+          parameters: expect.objectContaining({
+            allowedValidationErrors: body.allowedValidationErrors,
+            approver: body.approver,
+          }),
+        })
+      );
+
+      expect(mockJobTrackerClient.notify).toHaveBeenCalledWith(mockTask);
+    });
+
+    it('should throw BadRequestError if task is not suspended', async () => {
+      const mockJobId = faker.string.uuid();
+      const mockJob = generateMockJob();
+      const mockTask = {
+        id: faker.string.uuid(),
+        type: configMock.get<string>('jobManager.validationTaskType'),
+        status: OperationStatus.FAILED,
+        parameters: {
+          isValid: false,
+          errorsSummary: {
+            thresholds: { resolution: { exceeded: false } },
+            errorsCount: { errorType1: 1 },
+          },
+        },
+        jobId: mockJobId,
+      };
+
+      const body = {
+        allowedValidationErrors: ['errorType1'],
+        approver: 'admin',
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockTask]);
+
+      await expect(ingestionManager.bypassValidationErrors(body, mockJobId)).rejects.toThrow(BadRequestError);
+    });
+
+    it('should throw UnsupportedEntityError if task has unallowed errors', async () => {
+      const mockJobId = faker.string.uuid();
+      const mockJob = generateMockJob();
+      const mockTask = {
+        id: faker.string.uuid(),
+        type: configMock.get<string>('jobManager.validationTaskType'),
+        status: OperationStatus.SUSPENDED,
+        parameters: {
+          isValid: false,
+          errorsSummary: {
+            thresholds: { resolution: { exceeded: false } },
+            errorsCount: { errorType1: 1, unallowedError: 1 },
+          },
+        },
+        jobId: mockJobId,
+      };
+
+      const body = {
+        allowedValidationErrors: ['errorType1'],
+        approver: 'admin',
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockTask]);
+
+      await expect(ingestionManager.bypassValidationErrors(body, mockJobId)).rejects.toThrow(UnsupportedEntityError);
     });
   });
 });
