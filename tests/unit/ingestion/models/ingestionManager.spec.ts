@@ -1156,7 +1156,7 @@ describe('IngestionManager', () => {
 
       const body = {
         allowedValidationErrors: ['errorType1'],
-        approver: 'admin',
+        approver: 'admin', jobId: mockJobId,
       };
 
       getJobSpy.mockResolvedValue(mockJob);
@@ -1216,7 +1216,7 @@ describe('IngestionManager', () => {
 
       const body = {
         allowedValidationErrors: ['errorType1'],
-        approver: 'admin',
+        approver: 'admin', jobId: mockJobId,
       };
 
       getJobSpy.mockResolvedValue(mockJob);
@@ -1244,7 +1244,7 @@ describe('IngestionManager', () => {
 
       const body = {
         allowedValidationErrors: ['errorType1'],
-        approver: 'admin',
+        approver: 'admin', jobId: mockJobId,
       };
 
       getJobSpy.mockResolvedValue(mockJob);
