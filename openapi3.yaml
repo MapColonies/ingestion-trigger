@@ -233,6 +233,65 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+  /ingestion/{jobId}/bypass-validation-errors:
+    post:
+      operationId: bypassValidationErrors
+      tags:
+        - ingestion
+      summary: bypass an active validation job with certain allowed validation errors
+      description: Bypasses validation errors for a specific ingestion job
+      parameters:
+        - name: jobId
+          in: path
+          description: The id of the job to bypass validation errors for
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BypassValidationErrorsRequest'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad request - Validation task is valid or not suspended
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '404':
+          description: Not Found - Job tasks not found
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '422':
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
   /validate/gpkgs:
     post:
       operationId: validateGpkgs
@@ -329,6 +388,22 @@ paths:
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
 components:
   schemas:
+    BypassValidationErrorsRequest:
+      type: object
+      required:
+        - allowedValidationErrors
+        - approver
+      properties:
+        allowedValidationErrors:
+          type: array
+          items:
+            type: string
+            enum:
+              - resolution
+          description: list of validation errors to bypass
+        approver:
+          type: string
+          description: user trying to bypass the errors
     CallbackUrls:
       type: array
       minItems: 1
