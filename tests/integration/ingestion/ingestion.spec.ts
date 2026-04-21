@@ -1669,8 +1669,8 @@ describe('Ingestion', () => {
         nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
         nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
-        nock(jobManagerURL).patch(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.OK);
-        nock(jobManagerURL).patch(`/jobs/${jobId}`).reply(httpStatusCodes.OK);
+        nock(jobManagerURL).put(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.OK);
+        nock(jobManagerURL).put(`/jobs/${jobId}`).reply(httpStatusCodes.OK);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
         nock(jobManagerURL)
           // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
@@ -1943,7 +1943,7 @@ describe('Ingestion', () => {
         nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
         nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
-        nock(jobManagerURL).patch(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        nock(jobManagerURL).put(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
 
         const response = await requestSender.retryIngestion(jobId);
 
@@ -1973,7 +1973,7 @@ describe('Ingestion', () => {
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
         nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
         nock(jobManagerURL)
-          .patch(
+          .put(
             `/jobs/${jobId}/tasks/${taskId}`,
             matches((body: { parameters?: { checksums?: unknown[]; isValid?: boolean; report?: unknown } }) => {
               return (
@@ -1986,7 +1986,7 @@ describe('Ingestion', () => {
             })
           )
           .reply(httpStatusCodes.OK);
-        nock(jobManagerURL).patch(`/jobs/${jobId}`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
+        nock(jobManagerURL).put(`/jobs/${jobId}`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
 
         const response = await requestSender.retryIngestion(jobId);
 
@@ -2235,10 +2235,10 @@ describe('Ingestion', () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const bypassJob = createBypassJob({ jobId });
-        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
 
         const errorsSummary = {
-          errorsCount: { someError: 1 },
+          errorsCount: { resolution: 1 },
           thresholds: { resolution: { exceeded: false } },
         };
         const validationTask = {
@@ -2255,11 +2255,12 @@ describe('Ingestion', () => {
 
         nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
-        nock(jobManagerURL).patch(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.OK);
-        nock(jobManagerURL).patch(`/jobs/${jobId}`).reply(httpStatusCodes.OK);
+        nock(jobManagerURL).put(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.OK);
+        nock(jobManagerURL).put(`/jobs/${jobId}`).reply(httpStatusCodes.OK);
         nock(configMock.get<string>('services.jobTrackerServiceURL')).post(`/tasks/${taskId}/notify`).reply(httpStatusCodes.OK);
 
         const response = await requestSender.bypassValidationErrors(jobId, requestBody);
+        console.log('BYPASS RES:', response.body);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
@@ -2271,7 +2272,7 @@ describe('Ingestion', () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const bypassJob = createBypassJob({ jobId });
-        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
 
         const validationTask = {
           id: taskId,
@@ -2282,7 +2283,7 @@ describe('Ingestion', () => {
             isValid: false,
             checksums: validInputFiles.checksums,
             errorsSummary: {
-              errorsCount: { someError: 1 },
+              errorsCount: { resolution: 1 },
               thresholds: { resolution: { exceeded: false } },
             },
           },
@@ -2301,7 +2302,7 @@ describe('Ingestion', () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const bypassJob = createBypassJob({ jobId });
-        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
 
         const validationTask = {
           id: taskId,
@@ -2312,7 +2313,7 @@ describe('Ingestion', () => {
             isValid: true,
             checksums: validInputFiles.checksums,
             errorsSummary: {
-              errorsCount: { someError: 1 },
+              errorsCount: { resolution: 1 },
               thresholds: { resolution: { exceeded: false } },
             },
           },
@@ -2331,7 +2332,7 @@ describe('Ingestion', () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const bypassJob = createBypassJob({ jobId });
-        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
 
         const validationTask = {
           id: taskId,
@@ -2357,7 +2358,7 @@ describe('Ingestion', () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const bypassJob = createBypassJob({ jobId });
-        const requestBody = { allowedValidationErrors: ['allowedError'], approver: 'approverName' };
+        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
 
         const validationTask = {
           id: taskId,
@@ -2368,7 +2369,7 @@ describe('Ingestion', () => {
             isValid: false,
             checksums: validInputFiles.checksums,
             errorsSummary: {
-              errorsCount: { allowedError: 0, unallowedError: 1 },
+              errorsCount: { resolution: 0, unallowedError: 1 },
               thresholds: { resolution: { exceeded: false } },
             },
           },
@@ -2387,7 +2388,7 @@ describe('Ingestion', () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const bypassJob = createBypassJob({ jobId });
-        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
 
         const validationTask = {
           id: taskId,
@@ -2398,7 +2399,7 @@ describe('Ingestion', () => {
             isValid: false,
             checksums: validInputFiles.checksums,
             errorsSummary: {
-              errorsCount: { someError: 1 },
+              errorsCount: { resolution: 1 },
               thresholds: { resolution: { exceeded: true } },
             },
           },
@@ -2419,7 +2420,7 @@ describe('Ingestion', () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const bypassJob = createBypassJob({ jobId });
-        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
 
         // Simulating different checksums
         const modifiedChecksums = [...validInputFiles.checksums];
@@ -2434,7 +2435,7 @@ describe('Ingestion', () => {
             isValid: false,
             checksums: modifiedChecksums,
             errorsSummary: {
-              errorsCount: { someError: 1 },
+              errorsCount: { resolution: 1 },
               thresholds: { resolution: { exceeded: false } },
             },
           },
@@ -2451,7 +2452,7 @@ describe('Ingestion', () => {
 
       it('should return 404 NOT_FOUND when job does not exist', async () => {
         const jobId = faker.string.uuid();
-        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
 
         nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.NOT_FOUND);
 
@@ -2464,7 +2465,7 @@ describe('Ingestion', () => {
       it('should return 404 NOT_FOUND when validation task does not exist', async () => {
         const jobId = faker.string.uuid();
         const bypassJob = createBypassJob({ jobId });
-        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
 
         const otherTask = {
           id: faker.string.uuid(),

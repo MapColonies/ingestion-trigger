@@ -1164,13 +1164,15 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockTask]);
       zodValidator.validate.mockResolvedValue(undefined);
-      jest.spyOn(ingestionManager as any, 'getChecksum').mockResolvedValue([mockChecksum]);
+      jest.spyOn(ingestionManager as unknown as { getChecksum: jest.Mock }, 'getChecksum').mockResolvedValue([mockChecksum]);
 
-      jest.spyOn(ingestionManager as any, 'validateAndGetAbsoluteInputFiles').mockResolvedValue({
-        gpkgFilesPath: [],
-        metadataShapefilePath: 'some/path',
-        productShapefilePath: 'some/path',
-      });
+      jest
+        .spyOn(ingestionManager as unknown as { validateAndGetAbsoluteInputFiles: jest.Mock }, 'validateAndGetAbsoluteInputFiles')
+        .mockResolvedValue({
+          gpkgFilesPath: [],
+          metadataShapefilePath: 'some/path',
+          productShapefilePath: 'some/path',
+        });
 
       updateJobSpy.mockResolvedValue(undefined);
       updateTaskSpy.mockResolvedValue(undefined);
@@ -1190,9 +1192,9 @@ describe('IngestionManager', () => {
         mockJobId,
         expect.objectContaining({
           parameters: expect.objectContaining({
-            allowedValidationErrors: body.allowedValidationErrors,
-            approver: body.approver,
-          }),
+            allowedValidationErrors: ['errorType1'],
+            approver: 'admin',
+          }) as unknown,
         })
       );
 
@@ -1255,6 +1257,225 @@ describe('IngestionManager', () => {
       getTasksForJobSpy.mockResolvedValue([mockTask]);
 
       await expect(ingestionManager.bypassValidationErrors(body, mockJobId)).rejects.toThrow(UnsupportedEntityError);
+    });
+
+    it('should throw UnsupportedEntityError when errorsSummary is undefined', async () => {
+      const mockJobId = faker.string.uuid();
+      const mockJob = generateMockJob();
+      const mockTask = {
+        id: faker.string.uuid(),
+        type: configMock.get<string>('jobManager.validationTaskType'),
+        status: OperationStatus.SUSPENDED,
+        parameters: {
+          isValid: false,
+        },
+        jobId: mockJobId,
+      };
+
+      const body = {
+        allowedValidationErrors: ['errorType1'],
+        approver: 'admin',
+        jobId: mockJobId,
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockTask]);
+
+      await expect(ingestionManager.bypassValidationErrors(body, mockJobId)).rejects.toThrow(UnsupportedEntityError);
+    });
+
+    it('should throw BadRequestError when task is valid', async () => {
+      const mockJobId = faker.string.uuid();
+      const mockJob = generateMockJob();
+      const mockTask = {
+        id: faker.string.uuid(),
+        type: configMock.get<string>('jobManager.validationTaskType'),
+        status: OperationStatus.SUSPENDED,
+        parameters: {
+          isValid: true,
+          errorsSummary: {
+            thresholds: { resolution: { exceeded: false } },
+            errorsCount: { errorType1: 1 },
+          },
+        },
+        jobId: mockJobId,
+      };
+
+      const body = {
+        allowedValidationErrors: ['errorType1'],
+        approver: 'admin',
+        jobId: mockJobId,
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockTask]);
+
+      await expect(ingestionManager.bypassValidationErrors(body, mockJobId)).rejects.toThrow(BadRequestError);
+    });
+
+    it('should throw UnsupportedEntityError when resolution threshold exceeded', async () => {
+      const mockJobId = faker.string.uuid();
+      const mockJob = generateMockJob();
+      const mockTask = {
+        id: faker.string.uuid(),
+        type: configMock.get<string>('jobManager.validationTaskType'),
+        status: OperationStatus.SUSPENDED,
+        parameters: {
+          isValid: false,
+          errorsSummary: {
+            thresholds: { resolution: { exceeded: true } },
+            errorsCount: { errorType1: 1 },
+          },
+        },
+        jobId: mockJobId,
+      };
+
+      const body = {
+        allowedValidationErrors: ['errorType1'],
+        approver: 'admin',
+        jobId: mockJobId,
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockTask]);
+
+      await expect(ingestionManager.bypassValidationErrors(body, mockJobId)).rejects.toThrow(UnsupportedEntityError);
+    });
+
+    it('should throw ConflictError when checksums have changed', async () => {
+      const mockJobId = faker.string.uuid();
+      const mockJob = generateMockJob();
+      const mockChecksum = { fileName: 'some/path.shp', checksum: '123' };
+      const newMockChecksum = { fileName: 'some/path.shp', checksum: '456' };
+      const mockTask = {
+        id: faker.string.uuid(),
+        type: configMock.get<string>('jobManager.validationTaskType'),
+        status: OperationStatus.SUSPENDED,
+        parameters: {
+          isValid: false,
+          checksums: [mockChecksum],
+          errorsSummary: {
+            thresholds: { resolution: { exceeded: false } },
+            errorsCount: { errorType1: 1 },
+          },
+        },
+        jobId: mockJobId,
+      };
+
+      const body = {
+        allowedValidationErrors: ['errorType1'],
+        approver: 'admin',
+        jobId: mockJobId,
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockTask]);
+      zodValidator.validate.mockResolvedValue(undefined);
+      jest.spyOn(ingestionManager as unknown as { getChecksum: jest.Mock }, 'getChecksum').mockResolvedValue([newMockChecksum]);
+
+      jest
+        .spyOn(ingestionManager as unknown as { validateAndGetAbsoluteInputFiles: jest.Mock }, 'validateAndGetAbsoluteInputFiles')
+        .mockResolvedValue({
+          gpkgFilesPath: [],
+          metadataShapefilePath: 'some/path',
+          productShapefilePath: 'some/path',
+        });
+
+      await expect(ingestionManager.bypassValidationErrors(body, mockJobId)).rejects.toThrow(ConflictError);
+    });
+
+    it('should catch error when makeValidationTaskCompleted fails', async () => {
+      const mockJobId = faker.string.uuid();
+      const mockJob = generateMockJob();
+      const mockChecksum = { fileName: 'some/path.shp', checksum: '123' };
+      const mockTask = {
+        id: faker.string.uuid(),
+        type: configMock.get<string>('jobManager.validationTaskType'),
+        status: OperationStatus.SUSPENDED,
+        parameters: {
+          isValid: false,
+          checksums: [mockChecksum],
+          errorsSummary: {
+            thresholds: { resolution: { exceeded: false } },
+            errorsCount: { errorType1: 1 },
+          },
+        },
+        jobId: mockJobId,
+      };
+
+      const body = {
+        allowedValidationErrors: ['errorType1'],
+        approver: 'admin',
+        jobId: mockJobId,
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockTask]);
+      zodValidator.validate.mockResolvedValue(undefined);
+      jest.spyOn(ingestionManager as unknown as { getChecksum: jest.Mock }, 'getChecksum').mockResolvedValue([mockChecksum]);
+
+      jest
+        .spyOn(ingestionManager as unknown as { validateAndGetAbsoluteInputFiles: jest.Mock }, 'validateAndGetAbsoluteInputFiles')
+        .mockResolvedValue({
+          gpkgFilesPath: [],
+          metadataShapefilePath: 'some/path',
+          productShapefilePath: 'some/path',
+        });
+
+      updateTaskSpy.mockRejectedValue(new Error('Update failed'));
+      updateJobSpy.mockResolvedValue(undefined);
+      mockJobTrackerClient.notify.mockResolvedValue(undefined);
+
+      await ingestionManager.bypassValidationErrors(body, mockJobId);
+
+      expect(updateTaskSpy).toHaveBeenCalled();
+    });
+
+    it('should catch error when makeValidationTaskCompleted fails with non-Error', async () => {
+      const mockJobId = faker.string.uuid();
+      const mockJob = generateMockJob();
+      const mockChecksum = { fileName: 'some/path.shp', checksum: '123' };
+      const mockTask = {
+        id: faker.string.uuid(),
+        type: configMock.get<string>('jobManager.validationTaskType'),
+        status: OperationStatus.SUSPENDED,
+        parameters: {
+          isValid: false,
+          checksums: [mockChecksum],
+          errorsSummary: {
+            thresholds: { resolution: { exceeded: false } },
+            errorsCount: { errorType1: 1 },
+          },
+        },
+        jobId: mockJobId,
+      };
+
+      const body = {
+        allowedValidationErrors: ['errorType1'],
+        approver: 'admin',
+        jobId: mockJobId,
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockTask]);
+      zodValidator.validate.mockResolvedValue(undefined);
+      jest.spyOn(ingestionManager as unknown as { getChecksum: jest.Mock }, 'getChecksum').mockResolvedValue([mockChecksum]);
+
+      jest
+        .spyOn(ingestionManager as unknown as { validateAndGetAbsoluteInputFiles: jest.Mock }, 'validateAndGetAbsoluteInputFiles')
+        .mockResolvedValue({
+          gpkgFilesPath: [],
+          metadataShapefilePath: 'some/path',
+          productShapefilePath: 'some/path',
+        });
+
+      updateTaskSpy.mockRejectedValue('Update failed');
+      updateJobSpy.mockResolvedValue(undefined);
+      mockJobTrackerClient.notify.mockResolvedValue(undefined);
+
+      await ingestionManager.bypassValidationErrors(body, mockJobId);
+
+      expect(updateTaskSpy).toHaveBeenCalled();
     });
   });
 });
