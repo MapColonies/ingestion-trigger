@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { faker } from '@faker-js/faker';
-import { IJobResponse, OperationStatus, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
+import { IJobResponse, OperationStatus, ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { CORE_VALIDATIONS, getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
 import { SqliteError } from 'better-sqlite3';
 import httpStatusCodes from 'http-status-codes';
@@ -2190,6 +2190,294 @@ describe('Ingestion', () => {
         nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.NOT_FOUND);
 
         const response = await requestSender.abortIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+      });
+    });
+  });
+
+  describe('POST /ingestion/:jobId/bypass-validation-errors', () => {
+    // Format input files paths for storage (as they would appear in stored job parameters)
+    const storedInputFiles = {
+      gpkgFilesPath: [`gpkg/${validInputFiles.inputFiles.gpkgFilesPath[0]}`],
+      metadataShapefilePath: `metadata/${validInputFiles.inputFiles.metadataShapefilePath}/ShapeMetadata.shp`,
+      productShapefilePath: `product/${validInputFiles.inputFiles.productShapefilePath}/Product.shp`,
+    };
+
+    const createBypassJob = (options: {
+      jobId: string;
+      productId?: string;
+      productType?: RasterProductTypes;
+      status?: OperationStatus;
+      inputFiles?: unknown;
+    }): IJobResponse<unknown, unknown> => {
+      const {
+        jobId,
+        productId = rasterLayerMetadataGenerators.productId(),
+        productType = rasterLayerMetadataGenerators.productType(),
+        status = OperationStatus.SUSPENDED,
+        inputFiles = storedInputFiles,
+      } = options;
+      return generateMockJob({
+        id: jobId,
+        resourceId: productId,
+        productType,
+        status,
+        parameters: {
+          inputFiles,
+        },
+      });
+    };
+
+    describe('Happy Path', () => {
+      it('should return 200 status code when successfully bypassing validation errors', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const bypassJob = createBypassJob({ jobId });
+        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+
+        const errorsSummary = {
+          errorsCount: { someError: 1 },
+          thresholds: { resolution: { exceeded: false } },
+        };
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.SUSPENDED,
+          parameters: {
+            isValid: false,
+            checksums: validInputFiles.checksums,
+            errorsSummary,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(jobManagerURL).patch(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.OK);
+        nock(jobManagerURL).patch(`/jobs/${jobId}`).reply(httpStatusCodes.OK);
+        nock(configMock.get<string>('services.jobTrackerServiceURL')).post(`/tasks/${taskId}/notify`).reply(httpStatusCodes.OK);
+
+        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
+    });
+
+    describe('Bad Path', () => {
+      it('should return 400 BAD_REQUEST when task is not suspended', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const bypassJob = createBypassJob({ jobId });
+        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.FAILED,
+          parameters: {
+            isValid: false,
+            checksums: validInputFiles.checksums,
+            errorsSummary: {
+              errorsCount: { someError: 1 },
+              thresholds: { resolution: { exceeded: false } },
+            },
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+
+        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 400 BAD_REQUEST when task is valid', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const bypassJob = createBypassJob({ jobId });
+        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.SUSPENDED,
+          parameters: {
+            isValid: true,
+            checksums: validInputFiles.checksums,
+            errorsSummary: {
+              errorsCount: { someError: 1 },
+              thresholds: { resolution: { exceeded: false } },
+            },
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+
+        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+      });
+
+      it('should return 422 UNPROCESSABLE_ENTITY when there are no validation errors in task params', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const bypassJob = createBypassJob({ jobId });
+        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.SUSPENDED,
+          parameters: {
+            isValid: false,
+            checksums: validInputFiles.checksums,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+
+        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+      });
+
+      it('should return 422 UNPROCESSABLE_ENTITY when there are additional errors that are not in the allowed list', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const bypassJob = createBypassJob({ jobId });
+        const requestBody = { allowedValidationErrors: ['allowedError'], approver: 'approverName' };
+
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.SUSPENDED,
+          parameters: {
+            isValid: false,
+            checksums: validInputFiles.checksums,
+            errorsSummary: {
+              errorsCount: { allowedError: 0, unallowedError: 1 },
+              thresholds: { resolution: { exceeded: false } },
+            },
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+
+        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+      });
+
+      it('should return 422 UNPROCESSABLE_ENTITY when exceeded resolution threshold', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const bypassJob = createBypassJob({ jobId });
+        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.SUSPENDED,
+          parameters: {
+            isValid: false,
+            checksums: validInputFiles.checksums,
+            errorsSummary: {
+              errorsCount: { someError: 1 },
+              thresholds: { resolution: { exceeded: true } },
+            },
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+
+        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+      });
+    });
+
+    describe('Sad Path', () => {
+      it('should return 409 CONFLICT when checksums have changed', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const bypassJob = createBypassJob({ jobId });
+        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+
+        // Simulating different checksums
+        const modifiedChecksums = [...validInputFiles.checksums];
+        modifiedChecksums[0] = { ...modifiedChecksums[0], checksum: 'different-checksum' };
+
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.SUSPENDED,
+          parameters: {
+            isValid: false,
+            checksums: modifiedChecksums,
+            errorsSummary: {
+              errorsCount: { someError: 1 },
+              thresholds: { resolution: { exceeded: false } },
+            },
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+
+        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+      });
+
+      it('should return 404 NOT_FOUND when job does not exist', async () => {
+        const jobId = faker.string.uuid();
+        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.NOT_FOUND);
+
+        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+      });
+
+      it('should return 404 NOT_FOUND when validation task does not exist', async () => {
+        const jobId = faker.string.uuid();
+        const bypassJob = createBypassJob({ jobId });
+        const requestBody = { allowedValidationErrors: ['someError'], approver: 'approverName' };
+
+        const otherTask = {
+          id: faker.string.uuid(),
+          jobId,
+          type: 'some-other-task',
+          status: OperationStatus.SUSPENDED,
+          parameters: {},
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [otherTask]);
+
+        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.NOT_FOUND);

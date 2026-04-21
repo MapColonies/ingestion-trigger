@@ -30,7 +30,6 @@ export interface IBypassValidationErrorsParams {
 }
 
 export interface IBypassValidationErrorsRequestBody {
-  jobId: string;
   allowedValidationErrors: string[];
   approver: string;
 }
