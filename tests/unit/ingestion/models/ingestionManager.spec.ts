@@ -1139,13 +1139,14 @@ describe('IngestionManager', () => {
     it('should bypass validation errors successfully', async () => {
       const mockJobId = faker.string.uuid();
       const mockJob = generateMockJob();
+      const mockChecksum = { fileName: 'some/path.shp', checksum: '123' };
       const mockTask = {
         id: faker.string.uuid(),
         type: configMock.get<string>('jobManager.validationTaskType'),
         status: OperationStatus.SUSPENDED,
         parameters: {
           isValid: false,
-          checksums: [],
+          checksums: [mockChecksum],
           errorsSummary: {
             thresholds: { resolution: { exceeded: false } },
             errorsCount: { errorType1: 1 },
@@ -1156,13 +1157,14 @@ describe('IngestionManager', () => {
 
       const body = {
         allowedValidationErrors: ['errorType1'],
-        approver: 'admin', jobId: mockJobId,
+        approver: 'admin',
+        jobId: mockJobId,
       };
 
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockTask]);
       zodValidator.validate.mockResolvedValue(undefined);
-      calcualteChecksumSpy.mockResolvedValue([]);
+      jest.spyOn(ingestionManager as any, 'getChecksum').mockResolvedValue([mockChecksum]);
 
       jest.spyOn(ingestionManager as any, 'validateAndGetAbsoluteInputFiles').mockResolvedValue({
         gpkgFilesPath: [],
@@ -1216,7 +1218,8 @@ describe('IngestionManager', () => {
 
       const body = {
         allowedValidationErrors: ['errorType1'],
-        approver: 'admin', jobId: mockJobId,
+        approver: 'admin',
+        jobId: mockJobId,
       };
 
       getJobSpy.mockResolvedValue(mockJob);
@@ -1244,7 +1247,8 @@ describe('IngestionManager', () => {
 
       const body = {
         allowedValidationErrors: ['errorType1'],
-        approver: 'admin', jobId: mockJobId,
+        approver: 'admin',
+        jobId: mockJobId,
       };
 
       getJobSpy.mockResolvedValue(mockJob);

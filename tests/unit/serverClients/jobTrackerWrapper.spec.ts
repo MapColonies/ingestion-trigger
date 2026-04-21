@@ -3,9 +3,9 @@ import { trace } from '@opentelemetry/api';
 import nock from 'nock';
 import { HttpClient } from '@map-colonies/mc-utils';
 import { InternalServerError } from '@map-colonies/error-types';
+import { ITaskResponse } from '@map-colonies/mc-priority-queue';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../mocks/configMock';
 import { JobTrackerClient } from '../../../src/serviceClients/jobTrackerClient';
-import { ITaskResponse } from '@map-colonies/mc-priority-queue';
 
 describe('JobTrackerClient', () => {
   let jobTrackerClient: JobTrackerClient;
