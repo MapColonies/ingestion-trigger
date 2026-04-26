@@ -267,6 +267,7 @@ export class IngestionManager {
 
     await this.makeValidationTaskCompleted(validationTask);
     await this.jobManagerWrapper.updateJob(jobId, {
+      status: OperationStatus.IN_PROGRESS,
       parameters: {
         ...job.parameters,
         allowedValidationErrors,
