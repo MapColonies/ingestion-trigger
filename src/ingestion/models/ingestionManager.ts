@@ -786,15 +786,11 @@ export class IngestionManager {
   private async makeValidationTaskCompleted(task: ITaskResponse<IngestionValidationTaskParams>): Promise<void> {
     try {
       await this.jobManagerWrapper.updateTask(task.jobId, task.id, {
-        status: OperationStatus.COMPLETED,
-        percentage: 100,
-        reason: '',
-        attempts: 0,
         parameters: { ...task.parameters, isValid: true },
       });
     } catch (err) {
       this.logger.error({
-        msg: `failed to update validation task status to completed for jobId: ${task.jobId} taskId: ${task.id}`,
+        msg: `failed to update validation task param to valid for jobId: ${task.jobId} taskId: ${task.id}`,
         logContext: this.logContext,
         jobId: task.jobId,
         taskId: task.id,
