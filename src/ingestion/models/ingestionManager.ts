@@ -265,7 +265,7 @@ export class IngestionManager {
       );
     }
 
-    await this.makeValidationTaskCompleted(jobId, validationTask.id);
+    await this.makeValidationTaskCompleted(validationTask);
     await this.jobManagerWrapper.updateJob(jobId, {
       parameters: {
         ...job.parameters,
@@ -782,21 +782,21 @@ export class IngestionManager {
     }));
   }
 
-  private async makeValidationTaskCompleted(jobId: string, taskId: string): Promise<void> {
+  private async makeValidationTaskCompleted(task: ITaskResponse<IngestionValidationTaskParams>): Promise<void> {
     try {
-      await this.jobManagerWrapper.updateTask(jobId, taskId, {
+      await this.jobManagerWrapper.updateTask(task.jobId, task.id, {
         status: OperationStatus.COMPLETED,
         percentage: 100,
         reason: '',
         attempts: 0,
-        parameters: { isValid: true },
+        parameters: { ...task.parameters, isValid: true },
       });
     } catch (err) {
       this.logger.error({
-        msg: `failed to update validation task status to completed for jobId: ${jobId} taskId: ${taskId}`,
+        msg: `failed to update validation task status to completed for jobId: ${task.jobId} taskId: ${task.id}`,
         logContext: this.logContext,
-        jobId,
-        taskId,
+        jobId: task.jobId,
+        taskId: task.id,
         error: err instanceof Error ? err.message : 'Unknown error',
       });
     }

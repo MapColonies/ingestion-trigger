@@ -1185,6 +1185,14 @@ describe('IngestionManager', () => {
         mockTask.id,
         expect.objectContaining({
           status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: true,
+            checksums: [mockChecksum],
+            errorsSummary: {
+              thresholds: { resolution: { exceeded: false } },
+              errorsCount: { errorType1: 1 },
+            },
+          },
         })
       );
 
