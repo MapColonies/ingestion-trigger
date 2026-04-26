@@ -234,11 +234,11 @@ export class IngestionManager {
     const job: IJobResponse<IngestionBaseJobParams, unknown> = await this.jobManagerWrapper.getJob<IngestionBaseJobParams, unknown>(jobId);
     const validationTask = await this.getValidationTask(jobId, { ...logCtx });
 
+    if (job.status !== OperationStatus.SUSPENDED) {
+      throw new BadRequestError('cannot bypass validation errors when the job is not suspended');
+    }
     if (validationTask.parameters.errorsSummary === undefined) {
       throw new UnsupportedEntityError('cannot bypass validation errors when there are no validation errors in task params');
-    }
-    if (validationTask.status !== OperationStatus.SUSPENDED) {
-      throw new BadRequestError('cannot bypass validation errors when the validation task is not suspended');
     }
     if (validationTask.parameters.isValid === true) {
       throw new BadRequestError('cannot bypass validation errors when the validation task is valid');

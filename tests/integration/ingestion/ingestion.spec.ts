@@ -2302,10 +2302,10 @@ describe('Ingestion', () => {
     });
 
     describe('Bad Path', () => {
-      it('should return 400 BAD_REQUEST when task is not suspended', async () => {
+      it('should return 400 BAD_REQUEST when job is not suspended', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
-        const bypassJob = createBypassJob({ jobId });
+        const bypassJob = createBypassJob({ jobId, status: OperationStatus.PENDING });
         const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
 
         const validationTask = {

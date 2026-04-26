@@ -1138,7 +1138,7 @@ describe('IngestionManager', () => {
 
     it('should bypass validation errors successfully', async () => {
       const mockJobId = faker.string.uuid();
-      const mockJob = generateMockJob();
+      const mockJob = generateMockJob({ status: OperationStatus.SUSPENDED });
       const mockChecksum = { fileName: 'some/path.shp', checksum: '123' };
       const mockTask = {
         id: faker.string.uuid(),
@@ -1201,13 +1201,13 @@ describe('IngestionManager', () => {
       expect(mockJobTrackerClient.notify).toHaveBeenCalledWith(mockTask);
     });
 
-    it('should throw BadRequestError if task is not suspended', async () => {
+    it('should throw BadRequestError if job is not suspended', async () => {
       const mockJobId = faker.string.uuid();
-      const mockJob = generateMockJob();
+      const mockJob = generateMockJob({ status: OperationStatus.PENDING });
       const mockTask = {
         id: faker.string.uuid(),
         type: configMock.get<string>('jobManager.validationTaskType'),
-        status: OperationStatus.FAILED,
+        status: OperationStatus.SUSPENDED,
         parameters: {
           isValid: false,
           errorsSummary: {
@@ -1232,7 +1232,7 @@ describe('IngestionManager', () => {
 
     it('should throw UnsupportedEntityError if task has unallowed errors', async () => {
       const mockJobId = faker.string.uuid();
-      const mockJob = generateMockJob();
+      const mockJob = generateMockJob({ status: OperationStatus.SUSPENDED });
       const mockTask = {
         id: faker.string.uuid(),
         type: configMock.get<string>('jobManager.validationTaskType'),
@@ -1261,7 +1261,7 @@ describe('IngestionManager', () => {
 
     it('should throw UnsupportedEntityError when errorsSummary is undefined', async () => {
       const mockJobId = faker.string.uuid();
-      const mockJob = generateMockJob();
+      const mockJob = generateMockJob({ status: OperationStatus.SUSPENDED });
       const mockTask = {
         id: faker.string.uuid(),
         type: configMock.get<string>('jobManager.validationTaskType'),
@@ -1286,7 +1286,7 @@ describe('IngestionManager', () => {
 
     it('should throw BadRequestError when task is valid', async () => {
       const mockJobId = faker.string.uuid();
-      const mockJob = generateMockJob();
+      const mockJob = generateMockJob({ status: OperationStatus.SUSPENDED });
       const mockTask = {
         id: faker.string.uuid(),
         type: configMock.get<string>('jobManager.validationTaskType'),
@@ -1315,7 +1315,7 @@ describe('IngestionManager', () => {
 
     it('should throw UnsupportedEntityError when resolution threshold exceeded', async () => {
       const mockJobId = faker.string.uuid();
-      const mockJob = generateMockJob();
+      const mockJob = generateMockJob({ status: OperationStatus.SUSPENDED });
       const mockTask = {
         id: faker.string.uuid(),
         type: configMock.get<string>('jobManager.validationTaskType'),
@@ -1344,7 +1344,7 @@ describe('IngestionManager', () => {
 
     it('should throw ConflictError when checksums have changed', async () => {
       const mockJobId = faker.string.uuid();
-      const mockJob = generateMockJob();
+      const mockJob = generateMockJob({ status: OperationStatus.SUSPENDED });
       const mockChecksum = { fileName: 'some/path.shp', checksum: '123' };
       const newMockChecksum = { fileName: 'some/path.shp', checksum: '456' };
       const mockTask = {
@@ -1386,7 +1386,7 @@ describe('IngestionManager', () => {
 
     it('should catch error when makeValidationTaskCompleted fails', async () => {
       const mockJobId = faker.string.uuid();
-      const mockJob = generateMockJob();
+      const mockJob = generateMockJob({ status: OperationStatus.SUSPENDED });
       const mockChecksum = { fileName: 'some/path.shp', checksum: '123' };
       const mockTask = {
         id: faker.string.uuid(),
@@ -1433,7 +1433,7 @@ describe('IngestionManager', () => {
 
     it('should catch error when makeValidationTaskCompleted fails with non-Error', async () => {
       const mockJobId = faker.string.uuid();
-      const mockJob = generateMockJob();
+      const mockJob = generateMockJob({ status: OperationStatus.SUSPENDED });
       const mockChecksum = { fileName: 'some/path.shp', checksum: '123' };
       const mockTask = {
         id: faker.string.uuid(),
