@@ -261,7 +261,7 @@ export class IngestionManager {
     const newChecksums = await this.getChecksum(metadataShapefilePath.metadataShapefilePath);
     if (this.isChecksumChanged(existingChecksums, newChecksums)) {
       throw new ConflictError(
-        'cannot bypass validation errors because the metadata shapefile has been changed since the validation was performed, please perform a retry'
+        'cannot bypass validation errors because the metadata shapefile has been changed since the validation was performed,re-run the process'
       );
     }
 
@@ -790,7 +790,7 @@ export class IngestionManager {
       });
     } catch (err) {
       this.logger.error({
-        msg: `failed to update validation task param to valid for jobId: ${task.jobId} taskId: ${task.id}`,
+        msg: `failed to update validation task to valid for jobId: ${task.jobId} taskId: ${task.id}`,
         logContext: this.logContext,
         jobId: task.jobId,
         taskId: task.id,
