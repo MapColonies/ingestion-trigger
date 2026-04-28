@@ -227,7 +227,7 @@ export class IngestionManager {
     }
   }
 
-  @withSpanV4
+  @withSpanAsyncV4
   public async bypassValidationErrors(body: IBypassValidationErrorsRequestBody, jobId: string): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.bypassValidationErrors.name };
     const { allowedValidationErrors, approver } = body;

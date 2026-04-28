@@ -2265,40 +2265,6 @@ describe('Ingestion', () => {
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
       });
-
-      it('should return 500 when job tracker notify fails', async () => {
-        const jobId = faker.string.uuid();
-        const taskId = faker.string.uuid();
-        const bypassJob = createBypassJob({ jobId });
-        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
-
-        const errorsSummary = {
-          errorsCount: { resolution: 1 },
-          thresholds: { resolution: { exceeded: false } },
-        };
-        const validationTask = {
-          id: taskId,
-          jobId,
-          type: configMock.get<string>('jobManager.validationTaskType'),
-          status: OperationStatus.SUSPENDED,
-          parameters: {
-            isValid: false,
-            checksums: validInputFiles.checksums,
-            errorsSummary,
-          },
-        };
-
-        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
-        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
-        nock(jobManagerURL).put(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.OK);
-        nock(jobManagerURL).put(`/jobs/${jobId}`).reply(httpStatusCodes.OK);
-        nock(configMock.get<string>('services.jobTrackerServiceURL')).post(`/tasks/${taskId}/notify`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
-
-        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
-      });
     });
 
     describe('Bad Path', () => {
@@ -2446,6 +2412,40 @@ describe('Ingestion', () => {
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+      });
+
+      it('should return 500 when job tracker notify fails', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const bypassJob = createBypassJob({ jobId });
+        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
+
+        const errorsSummary = {
+          errorsCount: { resolution: 1 },
+          thresholds: { resolution: { exceeded: false } },
+        };
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.SUSPENDED,
+          parameters: {
+            isValid: false,
+            checksums: validInputFiles.checksums,
+            errorsSummary,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(jobManagerURL).put(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.OK);
+        nock(jobManagerURL).put(`/jobs/${jobId}`).reply(httpStatusCodes.OK);
+        nock(configMock.get<string>('services.jobTrackerServiceURL')).post(`/tasks/${taskId}/notify`).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
+
+        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
       });
     });
 
