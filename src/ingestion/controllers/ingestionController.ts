@@ -1,4 +1,4 @@
-import { ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { RequestHandler } from 'express';
 import { HttpError } from 'express-openapi-validator/dist/framework/types';
 import { StatusCodes } from 'http-status-codes';
@@ -6,13 +6,21 @@ import { inject, injectable } from 'tsyringe';
 import { GpkgError } from '../../serviceClients/database/errors';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
 import { FileNotFoundError, UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
-import type { IRetryRequestParams, IRecordRequestParams, IAbortRequestParams, ResponseId } from '../interfaces';
+import type {
+  IRetryRequestParams,
+  IRecordRequestParams,
+  IAbortRequestParams,
+  ResponseId,
+  IBypassValidationErrorsRequestBody,
+  IBypassValidationErrorsParams,
+} from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 
 type NewLayerHandler = RequestHandler<undefined, ResponseId, unknown>;
 type RetryIngestionHandler = RequestHandler<IRetryRequestParams, void, unknown>;
 type AbortIngestionHandler = RequestHandler<IAbortRequestParams, void, unknown>;
 type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseId, unknown>;
+type BypassValidationErrorsHandler = RequestHandler<IBypassValidationErrorsParams, void, IBypassValidationErrorsRequestBody>;
 
 @injectable()
 export class IngestionController {
@@ -93,6 +101,27 @@ export class IngestionController {
       res.status(StatusCodes.OK).send();
     } catch (error) {
       if (error instanceof ValidationError) {
+        (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
+      }
+      if (error instanceof NotFoundError) {
+        (error as HttpError).status = StatusCodes.NOT_FOUND; //404
+      }
+      if (error instanceof ConflictError) {
+        (error as HttpError).status = StatusCodes.CONFLICT; //409
+      }
+      if (error instanceof UnsupportedEntityError) {
+        (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
+      }
+      next(error);
+    }
+  };
+
+  public bypassValidationErrors: BypassValidationErrorsHandler = async (req, res, next) => {
+    try {
+      await this.ingestionManager.bypassValidationErrors(req.body, req.params.jobId);
+      res.status(StatusCodes.OK).send();
+    } catch (error) {
+      if (error instanceof BadRequestError) {
         (error as HttpError).status = StatusCodes.BAD_REQUEST; //400
       }
       if (error instanceof NotFoundError) {
