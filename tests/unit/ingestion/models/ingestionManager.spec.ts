@@ -1236,7 +1236,7 @@ describe('IngestionManager', () => {
       getTasksForJobSpy.mockResolvedValue([mockTask]);
 
       await ingestionManager.bypassValidationErrors(body, mockJobId);
-      expect(mockJobTrackerClient.notify).not.toHaveBeenCalled()
+      expect(mockJobTrackerClient.notify).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestError if job is not suspended', async () => {
@@ -1321,7 +1321,6 @@ describe('IngestionManager', () => {
 
       await expect(ingestionManager.bypassValidationErrors(body, mockJobId)).rejects.toThrow(UnsupportedEntityError);
     });
-
 
     it('should throw UnsupportedEntityError when resolution threshold exceeded', async () => {
       const mockJobId = faker.string.uuid();
