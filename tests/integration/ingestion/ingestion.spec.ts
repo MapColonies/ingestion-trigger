@@ -2265,6 +2265,36 @@ describe('Ingestion', () => {
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
       });
+
+      it('should return 200 when task is valid', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const bypassJob = createBypassJob({ jobId });
+        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
+
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.SUSPENDED,
+          parameters: {
+            isValid: true,
+            checksums: validInputFiles.checksums,
+            errorsSummary: {
+              errorsCount: { resolution: 1 },
+              thresholds: { resolution: { exceeded: false } },
+            },
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+
+        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
     });
 
     describe('Bad Path', () => {
@@ -2281,36 +2311,6 @@ describe('Ingestion', () => {
           status: OperationStatus.FAILED,
           parameters: {
             isValid: false,
-            checksums: validInputFiles.checksums,
-            errorsSummary: {
-              errorsCount: { resolution: 1 },
-              thresholds: { resolution: { exceeded: false } },
-            },
-          },
-        };
-
-        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
-        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
-
-        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
-
-        expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
-      });
-
-      it('should return 400 BAD_REQUEST when task is valid', async () => {
-        const jobId = faker.string.uuid();
-        const taskId = faker.string.uuid();
-        const bypassJob = createBypassJob({ jobId });
-        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
-
-        const validationTask = {
-          id: taskId,
-          jobId,
-          type: configMock.get<string>('jobManager.validationTaskType'),
-          status: OperationStatus.SUSPENDED,
-          parameters: {
-            isValid: true,
             checksums: validInputFiles.checksums,
             errorsSummary: {
               errorsCount: { resolution: 1 },

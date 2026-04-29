@@ -128,6 +128,7 @@ describe('IngestionManager', () => {
   afterEach(() => {
     clearConfig();
     jest.restoreAllMocks(); // Restore original implementations
+    jest.clearAllMocks();
   });
 
   describe('newLayer', () => {
@@ -1208,6 +1209,36 @@ describe('IngestionManager', () => {
       expect(mockJobTrackerClient.notify).toHaveBeenCalledWith(mockTask);
     });
 
+    it('should return and do nothing when task is valid', async () => {
+      const mockJobId = faker.string.uuid();
+      const mockJob = generateMockJob({ status: OperationStatus.SUSPENDED });
+      const mockTask = {
+        id: faker.string.uuid(),
+        type: configMock.get<string>('jobManager.validationTaskType'),
+        status: OperationStatus.SUSPENDED,
+        parameters: {
+          isValid: true,
+          errorsSummary: {
+            thresholds: { resolution: { exceeded: false } },
+            errorsCount: { errorType1: 1 },
+          },
+        },
+        jobId: mockJobId,
+      };
+
+      const body = {
+        allowedValidationErrors: ['errorType1'],
+        approver: 'admin',
+        jobId: mockJobId,
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockTask]);
+
+      await ingestionManager.bypassValidationErrors(body, mockJobId);
+      expect(mockJobTrackerClient.notify).not.toHaveBeenCalled()
+    });
+
     it('should throw BadRequestError if job is not suspended', async () => {
       const mockJobId = faker.string.uuid();
       const mockJob = generateMockJob({ status: OperationStatus.PENDING });
@@ -1291,34 +1322,6 @@ describe('IngestionManager', () => {
       await expect(ingestionManager.bypassValidationErrors(body, mockJobId)).rejects.toThrow(UnsupportedEntityError);
     });
 
-    it('should throw BadRequestError when task is valid', async () => {
-      const mockJobId = faker.string.uuid();
-      const mockJob = generateMockJob({ status: OperationStatus.SUSPENDED });
-      const mockTask = {
-        id: faker.string.uuid(),
-        type: configMock.get<string>('jobManager.validationTaskType'),
-        status: OperationStatus.SUSPENDED,
-        parameters: {
-          isValid: true,
-          errorsSummary: {
-            thresholds: { resolution: { exceeded: false } },
-            errorsCount: { errorType1: 1 },
-          },
-        },
-        jobId: mockJobId,
-      };
-
-      const body = {
-        allowedValidationErrors: ['errorType1'],
-        approver: 'admin',
-        jobId: mockJobId,
-      };
-
-      getJobSpy.mockResolvedValue(mockJob);
-      getTasksForJobSpy.mockResolvedValue([mockTask]);
-
-      await expect(ingestionManager.bypassValidationErrors(body, mockJobId)).rejects.toThrow(BadRequestError);
-    });
 
     it('should throw UnsupportedEntityError when resolution threshold exceeded', async () => {
       const mockJobId = faker.string.uuid();
