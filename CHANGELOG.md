@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.2.0](https://github.com/MapColonies/ingestion-trigger/compare/v4.1.2...v4.2.0) (2026-04-29)
+
+
+### Features
+
+* add bypass validation errors endpoint (MAPCO-10408) ([#87](https://github.com/MapColonies/ingestion-trigger/issues/87)) ([f2bc2e1](https://github.com/MapColonies/ingestion-trigger/commit/f2bc2e160ea5de7ef66aa3d43506f8c65b599313))
+
 ## [4.1.2](https://github.com/MapColonies/ingestion-trigger/compare/v4.1.1...v4.1.2) (2026-03-17)
 
 
