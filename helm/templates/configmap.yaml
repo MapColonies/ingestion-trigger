@@ -1,7 +1,6 @@
 {{- $chartName := include "ingestion-trigger.name" . -}}
 {{- $configmapName := include "configmap.fullname" . }}
 {{- $tracing := (include "common.tracing.merged" .) | fromYaml }}
-{{- $metrics := (include "common.metrics.merged" .) | fromYaml }}
 {{- $serviceUrls := (include "common.serviceUrls.merged" .) | fromYaml }}
 {{- $jobDefinitions := (include "common.jobDefinitions.merged" .) | fromYaml }}
 {{- $storage := (include "common.storage.merged" .) | fromYaml }}
@@ -47,7 +46,6 @@ data:
   {{ if $tracing.enabled }}
   TELEMETRY_TRACING_URL: {{ $tracing.url }}
   {{ end }}
-  TELEMETRY_METRICS_ENABLED: {{ $metrics.enabled | quote }}
   CONFIG_SERVER_URL: {{ .Values.configManagement.serverUrl | quote }}
   CONFIG_NAME: {{ .Values.configManagement.name | quote }}
   CONFIG_VERSION: {{ .Values.configManagement.version | quote }}

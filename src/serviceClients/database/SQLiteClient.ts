@@ -1,8 +1,7 @@
 import type { Logger } from '@map-colonies/js-logger';
 import { withSpanV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, trace, type Tracer } from '@opentelemetry/api';
-import betterSqlite3, { SqliteError } from 'better-sqlite3';
-import type { Database as SQLiteDB } from 'better-sqlite3';
+import betterSqlite3, { SqliteError, type Database as SQLiteDB } from 'better-sqlite3';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import { Grid, matrixRatioToGrid, type IMatrixValues, type TileSize } from '../../ingestion/interfaces';

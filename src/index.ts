@@ -4,16 +4,17 @@ import { createServer } from 'http';
 import { createTerminus } from '@godaddy/terminus';
 import type { Logger } from '@map-colonies/js-logger';
 import { container } from 'tsyringe';
-import { SERVICES } from './common/constants';
-import { getConfig } from './common/config';
+import { DEFAULT_SERVER_PORT, SERVICES } from './common/constants';
+import type { ConfigType } from './common/config';
 import { getApp } from './app';
-
-const config = getConfig();
-const port: number = config.get('server.port');
 
 const [app] = getApp();
 
 const logger = container.resolve<Logger>(SERVICES.LOGGER);
+const config = container.resolve<ConfigType>(SERVICES.CONFIG);
+const serverConfig = config.get('server');
+const port: number = serverConfig.port || DEFAULT_SERVER_PORT;
+
 const stubHealthCheck = async (): Promise<void> => Promise.resolve();
 
 const server = createTerminus(createServer(app), { healthChecks: { '/liveness': stubHealthCheck, onSignal: container.resolve('onSignal') } });

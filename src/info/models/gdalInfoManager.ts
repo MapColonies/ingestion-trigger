@@ -5,8 +5,7 @@ import { SERVICES } from '../../common/constants';
 import { createSpanMetadata } from '../../common/tracing';
 import { GdalUtilities } from '../../utils/gdal/gdalUtilities';
 import { LogContext } from '../../common/interfaces';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL } from '../../utils/validation/schemasValidator';
-import type { SchemasValidator } from '../../utils/validation/schemasValidator';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, type SchemasValidator } from '../../utils/validation/schemasValidator';
 import { GdalInfoError } from '../../ingestion/errors/ingestionErrors';
 import { InfoDataWithFile } from '../../ingestion/schemas/infoDataSchema';
 

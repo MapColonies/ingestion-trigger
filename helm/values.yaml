@@ -74,9 +74,6 @@ tracing:
   enabled: false
   url: ''
 
-metrics:
-  enabled: false
-
 configManagement:
   offlineMode: false
   name: 'ingestion-trigger'

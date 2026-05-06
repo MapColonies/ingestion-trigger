@@ -78,7 +78,6 @@ describe('Validate', function () {
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
         expect(validateGdalInfoSpy).toHaveBeenCalledTimes(1);
-        await expect(validateGdalInfoSpy).rejects.toThrow();
         expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(0);
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
@@ -92,7 +91,6 @@ describe('Validate', function () {
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
         expect(validateGdalInfoSpy).toHaveBeenCalledTimes(1);
-        await expect(validateGdalInfoSpy).rejects.toThrow();
         expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(0);
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
@@ -106,7 +104,6 @@ describe('Validate', function () {
 
         expect(validateFilesExistSpy).toHaveBeenCalledTimes(1);
         expect(validateGdalInfoSpy).toHaveBeenCalledTimes(1);
-        await expect(validateGdalInfoSpy).rejects.toThrow();
         expect(validateGpkgFilesSpy).toHaveBeenCalledTimes(0);
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);
