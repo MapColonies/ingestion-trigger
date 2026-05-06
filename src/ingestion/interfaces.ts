@@ -25,6 +25,15 @@ export interface IAbortRequestParams {
   jobId: string;
 }
 
+export interface IBypassValidationErrorsParams {
+  jobId: string;
+}
+
+export interface IBypassValidationErrorsRequestBody {
+  allowedValidationErrors: string[];
+  approver: string;
+}
+
 export enum IngestionOperation {
   RETRY = 'retry',
   ABORT = 'abort',
