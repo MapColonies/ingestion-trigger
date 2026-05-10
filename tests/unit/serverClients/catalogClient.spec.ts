@@ -1,4 +1,4 @@
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import { HttpClient } from '@map-colonies/mc-utils';
 import { faker } from '@faker-js/faker';
@@ -13,10 +13,10 @@ describe('CatalogClient', () => {
   const fakeProductId = faker.helpers.fromRegExp(randexp(INGESTION_VALIDATIONS.productId.pattern));
   const fakeProductType = faker.helpers.enumValue(RasterProductTypes);
 
-  beforeEach(() => {
+  beforeEach(async () => {
     registerDefaultConfig();
 
-    catalogClient = new CatalogClient(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
+    catalogClient = new CatalogClient(configMock, await jsLogger({ enabled: false }), trace.getTracer('testTracer'));
     postSpy = jest.spyOn(HttpClient.prototype as unknown as { post: jest.Mock }, 'post');
   });
 

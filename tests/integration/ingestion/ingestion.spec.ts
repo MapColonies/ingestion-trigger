@@ -44,9 +44,9 @@ describe('Ingestion', () => {
     await initConfig(true);
   });
 
-  beforeEach(() => {
-    const [app] = getApp({
-      override: [...getTestContainerConfig()],
+  beforeEach(async () => {
+    const [app] = await getApp({
+      override: [...(await getTestContainerConfig())],
     });
     jobResponse = {
       id: faker.string.uuid(),

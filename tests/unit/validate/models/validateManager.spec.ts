@@ -1,4 +1,4 @@
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import { container } from 'tsyringe';
 import { SERVICES } from '../../../../src/common/constants';
@@ -18,10 +18,11 @@ describe('ValidateManager', () => {
     validateGpkgFiles: jest.fn(),
   } satisfies Partial<SourceValidator>;
 
+  let testLogger: Awaited<ReturnType<typeof jsLogger>>;
   const testTracer = trace.getTracer('testTracer');
-  const testLogger = jsLogger({ enabled: false });
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    testLogger = await jsLogger({ enabled: false });
     registerDefaultConfig();
     // Reset container for a clean test
     container.reset();

@@ -1,5 +1,5 @@
 /* eslint-disable jest/no-conditional-expect */
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import betterSqlite3, { Database as SQLiteDB, SqliteError, Statement } from 'better-sqlite3';
 import { Grid, IMatrixValues } from '../../../../src/ingestion/interfaces';
@@ -15,7 +15,7 @@ let getDbSpy: jest.SpyInstance;
 const sqlLiteError = new SqliteError('Database connection failed', 'SQLITE_ERROR');
 
 describe('SQLClient', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.resetAllMocks();
     jest.clearAllMocks();
     jest.restoreAllMocks();
@@ -25,7 +25,11 @@ describe('SQLClient', () => {
     getDbSpy = jest.spyOn(SQLiteClient.prototype, 'getDB');
     mockDB = { close: jest.fn } as unknown as SQLiteDB;
 
-    sqlClient = new SQLiteClient(jsLogger({ enabled: false }), trace.getTracer('testTracer'), rasterLayerInputFilesGenerators.gpkgFilesPath()[0]!);
+    sqlClient = new SQLiteClient(
+      await jsLogger({ enabled: false }),
+      trace.getTracer('testTracer'),
+      rasterLayerInputFilesGenerators.gpkgFilesPath()[0]!
+    );
   });
 
   describe('getGrid', () => {

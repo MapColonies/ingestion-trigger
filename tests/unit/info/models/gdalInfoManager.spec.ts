@@ -19,10 +19,10 @@ describe('GdalInfoManager', () => {
     await initConfig(true);
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     registerDefaultConfig();
-    const [, container] = getApp({
-      override: [...getTestContainerConfig()],
+    const [, container] = await getApp({
+      override: [...(await getTestContainerConfig())],
       useChild: true,
     });
     schemaValidator = container.resolve<SchemasValidator>(INGESTION_SCHEMAS_VALIDATOR_SYMBOL);

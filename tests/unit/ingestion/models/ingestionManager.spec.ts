@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { getMapServingLayerName } from '@map-colonies/raster-shared';
 import { trace } from '@opentelemetry/api';
@@ -79,10 +79,12 @@ describe('IngestionManager', () => {
   let mapProxyClient: MapProxyClient;
   let jobManagerWrapper: JobManagerWrapper;
 
-  const testTracer = trace.getTracer('testTracer');
-  const testLogger = jsLogger({ enabled: false });
+  let testLogger: Awaited<ReturnType<typeof jsLogger>>;
 
-  beforeEach(() => {
+  const testTracer = trace.getTracer('testTracer');
+
+  beforeEach(async () => {
+    testLogger = await jsLogger({ enabled: false });
     registerDefaultConfig();
     // Reset container for a clean test
     container.reset();

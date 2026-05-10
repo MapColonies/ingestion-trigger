@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { InternalServerError } from '@map-colonies/error-types';
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import type { ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { trace } from '@opentelemetry/api';
 import nock from 'nock';
@@ -13,9 +13,9 @@ describe('jobManagerWrapper', () => {
   let createJobSpy: jest.SpyInstance;
   let jobResponse: ICreateJobResponse;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     registerDefaultConfig();
-    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
+    jobManagerWrapper = new JobManagerWrapper(configMock, await jsLogger({ enabled: false }), trace.getTracer('testTracer'));
     createJobSpy = jest.spyOn(JobManagerWrapper.prototype, 'createJob');
     jobResponse = {
       id: faker.string.uuid(),

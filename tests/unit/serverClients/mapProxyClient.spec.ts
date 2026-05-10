@@ -1,4 +1,4 @@
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import { getMapServingLayerName, INGESTION_VALIDATIONS, RasterProductTypes } from '@map-colonies/raster-shared';
 import { trace } from '@opentelemetry/api';
 import nock from 'nock';
@@ -17,10 +17,10 @@ describe('mapProxyClient', () => {
   const fakeProductType = faker.helpers.enumValue(RasterProductTypes);
   const layerName = getMapServingLayerName(fakeProductId, fakeProductType);
 
-  beforeEach(() => {
+  beforeEach(async () => {
     registerDefaultConfig();
 
-    mapProxyClient = new MapProxyClient(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
+    mapProxyClient = new MapProxyClient(configMock, await jsLogger({ enabled: false }), trace.getTracer('testTracer'));
     getSpy = jest.spyOn(HttpClient.prototype as unknown as { get: jest.Mock }, 'get');
   });
 

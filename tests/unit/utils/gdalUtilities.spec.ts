@@ -1,4 +1,4 @@
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import { getApp } from '../../../src/app';
 import { initConfig } from '../../../src/common/config';
@@ -23,12 +23,12 @@ describe('gdalUtilities', () => {
     await initConfig(true);
   });
 
-  beforeEach(function () {
+  beforeEach(async function () {
     registerDefaultConfig();
-    const [, container] = getApp();
+    const [, container] = await getApp();
     const schemasValidator = container.resolve<SchemasValidator>(INGESTION_SCHEMAS_VALIDATOR_SYMBOL);
     jest.clearAllMocks();
-    gdalUtilities = new GdalUtilities(jsLogger({ enabled: false }), trace.getTracer('testTracer'), schemasValidator);
+    gdalUtilities = new GdalUtilities(await jsLogger({ enabled: false }), trace.getTracer('testTracer'), schemasValidator);
   });
 
   afterEach(() => {

@@ -37,9 +37,9 @@ describe('Validate', function () {
     await initConfig(true);
   });
 
-  beforeEach(function () {
-    const [app] = getApp({
-      override: [...getTestContainerConfig()],
+  beforeEach(async function () {
+    const [app] = await getApp({
+      override: [...(await getTestContainerConfig())],
     });
 
     requestSender = new ValidateRequestSender(app);

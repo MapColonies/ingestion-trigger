@@ -1,4 +1,4 @@
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import booleanContains from '@turf/boolean-contains';
 import * as turfBuffer from '@turf/buffer';
@@ -19,9 +19,9 @@ describe('GeoValidator', () => {
   let booleanContainsMock: jest.Mock;
   let bufferSpy: jest.SpyInstance;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     registerDefaultConfig();
-    geoValidator = new GeoValidator(jsLogger({ enabled: false }), configMock, trace.getTracer('testTracer'));
+    geoValidator = new GeoValidator(await jsLogger({ enabled: false }), configMock, trace.getTracer('testTracer'));
     booleanContainsMock = booleanContains as jest.Mock;
     bufferSpy = jest.spyOn(turfBuffer, 'buffer');
   });

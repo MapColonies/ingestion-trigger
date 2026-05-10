@@ -8,7 +8,10 @@
   "telemetry": {
     "logger": {
       "level": "info",
-      "prettyPrint": false
+      "prettyPrint": false,
+      "opentelemetryOptions": {
+        "enabled": false
+      }
     },
     "shared": {},
     "tracing": {

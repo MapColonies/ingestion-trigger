@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { BadRequestError } from '@map-colonies/error-types';
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import { ShapefileChunkReader } from '@map-colonies/shapefile-reader';
 import { trace } from '@opentelemetry/api';
 import type { Feature, MultiPolygon, Point, Polygon } from 'geojson';
@@ -16,10 +16,10 @@ describe('ProductManager', () => {
     validateProductFeature: jest.fn(),
   } satisfies Partial<SchemasValidator>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     productManager = new ProductManager(
       configMock,
-      jsLogger({ enabled: false }),
+      await jsLogger({ enabled: false }),
       trace.getTracer('testTracer'),
       mockSchemaValidator as unknown as SchemasValidator
     );
