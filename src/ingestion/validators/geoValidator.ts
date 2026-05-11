@@ -1,7 +1,8 @@
 import type { Logger } from '@map-colonies/js-logger';
 import { withSpanV4 } from '@map-colonies/telemetry';
 import { trace, type Tracer } from '@opentelemetry/api';
-import { booleanContains } from '@turf/boolean-contains';
+// eslint-disable-next-line import-x/no-named-as-default
+import booleanContains from '@turf/boolean-contains';
 import type { Geometry, Polygon } from 'geojson';
 import { inject, injectable } from 'tsyringe';
 import type { ConfigType } from '../../common/config';
