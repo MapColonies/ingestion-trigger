@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import nock from 'nock';
 import { JobManagerWrapper } from '../../../src/serviceClients/jobManagerWrapper';
@@ -8,12 +8,13 @@ import { clear as clearConfig, configMock, registerDefaultConfig } from '../../m
 describe('jobManagerWrapper integration', () => {
   let jobManagerWrapper: JobManagerWrapper;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     registerDefaultConfig();
-    jobManagerWrapper = new JobManagerWrapper(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
+    jobManagerWrapper = new JobManagerWrapper(configMock, await jsLogger({ enabled: false }), trace.getTracer('testTracer'));
   });
 
   afterEach(() => {
+    // eslint-disable-next-line import-x/no-named-as-default-member
     nock.cleanAll();
     clearConfig();
     jest.clearAllMocks();

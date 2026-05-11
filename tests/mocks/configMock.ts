@@ -1,16 +1,17 @@
 import config from 'config';
 import get from 'lodash.get';
 import has from 'lodash.has';
-import { IConfig } from '../../src/common/interfaces';
+import type { ConfigType } from '../../src/common/config';
 
 let mockConfig: Record<string, unknown> = {};
 const getMock = jest.fn();
 const hasMock = jest.fn();
 
-const configMock: IConfig = {
+const configMock = {
   get: getMock,
   has: hasMock,
-};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as unknown as { get: <T = any>(key: string) => T; has: (key: string) => boolean } & ConfigType;
 
 const init = (): void => {
   getMock.mockImplementation((key: string): unknown => {

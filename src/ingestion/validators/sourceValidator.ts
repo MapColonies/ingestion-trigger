@@ -1,11 +1,11 @@
 import { constants as fsConstants, promises as fsPromises } from 'node:fs';
 import { basename, dirname } from 'node:path';
-import { Logger } from '@map-colonies/js-logger';
+import type { Logger } from '@map-colonies/js-logger';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
-import { trace, Tracer } from '@opentelemetry/api';
+import { trace, type Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { IConfig } from '../../common/interfaces';
+import type { ConfigType } from '../../common/config';
 import { GdalInfoManager } from '../../info/models/gdalInfoManager';
 import { LogContext } from '../../common/interfaces';
 import { FileNotFoundError } from '../errors/ingestionErrors';
@@ -18,7 +18,7 @@ export class SourceValidator {
   private readonly extentBufferInMeters: number;
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     private readonly gdalInfoManager: GdalInfoManager,
     private readonly gpkgManager: GpkgManager
@@ -27,8 +27,8 @@ export class SourceValidator {
       fileName: __filename,
       class: SourceValidator.name,
     };
-    this.sourceMount = this.config.get<string>('storageExplorer.layerSourceDir');
-    this.extentBufferInMeters = this.config.get<number>('validationValuesByInfo.extentBufferInMeters');
+    this.sourceMount = this.config.get('storageExplorer.layerSourceDir') as unknown as string;
+    this.extentBufferInMeters = this.config.get('validationValuesByInfo.extentBufferInMeters') as unknown as number;
   }
 
   @withSpanAsyncV4
@@ -64,7 +64,7 @@ export class SourceValidator {
       } catch (err) {
         const fileName = basename(fullFilePath);
         const filePath = dirname(fullFilePath);
-        this.logger.error({ msg: `File '${fileName}' not found at '${filePath}'`, logContext: logCtx, metadata: { fullFilePath } });
+        this.logger.error({ msg: `File '${fileName}' not found at '${filePath}'`, logContext: logCtx, metadata: { fullFilePath }, err });
         throw new Error(fileName);
       }
     });

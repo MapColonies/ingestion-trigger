@@ -1,13 +1,13 @@
 import { inject, injectable } from 'tsyringe';
-import { Logger } from '@map-colonies/js-logger';
+import type { Logger } from '@map-colonies/js-logger';
 import * as gdal from 'gdal-async';
-import { trace, Tracer } from '@opentelemetry/api';
+import { trace, type Tracer } from '@opentelemetry/api';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SERVICES } from '../../common/constants';
 import { InfoData } from '../../ingestion/schemas/infoDataSchema';
 import { GdalInfo } from '../../ingestion/schemas/gdalDataSchema';
 import { LogContext } from '../../common/interfaces';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../validation/schemasValidator';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, type SchemasValidator } from '../validation/schemasValidator';
 import { GdalInfoError } from '../../ingestion/errors/ingestionErrors';
 
 @injectable()
@@ -44,7 +44,7 @@ export class GdalUtilities {
       const infoData: InfoData = {
         crs: stac['proj:epsg'],
         fileFormat: driverShortName,
-        pixelSize: dataset.geoTransform[1],
+        pixelSize: dataset.geoTransform[1]!,
         extentPolygon: wgs84Extent,
       };
 

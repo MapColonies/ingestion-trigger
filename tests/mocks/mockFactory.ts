@@ -191,7 +191,7 @@ const generateUpdateLayerMetadata = (): UpdateRasterLayerMetadata => {
 const getInputFilesLocalPath = (inputFiles: InputFiles): InputFiles => {
   const { gpkgFilesPath, metadataShapefilePath, productShapefilePath } = inputFiles;
   return {
-    gpkgFilesPath: getGpkgsFilesLocalPath([gpkgFilesPath[0]]),
+    gpkgFilesPath: getGpkgsFilesLocalPath([gpkgFilesPath[0]!]),
     metadataShapefilePath: join('metadata', metadataShapefilePath, 'ShapeMetadata.shp'),
     productShapefilePath: join('product', productShapefilePath, 'Product.shp'),
   };
@@ -298,7 +298,7 @@ export const rasterLayerMetadataGenerators: RasterLayerMetadataPropertiesGenerat
     );
     const { bbox } = mergedOptions;
     mergedOptions.max_radial_length = Math.min(bbox[2] - bbox[0], bbox[3] - bbox[1]) / 2;
-    return randomPolygon(1, mergedOptions).features[0].geometry;
+    return randomPolygon(1, mergedOptions).features[0]!.geometry;
   },
 };
 
@@ -339,7 +339,7 @@ export const generateNewJobRequest = (): ICreateJobBody<IngestionNewJobParams, I
   const productName = rasterLayerMetadataGenerators.productName();
   const productType = rasterLayerMetadataGenerators.productType();
   const inputFiles = {
-    gpkgFilesPath: [relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.gpkgFilesPath()[0]))],
+    gpkgFilesPath: [relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.gpkgFilesPath()[0]!))],
     metadataShapefilePath: relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.metadataShapefilePath())),
     productShapefilePath: relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.productShapefilePath())),
   };
@@ -409,7 +409,7 @@ export const generateUpdateJobRequest = (
   const validationTaskType = configMock.get<string>('jobManager.validationTaskType');
   const updateJobType = isSwapUpdate ? ingestionUpdateJobType : ingestionSwapUpdateJobType;
   const inputFiles = {
-    gpkgFilesPath: [relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.gpkgFilesPath()[0]))],
+    gpkgFilesPath: [relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.gpkgFilesPath()[0]!))],
     metadataShapefilePath: relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.metadataShapefilePath())),
     productShapefilePath: relative(sourceMount, join(sourceMount, rasterLayerInputFilesGenerators.productShapefilePath())),
   };

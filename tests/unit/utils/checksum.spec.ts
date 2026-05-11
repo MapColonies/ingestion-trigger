@@ -1,6 +1,6 @@
 import { constants, createReadStream } from 'node:fs';
 import { Readable } from 'node:stream';
-import jsLogger, { Logger } from '@map-colonies/js-logger';
+import { jsLogger, type Logger } from '@map-colonies/js-logger';
 import { trace, Tracer } from '@opentelemetry/api';
 import { Checksum } from '../../../src/utils/hash/checksum';
 import { ChecksumError } from '../../../src/ingestion/errors/ingestionErrors';
@@ -17,8 +17,8 @@ describe('Checksum', () => {
   let mockChecksumProcessor: jest.Mocked<ChecksumProcessor>;
   let mockChecksumProcessorInit: jest.Mock;
 
-  beforeEach(() => {
-    mockLogger = jsLogger({ enabled: false });
+  beforeEach(async () => {
+    mockLogger = await jsLogger({ enabled: false });
 
     mockTracer = tracerMock;
 

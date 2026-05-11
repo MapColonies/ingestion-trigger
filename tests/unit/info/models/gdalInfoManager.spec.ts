@@ -1,6 +1,7 @@
 import { BadRequestError } from '@map-colonies/error-types';
 import { container } from 'tsyringe';
 import { getApp } from '../../../../src/app';
+import { initConfig } from '../../../../src/common/config';
 import { GDAL_INFO_MANAGER_SYMBOL, GdalInfoManager } from '../../../../src/info/models/gdalInfoManager';
 import { GdalInfoError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { GdalUtilities } from '../../../../src/utils/gdal/gdalUtilities';
@@ -14,14 +15,18 @@ describe('GdalInfoManager', () => {
   let gdalInfoManager: GdalInfoManager;
   let schemaValidator: SchemasValidator;
 
-  beforeEach(() => {
-    const [, container] = getApp({
-      override: [...getTestContainerConfig()],
+  beforeAll(async () => {
+    await initConfig(true);
+  });
+
+  beforeEach(async () => {
+    registerDefaultConfig();
+    const [, container] = await getApp({
+      override: [...(await getTestContainerConfig())],
       useChild: true,
     });
     schemaValidator = container.resolve<SchemasValidator>(INGESTION_SCHEMAS_VALIDATOR_SYMBOL);
     gdalInfoManager = container.resolve<GdalInfoManager>(GDAL_INFO_MANAGER_SYMBOL);
-    registerDefaultConfig();
   });
 
   afterEach(() => {

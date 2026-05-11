@@ -1,24 +1,38 @@
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import { getApp } from '../../../src/app';
+import { initConfig } from '../../../src/common/config';
 import { InfoData } from '../../../src/ingestion/schemas/infoDataSchema';
 import { GdalUtilities } from '../../../src/utils/gdal/gdalUtilities';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../../src/utils/validation/schemasValidator';
 import { registerDefaultConfig } from '../../mocks/configMock';
 
+jest.mock('gdal-async', () => {
+  const actualModule = jest.requireActual<Record<string, unknown>>('gdal-async');
+  return {
+    ...actualModule,
+    infoAsync: jest.fn().mockImplementation(actualModule['infoAsync'] as (...args: unknown[]) => unknown),
+    openAsync: jest.fn().mockImplementation(actualModule['openAsync'] as (...args: unknown[]) => unknown),
+  };
+});
+
 let gdalUtilities: GdalUtilities;
 
 describe('gdalUtilities', () => {
-  beforeEach(function () {
-    const [, container] = getApp();
-    const schemasValidator = container.resolve<SchemasValidator>(INGESTION_SCHEMAS_VALIDATOR_SYMBOL);
-    jest.resetAllMocks();
-    gdalUtilities = new GdalUtilities(jsLogger({ enabled: false }), trace.getTracer('testTracer'), schemasValidator);
+  beforeAll(async () => {
+    await initConfig(true);
+  });
+
+  beforeEach(async function () {
     registerDefaultConfig();
+    const [, container] = await getApp();
+    const schemasValidator = container.resolve<SchemasValidator>(INGESTION_SCHEMAS_VALIDATOR_SYMBOL);
+    jest.clearAllMocks();
+    gdalUtilities = new GdalUtilities(await jsLogger({ enabled: false }), trace.getTracer('testTracer'), schemasValidator);
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('getInfoData', () => {

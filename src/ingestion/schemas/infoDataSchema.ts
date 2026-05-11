@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { zoomLevelToResolutionDeg } from '@map-colonies/mc-utils';
 import { Geometry } from 'geojson';
 import { DependencyContainer } from 'tsyringe';
-import { IConfig } from 'config';
+import type { ConfigType } from '../../common/config';
 import { PixelRange } from '../interfaces';
 import { SERVICES } from '../../common/constants';
 
@@ -14,12 +14,12 @@ const basicInfoDataSchema = z
     extentPolygon: z.custom<Geometry>(),
   })
   .describe('InfoDataSchema');
-const infoDataWitFile = basicInfoDataSchema.extend({
+export const infoDataWithFile = basicInfoDataSchema.extend({
   fileName: z.string(),
 });
 
 export const infoDataSchemaArray = z.array(basicInfoDataSchema);
-export type InfoDataWithFile = z.infer<typeof infoDataWitFile>;
+export type InfoDataWithFile = z.infer<typeof infoDataWithFile>;
 export type InfoData = z.infer<typeof basicInfoDataSchema>;
 
 // eslint-disable-next-line @typescript-eslint/no-magic-numbers
@@ -27,9 +27,9 @@ export const pixelSizeRange: PixelRange = { min: zoomLevelToResolutionDeg(22) as
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const createInfoDataSchema = (container: DependencyContainer) => {
-  const config = container.resolve<IConfig>(SERVICES.CONFIG);
-  const validCRSs = config.get<number[]>('validationValuesByInfo.crs');
-  const validFormats = config.get<string[]>('validationValuesByInfo.fileFormat').map((format) => format.toLowerCase());
+  const config = container.resolve<ConfigType>(SERVICES.CONFIG);
+  const validCRSs = config.get('validationValuesByInfo.crs') as unknown as number[];
+  const validFormats = (config.get('validationValuesByInfo.fileFormat') as unknown as string[]).map((format) => format.toLowerCase());
 
   const infoDataSchema = basicInfoDataSchema
     .refine(

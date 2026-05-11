@@ -1,4 +1,4 @@
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import { container } from 'tsyringe';
 import { NotFoundError } from '@map-colonies/error-types';
@@ -21,10 +21,11 @@ const gdalInfoManagerMock = {
 
 describe('InfoManager', () => {
   let infoManager: InfoManager;
+  let testLogger: Awaited<ReturnType<typeof jsLogger>>;
   const testTracer = trace.getTracer('testTracer');
-  const testLogger = jsLogger({ enabled: false });
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    testLogger = await jsLogger({ enabled: false });
     registerDefaultConfig();
     infoManager = new InfoManager(
       testLogger,
@@ -59,7 +60,7 @@ describe('InfoManager', () => {
     });
 
     it('should throw an file not found error if file is not exist', async () => {
-      sourceValidator.validateFilesExist.mockRejectedValue(new FileNotFoundError(generateInputFiles().gpkgFilesPath[0]));
+      sourceValidator.validateFilesExist.mockRejectedValue(new FileNotFoundError(generateInputFiles().gpkgFilesPath[0]!));
 
       await expect(infoManager.getGpkgsInfo(generateInputFiles())).rejects.toThrow(NotFoundError);
     });

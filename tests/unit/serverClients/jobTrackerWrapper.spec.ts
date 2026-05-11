@@ -1,4 +1,4 @@
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import nock from 'nock';
 import { HttpClient } from '@map-colonies/mc-utils';
@@ -11,10 +11,10 @@ describe('JobTrackerClient', () => {
   let jobTrackerClient: JobTrackerClient;
   let postSpy: jest.SpyInstance;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     registerDefaultConfig();
 
-    jobTrackerClient = new JobTrackerClient(configMock, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
+    jobTrackerClient = new JobTrackerClient(configMock, await jsLogger({ enabled: false }), trace.getTracer('testTracer'));
     postSpy = jest.spyOn(HttpClient.prototype as unknown as { post: jest.Mock }, 'post');
   });
 

@@ -74,12 +74,11 @@ tracing:
   enabled: false
   url: ''
 
-metrics:
-  enabled: false
-  url: ''
-  prometheus:
-    scrape: true
-    port: 8080
+configManagement:
+  offlineMode: false
+  name: 'ingestion-trigger'
+  version: 'latest'
+  serverUrl: 'http://localhost:8080/api'
 
 image:
   repository: ingestion-trigger
@@ -130,6 +129,9 @@ env:
   logPrettyPrintEnabled: false
   responseCompressionEnabled: true
   requestPayloadLimit: 1mb
+  tracing:
+    enabled: false
+    url: ''
   storageExplorer:
     layerSourceDir: '/layerSources'
     displayNameDir: "\\layerSources"

@@ -1,7 +1,6 @@
 {{- $chartName := include "ingestion-trigger.name" . -}}
-{{- $tracing := (include "common.tracing.merged" .) | fromYaml }}
-{{- $metrics := (include "common.metrics.merged" .) | fromYaml }}
 {{- $configmapName := include "configmap.fullname" . }}
+{{- $tracing := (include "common.tracing.merged" .) | fromYaml }}
 {{- $serviceUrls := (include "common.serviceUrls.merged" .) | fromYaml }}
 {{- $jobDefinitions := (include "common.jobDefinitions.merged" .) | fromYaml }}
 {{- $storage := (include "common.storage.merged" .) | fromYaml }}
@@ -47,10 +46,11 @@ data:
   {{ if $tracing.enabled }}
   TELEMETRY_TRACING_URL: {{ $tracing.url }}
   {{ end }}
-  {{ if $metrics.enabled }}
-  TELEMETRY_METRICS_ENABLED: {{ $metrics.enabled | quote }}
-  TELEMETRY_METRICS_URL: {{ $metrics.url }}
-  {{ end }}
+  {{- with .Values.configManagement }}
+  CONFIG_SERVER_URL: {{ .serverUrl | quote }}
+  CONFIG_NAME: {{ .name | quote }}
+  CONFIG_VERSION: {{ .version | quote }}
+  OFFLINE_MODE: {{ .offlineMode | quote }}
+  {{- end }}
   npm_config_cache: /tmp/
 {{- end }}
-# TODO: check if values should be clean up

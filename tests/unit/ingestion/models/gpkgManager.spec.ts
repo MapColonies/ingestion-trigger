@@ -1,11 +1,10 @@
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
-import config from 'config';
 import { Grid, TileSize } from '../../../../src/ingestion/interfaces';
 import { GpkgManager } from '../../../../src/ingestion/models/gpkgManager';
 import { InvalidIndexError, UnsupportedGridError, UnsupportedTileSizeError } from '../../../../src/serviceClients/database/errors';
 import { SQLiteClient } from '../../../../src/serviceClients/database/SQLiteClient';
-import { registerDefaultConfig } from '../../../mocks/configMock';
+import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { generateInputFiles } from '../../../mocks/mockFactory';
 
 describe('GpkgManager', () => {
@@ -14,13 +13,12 @@ describe('GpkgManager', () => {
   let getGridSpy: jest.SpyInstance;
   let getGpkgTileSizeSpy: jest.SpyInstance;
 
-  beforeEach(() => {
-    gpkgManager = new GpkgManager(config, jsLogger({ enabled: false }), trace.getTracer('testTracer'));
+  beforeEach(async () => {
+    registerDefaultConfig();
+    gpkgManager = new GpkgManager(configMock, await jsLogger({ enabled: false }), trace.getTracer('testTracer'));
     isGpkgIndexExistsSpy = jest.spyOn(SQLiteClient.prototype, 'isGpkgIndexExist');
     getGridSpy = jest.spyOn(SQLiteClient.prototype, 'getGrid');
     getGpkgTileSizeSpy = jest.spyOn(SQLiteClient.prototype, 'getGpkgTileSize');
-
-    registerDefaultConfig();
   });
 
   afterEach(() => {

@@ -1,6 +1,6 @@
 const insensitiveExt = (ext: string, base = '', idx = 0): string[] => {
-  const lowerBase = base + ext[idx].toLowerCase();
-  const upperBase = base + ext[idx].toUpperCase();
+  const lowerBase = base + ext[idx]!.toLowerCase();
+  const upperBase = base + ext[idx]!.toUpperCase();
   if (idx >= ext.length - 1) {
     return [lowerBase, upperBase];
   } else {

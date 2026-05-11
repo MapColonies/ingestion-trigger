@@ -1,11 +1,11 @@
 import { relative } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
-import { Logger } from '@map-colonies/js-logger';
+import type { Logger } from '@map-colonies/js-logger';
 import {
-  IFindJobsByCriteriaBody,
-  IJobResponse,
-  IUpdateTaskBody,
+  type IFindJobsByCriteriaBody,
+  type IJobResponse,
+  type IUpdateTaskBody,
   OperationStatus,
   type ICreateJobBody,
   type ITaskResponse,
@@ -25,10 +25,12 @@ import {
   type RasterProductTypes,
 } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
-import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
+import { SpanStatusCode, trace } from '@opentelemetry/api';
+import type { Tracer } from '@opentelemetry/api';
 import { container, inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { IConfig, ISupportedIngestionSwapTypes, LogContext } from '../../common/interfaces';
+import type { ConfigType } from '../../common/config';
+import type { ISupportedIngestionSwapTypes, LogContext } from '../../common/interfaces';
 import { InfoManager } from '../../info/models/infoManager';
 import { CatalogClient } from '../../serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
@@ -76,7 +78,7 @@ export class IngestionManager {
 
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     private readonly validateManager: ValidateManager,
     private readonly sourceValidator: SourceValidator,
@@ -94,16 +96,16 @@ export class IngestionManager {
       fileName: __filename,
       class: IngestionManager.name,
     };
-    this.jobDomain = config.get<string>('jobManager.jobDomain');
-    this.ingestionNewJobType = config.get<string>('jobManager.ingestionNewJobType');
-    this.forbiddenJobTypes = config.get<string[]>('jobManager.forbiddenJobTypesForParallelIngestion');
-    this.supportedIngestionSwapTypes = config.get<ISupportedIngestionSwapTypes[]>('jobManager.supportedIngestionSwapTypes');
-    this.updateJobType = config.get<string>('jobManager.ingestionUpdateJobType');
-    this.swapUpdateJobType = config.get<string>('jobManager.ingestionSwapUpdateJobType');
-    this.validationTaskType = config.get<string>('jobManager.validationTaskType');
-    this.finalizeTaskType = config.get<string>('jobManager.finalizeTaskType');
-    this.sourceMount = config.get<string>('storageExplorer.layerSourceDir');
-    this.jobTrackerServiceUrl = config.get<string>('services.jobTrackerServiceURL');
+    this.jobDomain = config.get('jobManager.jobDomain') as unknown as string;
+    this.ingestionNewJobType = config.get('jobManager.ingestionNewJobType') as unknown as string;
+    this.forbiddenJobTypes = config.get('jobManager.forbiddenJobTypesForParallelIngestion') as unknown as string[];
+    this.supportedIngestionSwapTypes = config.get('jobManager.supportedIngestionSwapTypes') as unknown as ISupportedIngestionSwapTypes[];
+    this.updateJobType = config.get('jobManager.ingestionUpdateJobType') as unknown as string;
+    this.swapUpdateJobType = config.get('jobManager.ingestionSwapUpdateJobType') as unknown as string;
+    this.validationTaskType = config.get('jobManager.validationTaskType') as unknown as string;
+    this.finalizeTaskType = config.get('jobManager.finalizeTaskType') as unknown as string;
+    this.sourceMount = config.get('storageExplorer.layerSourceDir') as unknown as string;
+    this.jobTrackerServiceUrl = config.get('services.jobTrackerServiceURL') as unknown as string;
   }
 
   @withSpanAsyncV4
@@ -118,7 +120,7 @@ export class IngestionManager {
       inputFiles: {
         gpkgFilesPath: newLayer.inputFiles.gpkgFilesPath.map((gpkgFilePath, index) => {
           return {
-            absolute: absoluteInputFilesPath.inputFiles.gpkgFilesPath[index],
+            absolute: absoluteInputFilesPath.inputFiles.gpkgFilesPath[index]!,
             relative: gpkgFilePath,
           };
         }),
@@ -139,7 +141,7 @@ export class IngestionManager {
 
     const createJobRequest = await this.newLayerJobPayload(newLayerLocal);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
-    const taskId = taskIds[0];
+    const taskId = taskIds[0] as string;
 
     this.logger.info({
       msg: `new ingestion job and validation task created successfully`,
@@ -166,7 +168,7 @@ export class IngestionManager {
       inputFiles: {
         gpkgFilesPath: updateLayer.inputFiles.gpkgFilesPath.map((gpkgFilePath, index) => {
           return {
-            absolute: absoluteInputFilesPath.inputFiles.gpkgFilesPath[index],
+            absolute: absoluteInputFilesPath.inputFiles.gpkgFilesPath[index]!,
             relative: gpkgFilePath,
           };
         }),
@@ -187,7 +189,7 @@ export class IngestionManager {
 
     const createJobRequest = await this.updateLayerJobPayload(rasterLayerMetadata, updateLayerLocal);
     const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
-    const taskId = taskIds[0];
+    const taskId = taskIds[0] as string;
 
     this.logger.info({
       msg: `update job and validation task created successfully`,
@@ -607,7 +609,7 @@ export class IngestionManager {
       throw error;
     }
 
-    return rasterLayersCatalog[0].metadata;
+    return rasterLayersCatalog[0]!.metadata;
   }
 
   @withSpanAsyncV4
@@ -713,7 +715,6 @@ export class IngestionManager {
     this.logger.debug({ msg: `calculating checksum for: ${filePath}`, logContext: logCtx });
 
     try {
-      // eslint-disable-next-line @typescript-eslint/await-thenable
       const checksum = container.resolve(Checksum);
       return await checksum.calculate(filePath);
     } catch (err) {
@@ -794,7 +795,7 @@ export class IngestionManager {
         logContext: this.logContext,
         jobId: task.jobId,
         taskId: task.id,
-        error: err instanceof Error ? err.message : 'Unknown error',
+        err,
       });
     }
     return;

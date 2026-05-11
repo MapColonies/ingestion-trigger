@@ -6,19 +6,19 @@ import { HttpClient } from '@map-colonies/mc-utils';
 import type { IHttpRetryConfig } from '@map-colonies/mc-utils';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
-import type { IConfig } from '../common/interfaces';
+import type { ConfigType } from '../common/config';
 
 @injectable()
 export class JobTrackerClient extends HttpClient {
   public constructor(
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
-    @inject(SERVICES.LOGGER) protected readonly logger: Logger,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
+    @inject(SERVICES.LOGGER) protected override readonly logger: Logger,
     @inject(SERVICES.TRACER) private readonly tracer: Tracer
   ) {
     const serviceName = 'JobTracker';
-    const baseUrl = config.get<string>('services.jobTrackerServiceURL');
-    const httpRetryConfig = config.get<IHttpRetryConfig>('httpRetry');
-    const disableHttpClientLogs = config.get<boolean>('disableHttpClientLogs');
+    const baseUrl = config.get('services.jobTrackerServiceURL') as unknown as string;
+    const httpRetryConfig = config.get('httpRetry') as IHttpRetryConfig;
+    const disableHttpClientLogs = config.get('disableHttpClientLogs') as boolean;
     super(logger, baseUrl, serviceName, httpRetryConfig, disableHttpClientLogs);
   }
 
@@ -39,7 +39,7 @@ export class JobTrackerClient extends HttpClient {
         if (err instanceof Error) {
           const message = 'Failed to notify job tracker';
           const error = new Error(`${message}: ${err.message}`);
-          logger.error({ msg: message, error: err });
+          logger.error({ msg: message, err });
           activeSpan?.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
           activeSpan?.recordException(error);
           throw error;

@@ -1,5 +1,5 @@
 import { constants as fsConstants, promises as fsp } from 'node:fs';
-import jsLogger from '@map-colonies/js-logger';
+import { jsLogger } from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
 import { NotFoundError } from '@map-colonies/error-types';
 import { GdalInfoManager } from '../../../../src/info/models/gdalInfoManager';
@@ -15,11 +15,11 @@ describe('SourceValidator', () => {
   let mockGpkgManager: GpkgManager;
   let fspAccessSpy: jest.SpyInstance;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mockGdalInfoManager = { getInfoData: jest.fn, validateInfoData: jest.fn } as unknown as GdalInfoManager;
     mockGpkgManager = { validateGpkgFiles: jest.fn } as unknown as GpkgManager;
     sourceValidator = new SourceValidator(
-      jsLogger({ enabled: false }),
+      await jsLogger({ enabled: false }),
       configMock,
       trace.getTracer('testTracer'),
       mockGdalInfoManager,
@@ -45,7 +45,7 @@ describe('SourceValidator', () => {
     });
 
     it('should throw NotFoundError when a file does not exist', async () => {
-      fspAccessSpy.mockImplementation(async () => Promise.reject());
+      fspAccessSpy.mockImplementation(async () => Promise.reject(new Error('file not found')));
       const { gpkgFilesPath } = generateInputFiles();
 
       const promise = sourceValidator.validateFilesExist(gpkgFilesPath);
