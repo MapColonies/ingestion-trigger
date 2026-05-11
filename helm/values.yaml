@@ -129,6 +129,9 @@ env:
   logPrettyPrintEnabled: false
   responseCompressionEnabled: true
   requestPayloadLimit: 1mb
+  tracing:
+    enabled: false
+    url: ''
   storageExplorer:
     layerSourceDir: '/layerSources'
     displayNameDir: "\\layerSources"

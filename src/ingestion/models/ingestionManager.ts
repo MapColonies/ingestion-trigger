@@ -795,7 +795,7 @@ export class IngestionManager {
         logContext: this.logContext,
         jobId: task.jobId,
         taskId: task.id,
-        error: err instanceof Error ? err.message : 'Unknown error',
+        err,
       });
     }
     return;

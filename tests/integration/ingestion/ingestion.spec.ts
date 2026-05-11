@@ -64,6 +64,7 @@ describe('Ingestion', () => {
   afterEach(() => {
     resetContainer();
     jest.restoreAllMocks();
+    // eslint-disable-next-line import-x/no-named-as-default-member
     nock.cleanAll();
   });
 
@@ -1676,7 +1677,6 @@ describe('Ingestion', () => {
         nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
         nock(jobManagerURL).put(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.OK);
         nock(jobManagerURL).put(`/jobs/${jobId}`).reply(httpStatusCodes.OK);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
         nock(jobManagerURL)
           // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
           .put(`/jobs/${jobId}/tasks/${taskId}`, requestBodyForTaskRessting as any)

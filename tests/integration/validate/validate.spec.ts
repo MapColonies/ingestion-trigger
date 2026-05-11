@@ -52,6 +52,7 @@ describe('Validate', function () {
   afterEach(function () {
     resetContainer();
     jest.restoreAllMocks();
+    // eslint-disable-next-line import-x/no-named-as-default-member
     nock.cleanAll();
   });
 

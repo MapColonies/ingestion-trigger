@@ -14,6 +14,7 @@ describe('jobManagerWrapper integration', () => {
   });
 
   afterEach(() => {
+    // eslint-disable-next-line import-x/no-named-as-default-member
     nock.cleanAll();
     clearConfig();
     jest.clearAllMocks();
