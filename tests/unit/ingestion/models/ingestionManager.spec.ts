@@ -1209,7 +1209,7 @@ describe('IngestionManager', () => {
       expect(mockJobTrackerClient.notify).toHaveBeenCalledWith(mockTask);
     });
 
-    it('should return and do nothing when task is valid', async () => {
+    it('should throw UnsupportedEntityError when task is valid', async () => {
       const mockJobId = faker.string.uuid();
       const mockJob = generateMockJob({ status: OperationStatus.SUSPENDED });
       const mockTask = {
@@ -1235,8 +1235,9 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockTask]);
 
-      await ingestionManager.bypassValidationErrors(body, mockJobId);
+      const response = ingestionManager.bypassValidationErrors(body, mockJobId);
       expect(mockJobTrackerClient.notify).not.toHaveBeenCalled();
+      await expect(response).rejects.toThrow(UnsupportedEntityError);
     });
 
     it('should throw BadRequestError if job is not suspended', async () => {
@@ -1265,7 +1266,8 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockTask]);
 
-      await expect(ingestionManager.bypassValidationErrors(body, mockJobId)).rejects.toThrow(BadRequestError);
+      const response = ingestionManager.bypassValidationErrors(body, mockJobId);
+      await expect(response).rejects.toThrow(UnsupportedEntityError);
     });
 
     it('should throw UnsupportedEntityError if task has unallowed errors', async () => {

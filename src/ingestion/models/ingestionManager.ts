@@ -1,6 +1,6 @@
 import { relative } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import {
   IFindJobsByCriteriaBody,
@@ -234,37 +234,7 @@ export class IngestionManager {
     const job: IJobResponse<IngestionBaseJobParams, unknown> = await this.jobManagerWrapper.getJob<IngestionBaseJobParams, unknown>(jobId);
     const validationTask = await this.getValidationTask(jobId, { ...logCtx });
 
-    if (validationTask.parameters.isValid === true) {
-      return;
-    }
-    if (job.status !== OperationStatus.SUSPENDED) {
-      throw new BadRequestError('cannot bypass validation errors when the job is not suspended');
-    }
-    if (validationTask.parameters.errorsSummary === undefined) {
-      throw new UnsupportedEntityError('cannot bypass validation errors when there are no validation errors in task params');
-    }
-
-    const errorsSummary = validationTask.parameters.errorsSummary;
-    const exceededResolutionThreshold = errorsSummary.thresholds.resolution.exceeded;
-
-    for (const [errorType, errorCount] of Object.entries(errorsSummary.errorsCount)) {
-      if (errorCount > 0 && !allowedValidationErrors.includes(errorType)) {
-        throw new UnsupportedEntityError('validation task has additional errors that are not in the allowed list');
-      }
-    }
-    if (exceededResolutionThreshold) {
-      throw new UnsupportedEntityError('cannot bypass validation error of type: resolution, because the resolution exceeded threshold');
-    }
-
-    const existingChecksums = validationTask.parameters.checksums;
-    const metadataShapefilePath = await this.validateAndGetAbsoluteInputFiles(job.parameters.inputFiles);
-    const newChecksums = await this.getChecksum(metadataShapefilePath.metadataShapefilePath);
-    if (this.isChecksumChanged(existingChecksums, newChecksums)) {
-      throw new ConflictError(
-        'cannot bypass validation errors because the metadata shapefile has been changed since the validation was performed,re-run the process'
-      );
-    }
-
+    await this.canBypassValidationTask({ ...body, ingestionValidationTaskParams: validationTask.parameters, job });
     await this.makeValidationTaskCompleted(validationTask);
     await this.jobManagerWrapper.updateJob(jobId, {
       status: OperationStatus.IN_PROGRESS,
@@ -781,6 +751,47 @@ export class IngestionManager {
       ...checksum,
       fileName: relative(this.sourceMount, checksum.fileName),
     }));
+  }
+
+  private async canBypassValidationTask(
+    options: {
+      ingestionValidationTaskParams: IngestionValidationTaskParams;
+      job: IJobResponse<IngestionBaseJobParams, unknown>;
+    } & IBypassValidationErrorsRequestBody
+  ): Promise<void> {
+    const { allowedValidationErrors, ingestionValidationTaskParams, job } = options;
+
+    if (ingestionValidationTaskParams.isValid === true) {
+      throw new UnsupportedEntityError('cannot bypass validation errors since the validation was already successfully completed');
+    }
+    if (job.status !== OperationStatus.SUSPENDED) {
+      throw new UnsupportedEntityError('cannot bypass validation errors when the job is not suspended');
+    }
+    if (ingestionValidationTaskParams.errorsSummary === undefined) {
+      throw new UnsupportedEntityError('cannot bypass validation errors when there are no validation errors in task params');
+    }
+
+    const errorsSummary = ingestionValidationTaskParams.errorsSummary;
+    const exceededResolutionThreshold = errorsSummary.thresholds.resolution.exceeded;
+
+    if (exceededResolutionThreshold) {
+      throw new UnsupportedEntityError('cannot bypass validation error of type: resolution, because the resolution exceeded threshold');
+    }
+
+    for (const [errorType, errorCount] of Object.entries(errorsSummary.errorsCount)) {
+      if (errorCount > 0 && !allowedValidationErrors.includes(errorType)) {
+        throw new UnsupportedEntityError('validation task has additional errors that are not in the allowed list');
+      }
+    }
+
+    const existingChecksums = ingestionValidationTaskParams.checksums;
+    const metadataShapefilePath = await this.validateAndGetAbsoluteInputFiles(job.parameters.inputFiles);
+    const newChecksums = await this.getChecksum(metadataShapefilePath.metadataShapefilePath);
+    if (this.isChecksumChanged(existingChecksums, newChecksums)) {
+      throw new ConflictError(
+        'cannot bypass validation errors because the metadata shapefile has been changed since the validation was performed, re-run the process'
+      );
+    }
   }
 
   private async makeValidationTaskCompleted(task: ITaskResponse<IngestionValidationTaskParams>): Promise<void> {
