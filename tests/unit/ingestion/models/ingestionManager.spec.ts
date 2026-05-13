@@ -1240,7 +1240,7 @@ describe('IngestionManager', () => {
       await expect(response).rejects.toThrow(UnsupportedEntityError);
     });
 
-    it('should throw BadRequestError if job is not suspended', async () => {
+    it('should throw UnsupportedEntityError if job is not suspended', async () => {
       const mockJobId = faker.string.uuid();
       const mockJob = generateMockJob({ status: OperationStatus.PENDING });
       const mockTask = {
