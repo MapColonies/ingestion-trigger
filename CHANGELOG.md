@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.2.1](https://github.com/MapColonies/ingestion-trigger/compare/v4.2.0...v4.2.1) (2026-05-20)
+
+
+### Bug Fixes
+
+* bypass attempt with isValid as true does not indicate for an error (MAPCO-10606) ([#90](https://github.com/MapColonies/ingestion-trigger/issues/90)) ([93b24cc](https://github.com/MapColonies/ingestion-trigger/commit/93b24cc2cac0df1edd95e97f19e852691960e6b5))
+* bypass validation error (MAPCO-10600) ([#92](https://github.com/MapColonies/ingestion-trigger/issues/92)) ([6efb2e0](https://github.com/MapColonies/ingestion-trigger/commit/6efb2e0dd5ee801cda3ddbbffd764089b467ea18))
+
 ## [4.2.0](https://github.com/MapColonies/ingestion-trigger/compare/v4.1.2...v4.2.0) (2026-04-29)
 
 
