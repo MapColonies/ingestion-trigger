@@ -1,5 +1,5 @@
-import { relative } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { relative } from 'node:path';
 import { ConflictError, NotFoundError } from '@map-colonies/error-types';
 import { Logger } from '@map-colonies/js-logger';
 import {
@@ -12,15 +12,15 @@ import {
 } from '@map-colonies/mc-priority-queue';
 import {
   getMapServingLayerName,
+  ingestionValidationTaskParamsSchema,
   inputFilesSchema,
   rasterProductTypeSchema,
   resourceIdSchema,
-  ingestionValidationTaskParamsSchema,
-  type IngestionValidationTaskParams,
   type Checksum as IChecksum,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
+  type IngestionValidationTaskParams,
   type InputFiles,
   type RasterProductTypes,
 } from '@map-colonies/raster-shared';
@@ -32,22 +32,23 @@ import { IConfig, ISupportedIngestionSwapTypes, LogContext } from '../../common/
 import { InfoManager } from '../../info/models/infoManager';
 import { CatalogClient } from '../../serviceClients/catalogClient';
 import { JobManagerWrapper } from '../../serviceClients/jobManagerWrapper';
+import { JobTrackerClient } from '../../serviceClients/jobTrackerClient';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
+import { PolygonPartsManagerClient } from '../../serviceClients/polygonPartsManagerClient';
 import { Checksum } from '../../utils/hash/checksum';
 import { getAbsolutePathInputFiles } from '../../utils/paths';
 import { getShapefileFiles } from '../../utils/shapefile';
+import { isKeyOf } from '../../utils/typeGuards';
 import { ZodValidator } from '../../utils/validation/zodValidator';
 import { ValidateManager } from '../../validate/models/validateManager';
 import { ChecksumError, throwInvalidJobStatusError, UnsupportedEntityError } from '../errors/ingestionErrors';
+import type { IBypassValidationErrorsRequestBody, IngestionBaseJobParams, ResponseId } from '../interfaces';
 import { IngestionOperation } from '../interfaces';
-import type { IngestionBaseJobParams, ResponseId, IBypassValidationErrorsRequestBody } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../schemas/updateLayerSchema';
 import { GeoValidator } from '../validators/geoValidator';
 import { SourceValidator } from '../validators/sourceValidator';
-import { PolygonPartsManagerClient } from '../../serviceClients/polygonPartsManagerClient';
-import { JobTrackerClient } from '../../serviceClients/jobTrackerClient';
 import { ProductManager } from './productManager';
 
 type ReplaceValuesOfKey<T extends Record<PropertyKey, unknown>, Key extends keyof T, Value> = {
@@ -779,7 +780,11 @@ export class IngestionManager {
     }
 
     for (const [errorType, errorCount] of Object.entries(errorsSummary.errorsCount)) {
-      if (errorCount > 0 && !allowedValidationErrors.includes(errorType)) {
+      if (
+        errorCount > 0 &&
+        !allowedValidationErrors.includes(errorType) &&
+        !(isKeyOf(errorType, errorsSummary.thresholds) && !errorsSummary.thresholds[errorType].exceeded)
+      ) {
         throw new UnsupportedEntityError('validation task has additional errors that are not in the allowed list');
       }
     }
