@@ -48,7 +48,7 @@ export class GeoValidator {
         throw new UnsupportedEntityError(errorMessage);
       }
       if (!this.hasFootprintCorrelation(gpkgBufferedExtent.geometry, productGeometry)) {
-        const errorMessage = 'product footprint is not contained by gpkg combined extent';
+        const errorMessage = 'product footprint is not contained by gpkg combined buffered extent';
         this.logger.error({
           msg: errorMessage,
           logContext: logCtx,
