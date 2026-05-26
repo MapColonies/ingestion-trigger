@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.2.2](https://github.com/MapColonies/ingestion-trigger/compare/v4.2.1...v4.2.2) (2026-05-26)
+
+
+### Bug Fixes
+
+* improve footprint correlation validation logic in GeoValidator (MAPCO-10651) ([#93](https://github.com/MapColonies/ingestion-trigger/issues/93)) ([ede583a](https://github.com/MapColonies/ingestion-trigger/commit/ede583a73404dfa5c929ee084db08dcf4ba60e88))
+
 ## [4.2.1](https://github.com/MapColonies/ingestion-trigger/compare/v4.2.0...v4.2.1) (2026-05-20)
 
 
