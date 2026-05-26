@@ -38,20 +38,24 @@ export class GeoValidator {
     // combine all gpkgs sources files geometries (footprints)
     const combinedExtent = combineExtentPolygons(features);
     this.logger.debug({ msg: 'created combined extent', logContext: logCtx, metadata: { combinedExtent } });
-    const gpkgBufferedExtent = extentBuffer(this.extentBufferInMeters, combinedExtent);
-    if (gpkgBufferedExtent === undefined) {
-      throw new UnsupportedEntityError('buffered gpkg extent is undefined');
-    }
     // read "product.shp" file to check is contained within gpkg extent
-    const hasFootprintCorrelation = this.hasFootprintCorrelation(gpkgBufferedExtent.geometry, productGeometry);
-    if (!hasFootprintCorrelation) {
-      const errorMessage = 'product footprint is not contained by gpkg combined extent';
-      this.logger.error({
-        msg: errorMessage,
-        logContext: logCtx,
-        metadata: { gpkgBufferedExtent, productGeometry },
-      });
-      throw new ValidationError(errorMessage);
+    if (!this.hasFootprintCorrelation(combinedExtent.geometry, productGeometry)) {
+      this.logger.info({ msg: 'product footprint is not contained by gpkg combined extent, checking buffered extent', logContext: logCtx });
+      const gpkgBufferedExtent = extentBuffer(this.extentBufferInMeters, combinedExtent);
+      if (gpkgBufferedExtent === undefined) {
+        const errorMessage = 'buffered gpkg extent is undefined';
+        this.logger.error({ msg: errorMessage, logContext: logCtx });
+        throw new UnsupportedEntityError(errorMessage);
+      }
+      if (!this.hasFootprintCorrelation(gpkgBufferedExtent.geometry, productGeometry)) {
+        const errorMessage = 'product footprint is not contained by gpkg combined buffered extent';
+        this.logger.error({
+          msg: errorMessage,
+          logContext: logCtx,
+          metadata: { gpkgBufferedExtent, productGeometry },
+        });
+        throw new ValidationError(errorMessage);
+      }
     }
   }
 
