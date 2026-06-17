@@ -1,7 +1,6 @@
 {{- $releaseName := .Release.Name -}}
 {{- $chartName := include "ingestion-trigger.name" . -}}
 {{- $deploymentName := include "deployment.fullname" . }}
-{{- $metrics := (include "common.metrics.merged" .) | fromYaml }}
 {{- $configmapName := include "configmap.fullname" . }}
 {{- $cloudProviderFlavor := include "ingestion-trigger.cloudProviderFlavor" . -}}
 {{- $cloudProviderDockerRegistryUrl := include "ingestion-trigger.cloudProviderDockerRegistryUrl" . -}}

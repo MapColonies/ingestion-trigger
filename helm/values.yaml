@@ -1,7 +1,6 @@
 global:
   cloudProvider: {}
   tracing: {}
-  metrics: {}
   environment: ''
   domain: "RASTER"
   serviceUrls: {}
