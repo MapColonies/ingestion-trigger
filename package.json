@@ -1,6 +1,6 @@
 {
   "name": "ingestion-trigger",
-  "version": "4.2.0",
+  "version": "4.2.2",
   "description": "Service that designed to validate and trigger ingestion of new layers from raw data and update existing layers",
   "main": "./src/index.ts",
   "scripts": {
@@ -55,7 +55,7 @@
     "@map-colonies/mc-utils": "^5.1.0",
     "@map-colonies/openapi-express-viewer": "^3.0.0",
     "@map-colonies/prometheus": "^1.0.0",
-    "@map-colonies/raster-shared": "^8.0.0-alpha",
+    "@map-colonies/raster-shared": "^8.1.0",
     "@map-colonies/read-pkg": "0.0.1",
     "@map-colonies/schemas": "^1.17.0",
     "@map-colonies/shapefile-reader": "^1.0.1",

@@ -1126,6 +1126,7 @@ describe('IngestionManager', () => {
       expect(mockPolygonPartsManagerClient.deleteValidationEntity).not.toHaveBeenCalled();
     });
   });
+
   describe('bypassValidationErrors', () => {
     let getJobSpy: jest.SpyInstance;
     let getTasksForJobSpy: jest.SpyInstance;
@@ -1211,7 +1212,7 @@ describe('IngestionManager', () => {
       expect(mockJobTrackerClient.notify).toHaveBeenCalledWith(mockTask);
     });
 
-    it('should return and do nothing when task is valid', async () => {
+    it('should throw UnsupportedEntityError when task is valid', async () => {
       const mockJobId = faker.string.uuid();
       const mockJob = generateMockJob({ status: OperationStatus.SUSPENDED });
       const mockTask = {
@@ -1237,11 +1238,12 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockTask]);
 
-      await ingestionManager.bypassValidationErrors(body, mockJobId);
+      const response = ingestionManager.bypassValidationErrors(body, mockJobId);
       expect(mockJobTrackerClient.notify).not.toHaveBeenCalled();
+      await expect(response).rejects.toThrow(UnsupportedEntityError);
     });
 
-    it('should throw BadRequestError if job is not suspended', async () => {
+    it('should throw UnsupportedEntityError if job is not suspended', async () => {
       const mockJobId = faker.string.uuid();
       const mockJob = generateMockJob({ status: OperationStatus.PENDING });
       const mockTask = {
@@ -1267,7 +1269,8 @@ describe('IngestionManager', () => {
       getJobSpy.mockResolvedValue(mockJob);
       getTasksForJobSpy.mockResolvedValue([mockTask]);
 
-      await expect(ingestionManager.bypassValidationErrors(body, mockJobId)).rejects.toThrow(BadRequestError);
+      const response = ingestionManager.bypassValidationErrors(body, mockJobId);
+      await expect(response).rejects.toThrow(UnsupportedEntityError);
     });
 
     it('should throw UnsupportedEntityError if task has unallowed errors', async () => {
@@ -1336,6 +1339,38 @@ describe('IngestionManager', () => {
           errorsSummary: {
             thresholds: { resolution: { exceeded: true } },
             errorsCount: { errorType1: 1 },
+          },
+        },
+        jobId: mockJobId,
+      };
+
+      const body = {
+        allowedValidationErrors: ['errorType1'],
+        approver: 'admin',
+        jobId: mockJobId,
+      };
+
+      getJobSpy.mockResolvedValue(mockJob);
+      getTasksForJobSpy.mockResolvedValue([mockTask]);
+
+      await expect(ingestionManager.bypassValidationErrors(body, mockJobId)).rejects.toThrow(UnsupportedEntityError);
+    });
+
+    it('should throw UnsupportedEntityError when un-allowed error exceeded threshold', async () => {
+      const mockJobId = faker.string.uuid();
+      const mockJob = generateMockJob({ status: OperationStatus.SUSPENDED });
+      const mockTask = {
+        id: faker.string.uuid(),
+        type: configMock.get<string>('jobManager.validationTaskType'),
+        status: OperationStatus.SUSPENDED,
+        parameters: {
+          isValid: false,
+          errorsSummary: {
+            thresholds: {
+              resolution: { exceeded: false },
+              smallHoles: { exceeded: true },
+            },
+            errorsCount: { errorType1: 1, smallHoles: 10 },
           },
         },
         jobId: mockJobId,

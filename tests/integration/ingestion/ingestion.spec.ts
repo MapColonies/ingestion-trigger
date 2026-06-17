@@ -2343,29 +2343,33 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.OK);
       });
 
-      it('should return 200 when task is valid', async () => {
+      it('should return 200 status code when successfully bypassing validation errors and ignoring un-allowed and below threshold errors', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
         const bypassJob = createBypassJob({ jobId });
         const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
 
+        const errorsSummary = {
+          errorsCount: { resolution: 1, smallHoles: 1 },
+          thresholds: { resolution: { exceeded: false }, smallHoles: 1 },
+        };
         const validationTask = {
           id: taskId,
           jobId,
           type: configMock.get<string>('jobManager.validationTaskType'),
           status: OperationStatus.SUSPENDED,
           parameters: {
-            isValid: true,
+            isValid: false,
             checksums: validInputFiles.checksums,
-            errorsSummary: {
-              errorsCount: { resolution: 1 },
-              thresholds: { resolution: { exceeded: false } },
-            },
+            errorsSummary,
           },
         };
 
         nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
         nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(jobManagerURL).put(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.OK);
+        nock(jobManagerURL).put(`/jobs/${jobId}`).reply(httpStatusCodes.OK);
+        nock(configMock.get<string>('services.jobTrackerServiceURL')).post(`/tasks/${taskId}/notify`).reply(httpStatusCodes.OK);
 
         const response = await requestSender.bypassValidationErrors(jobId, requestBody);
 
@@ -2375,10 +2379,10 @@ describe('Ingestion', () => {
     });
 
     describe('Bad Path', () => {
-      it('should return 400 BAD_REQUEST when job is not suspended', async () => {
+      it('should return 422 UNPROCESSABLE_ENTITY when job is not suspended', async () => {
         const jobId = faker.string.uuid();
         const taskId = faker.string.uuid();
-        const bypassJob = createBypassJob({ jobId, status: OperationStatus.PENDING });
+        const bypassJob = createBypassJob({ jobId, status: OperationStatus.FAILED });
         const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
 
         const validationTask = {
@@ -2402,7 +2406,36 @@ describe('Ingestion', () => {
         const response = await requestSender.bypassValidationErrors(jobId, requestBody);
 
         expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+      });
+
+      it('should return 422 UNPROCESSABLE_ENTITY when validation task was already successfully accomplished', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const bypassJob = createBypassJob({ jobId, status: OperationStatus.COMPLETED });
+        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: true,
+            checksums: validInputFiles.checksums,
+            errorsSummary: {
+              errorsCount: { resolution: 0, geometryValidity: 0, metadata: 0, smallGeometries: 0, smallHoles: 0, unknown: 0, vertices: 0 },
+              thresholds: { resolution: { exceeded: false }, smallGeometries: { exceeded: false }, smallHoles: { count: 0, exceeded: false } },
+            },
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+
+        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
       });
 
       it('should return 422 UNPROCESSABLE_ENTITY when there are no validation errors in task params', async () => {
@@ -2448,6 +2481,36 @@ describe('Ingestion', () => {
             errorsSummary: {
               errorsCount: { resolution: 0, unallowedError: 1 },
               thresholds: { resolution: { exceeded: false } },
+            },
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, bypassJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+
+        const response = await requestSender.bypassValidationErrors(jobId, requestBody);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.UNPROCESSABLE_ENTITY);
+      });
+
+      it('should return 422 UNPROCESSABLE_ENTITY when there are additional errors that are not in the allowed list that exceeded error threshold', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const bypassJob = createBypassJob({ jobId });
+        const requestBody = { allowedValidationErrors: ['resolution'], approver: 'approverName' };
+
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.SUSPENDED,
+          parameters: {
+            isValid: false,
+            checksums: validInputFiles.checksums,
+            errorsSummary: {
+              errorsCount: { resolution: 0, smallGeometries: 1 },
+              thresholds: { resolution: { exceeded: false }, smallGeometries: { exceeded: true } },
             },
           },
         };
