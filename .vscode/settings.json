@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["shapefile"]
+  "cSpell.words": ["shapefile"],
+  "typescript.tsdk": "node_modules/typescript/lib"
 }

@@ -1,6 +1,6 @@
 import { jsLogger } from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
-import booleanContains from '@turf/boolean-contains';
+import * as turfBooleanContains from '@turf/boolean-contains';
 import * as turfBuffer from '@turf/buffer';
 import { UnsupportedEntityError, ValidationError } from '../../../../src/ingestion/errors/ingestionErrors';
 import { InfoDataWithFile } from '../../../../src/ingestion/schemas/infoDataSchema';
@@ -8,21 +8,20 @@ import { GeoValidator } from '../../../../src/ingestion/validators/geoValidator'
 import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { mockGdalInfoDataWithFile } from '../../../mocks/gdalInfoMock';
 
-jest.mock('@turf/boolean-contains', () => ({
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  __esModule: true,
-  default: jest.fn(),
-}));
+// jest.mock('@turf/boolean-contains', () => ({
+//   // eslint-disable-next-line @typescript-eslint/naming-convention
+//   __esModule: true,
+//   default: jest.fn(),
+// }));
 
 describe('GeoValidator', () => {
   let geoValidator: GeoValidator;
-  let booleanContainsMock: jest.Mock;
   let bufferSpy: jest.SpyInstance;
-
+  let booleanContainsSpy: jest.SpyInstance;
   beforeEach(async () => {
     registerDefaultConfig();
     geoValidator = new GeoValidator(await jsLogger({ enabled: false }), configMock, trace.getTracer('testTracer'));
-    booleanContainsMock = booleanContains as jest.Mock;
+    booleanContainsSpy = jest.spyOn(turfBooleanContains, 'default');
     bufferSpy = jest.spyOn(turfBuffer, 'buffer');
   });
 
@@ -34,28 +33,28 @@ describe('GeoValidator', () => {
   describe('validate', () => {
     it('valid correlation between gpkg footprint and product polygon footprint, should not throw an error', () => {
       const mockInfoData: InfoDataWithFile[] = [mockGdalInfoDataWithFile];
-      booleanContainsMock.mockReturnValue(true);
+      booleanContainsSpy.mockReturnValue(true);
       const action = () => geoValidator.validate(mockInfoData, { type: 'Polygon', coordinates: [] });
       expect(action).not.toThrow();
     });
 
     it('invalid correlation between gpkg footprint and product polygon footprint, should throw an error', () => {
       const mockInfoData: InfoDataWithFile[] = [mockGdalInfoDataWithFile];
-      booleanContainsMock.mockReturnValue(false);
+      booleanContainsSpy.mockReturnValue(false);
       const action = () => geoValidator.validate(mockInfoData, { type: 'Polygon', coordinates: [] });
       expect(action).toThrow(ValidationError);
     });
 
     it('valid correlation between gpkg footprint and product multipolygon footprint, should not throw an error', () => {
       const mockInfoData: InfoDataWithFile[] = [mockGdalInfoDataWithFile];
-      booleanContainsMock.mockReturnValue(true);
+      booleanContainsSpy.mockReturnValue(true);
       const action = () => geoValidator.validate(mockInfoData, { type: 'MultiPolygon', coordinates: [[], []] });
       expect(action).not.toThrow();
     });
 
     it('invalid correlation between gpkg footprint and product multipolygon footprint, should throw an error', () => {
       const mockInfoData: InfoDataWithFile[] = [mockGdalInfoDataWithFile];
-      booleanContainsMock.mockReturnValue(false);
+      booleanContainsSpy.mockReturnValue(false);
       const action = () => geoValidator.validate(mockInfoData, { type: 'MultiPolygon', coordinates: [[], []] });
       expect(action).toThrow(ValidationError);
     });
@@ -77,7 +76,7 @@ describe('GeoValidator', () => {
     it('should not throw an error when gpkg extent succesfully buffered', () => {
       const mockInfoData: InfoDataWithFile[] = [mockGdalInfoDataWithFile];
       bufferSpy.mockReturnValue(mockGdalInfoDataWithFile.extentPolygon);
-      booleanContainsMock.mockReturnValue(true);
+      booleanContainsSpy.mockReturnValue(true);
       const action = () => geoValidator.validate(mockInfoData, { type: 'Polygon', coordinates: [] });
       expect(action).not.toThrow();
     });

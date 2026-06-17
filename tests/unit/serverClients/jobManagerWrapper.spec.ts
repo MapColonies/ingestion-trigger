@@ -1,3 +1,4 @@
+/* eslint-disable import-x/no-named-as-default-member */
 import { faker } from '@faker-js/faker';
 import { InternalServerError } from '@map-colonies/error-types';
 import { jsLogger } from '@map-colonies/js-logger';

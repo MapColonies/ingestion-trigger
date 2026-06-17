@@ -1,3 +1,4 @@
+/* eslint-disable import-x/no-named-as-default-member */
 import { faker } from '@faker-js/faker';
 import { jsLogger } from '@map-colonies/js-logger';
 import { trace } from '@opentelemetry/api';
@@ -14,7 +15,6 @@ describe('jobManagerWrapper integration', () => {
   });
 
   afterEach(() => {
-    // eslint-disable-next-line import-x/no-named-as-default-member
     nock.cleanAll();
     clearConfig();
     jest.clearAllMocks();

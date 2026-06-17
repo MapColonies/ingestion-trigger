@@ -1,3 +1,4 @@
+/* eslint-disable import-x/no-named-as-default-member */
 import fs from 'node:fs';
 import { faker } from '@faker-js/faker';
 import { IJobResponse, OperationStatus, ICreateJobResponse } from '@map-colonies/mc-priority-queue';
@@ -64,7 +65,7 @@ describe('Ingestion', () => {
   afterEach(() => {
     resetContainer();
     jest.restoreAllMocks();
-    // eslint-disable-next-line import-x/no-named-as-default-member
+
     nock.cleanAll();
   });
 
@@ -2337,7 +2338,6 @@ describe('Ingestion', () => {
         nock(configMock.get<string>('services.jobTrackerServiceURL')).post(`/tasks/${taskId}/notify`).reply(httpStatusCodes.OK);
 
         const response = await requestSender.bypassValidationErrors(jobId, requestBody);
-        console.log('BYPASS RES:', response.body);
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.OK);

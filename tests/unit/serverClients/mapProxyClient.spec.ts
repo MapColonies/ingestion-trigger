@@ -1,3 +1,4 @@
+/* eslint-disable import-x/no-named-as-default-member */
 import { jsLogger } from '@map-colonies/js-logger';
 import { getMapServingLayerName, INGESTION_VALIDATIONS, RasterProductTypes } from '@map-colonies/raster-shared';
 import { trace } from '@opentelemetry/api';

@@ -1,3 +1,4 @@
+/* eslint-disable import-x/no-named-as-default-member */
 import { faker } from '@faker-js/faker';
 import httpStatusCodes from 'http-status-codes';
 import unset from 'lodash.unset';
@@ -29,7 +30,7 @@ describe('Info', function () {
   afterEach(function () {
     resetContainer();
     jest.restoreAllMocks();
-    // eslint-disable-next-line import-x/no-named-as-default-member
+
     nock.cleanAll();
   });
 

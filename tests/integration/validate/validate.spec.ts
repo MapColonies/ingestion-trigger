@@ -1,3 +1,4 @@
+/* eslint-disable import-x/no-named-as-default-member */
 import { faker } from '@faker-js/faker';
 import { SqliteError } from 'better-sqlite3';
 import * as gdal from 'gdal-async';
@@ -52,7 +53,7 @@ describe('Validate', function () {
   afterEach(function () {
     resetContainer();
     jest.restoreAllMocks();
-    // eslint-disable-next-line import-x/no-named-as-default-member
+
     nock.cleanAll();
   });
 
