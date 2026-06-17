@@ -8,12 +8,6 @@ import { GeoValidator } from '../../../../src/ingestion/validators/geoValidator'
 import { configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import { mockGdalInfoDataWithFile } from '../../../mocks/gdalInfoMock';
 
-// jest.mock('@turf/boolean-contains', () => ({
-//   // eslint-disable-next-line @typescript-eslint/naming-convention
-//   __esModule: true,
-//   default: jest.fn(),
-// }));
-
 describe('GeoValidator', () => {
   let geoValidator: GeoValidator;
   let bufferSpy: jest.SpyInstance;
@@ -61,6 +55,7 @@ describe('GeoValidator', () => {
 
     it('should throw error when extent buffer of an gpkg is undefinied - case of multipolygon', () => {
       const mockInfoData: InfoDataWithFile[] = [mockGdalInfoDataWithFile];
+      booleanContainsSpy.mockReturnValue(false);
       bufferSpy.mockReturnValue(undefined);
       const action = () => geoValidator.validate(mockInfoData, { type: 'MultiPolygon', coordinates: [[], []] });
       expect(action).toThrow(new UnsupportedEntityError('buffered gpkg extent is undefined'));
@@ -68,6 +63,7 @@ describe('GeoValidator', () => {
 
     it('should throw error when extent buffer of an gpkg is undefinied - case of polygon', () => {
       const mockInfoData: InfoDataWithFile[] = [mockGdalInfoDataWithFile];
+      booleanContainsSpy.mockReturnValue(false);
       bufferSpy.mockReturnValue(undefined);
       const action = () => geoValidator.validate(mockInfoData, { type: 'Polygon', coordinates: [] });
       expect(action).toThrow(new UnsupportedEntityError('buffered gpkg extent is undefined'));
