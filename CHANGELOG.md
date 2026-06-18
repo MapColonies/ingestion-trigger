@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.3.0](https://github.com/MapColonies/ingestion-trigger/compare/v4.2.2...v4.3.0) (2026-06-18)
+
+
+### Features
+
+* infrastructure and boilerplate deps upgrade (MAPCO-9937) ([#82](https://github.com/MapColonies/ingestion-trigger/issues/82)) ([3ca83c1](https://github.com/MapColonies/ingestion-trigger/commit/3ca83c19f2149eda389d4af7938c738015490626))
+
 ## [4.2.2](https://github.com/MapColonies/ingestion-trigger/compare/v4.2.1...v4.2.2) (2026-05-26)
 
 
