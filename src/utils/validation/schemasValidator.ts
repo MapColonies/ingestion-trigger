@@ -1,6 +1,6 @@
 import { inputFilesSchema, newRasterLayerMetadataSchema, updateRasterLayerMetadataSchema } from '@map-colonies/raster-shared';
 import { DependencyContainer } from 'tsyringe';
-import type z from 'zod';
+import type { z } from 'zod';
 import { gdalInfoSchema, type GdalInfo } from '../../ingestion/schemas/gdalDataSchema';
 import { createInfoDataSchema, InfoData } from '../../ingestion/schemas/infoDataSchema';
 import { rasterLayersCatalogSchema, type RasterLayersCatalog } from '../../ingestion/schemas/layerCatalogSchema';

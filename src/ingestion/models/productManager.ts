@@ -1,11 +1,11 @@
-import { Logger } from '@map-colonies/js-logger';
-import { ChunkProcessor, ReaderOptions, ShapefileChunk, ShapefileChunkReader } from '@map-colonies/shapefile-reader';
+import type { Logger } from '@map-colonies/js-logger';
+import { ChunkProcessor, ShapefileChunkReader, type ReaderOptions, type ShapefileChunk } from '@map-colonies/shapefile-reader';
 import { withSpanAsyncV4 } from '@map-colonies/telemetry';
-import { trace, Tracer } from '@opentelemetry/api';
+import { trace, type Tracer } from '@opentelemetry/api';
 import { Feature } from 'geojson';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import type { IConfig } from '../../common/interfaces';
+import type { ConfigType } from '../../common/config';
 import { LogContext } from '../../common/interfaces';
 import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, type SchemasValidator } from '../../utils/validation/schemasValidator';
 import { UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
@@ -21,12 +21,12 @@ export class ProductManager {
   private readonly maxVerticesPerChunk: number;
 
   public constructor(
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     @inject(INGESTION_SCHEMAS_VALIDATOR_SYMBOL) private readonly schemasValidator: SchemasValidator
   ) {
-    this.maxVerticesPerChunk = this.config.get('productReader.maxVerticesPerChunk');
+    this.maxVerticesPerChunk = this.config.get('productReader.maxVerticesPerChunk') as unknown as number;
     this.logContext = {
       fileName: __filename,
       class: ProductManager.name,
@@ -81,6 +81,7 @@ export class ProductManager {
   }
 
   @withSpanAsyncV4
+  // eslint-disable-next-line @typescript-eslint/require-await
   private async process(chunk: ShapefileChunk): Promise<void> {
     const logCtx: LogContext = { ...this.logContext, function: this.process.name };
     const activeSpan = trace.getActiveSpan();
@@ -92,7 +93,7 @@ export class ProductManager {
     if (this.features.length > 0) {
       this.features = [];
     }
-    for await (const feature of chunk.features) {
+    for (const feature of chunk.features) {
       this.features.push(feature);
     }
     this.logger.debug({ msg: `processor done with ${chunk.features.length} features: ${chunk.features.length}`, logContext: logCtx });

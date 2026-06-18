@@ -1,3 +1,4 @@
+/* eslint-disable import-x/no-named-as-default-member */
 import fs from 'node:fs';
 import { faker } from '@faker-js/faker';
 import { IJobResponse, OperationStatus, ICreateJobResponse } from '@map-colonies/mc-priority-queue';
@@ -8,6 +9,7 @@ import { matches, merge, set, unset } from 'lodash';
 import nock from 'nock';
 import { randexp } from 'randexp';
 import { getApp } from '../../../src/app';
+import { initConfig } from '../../../src/common/config';
 import { type ResponseId } from '../../../src/ingestion/interfaces';
 import type { IngestionNewLayer } from '../../../src/ingestion/schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../../../src/ingestion/schemas/updateLayerSchema';
@@ -39,9 +41,13 @@ describe('Ingestion', () => {
   let jobResponse: ICreateJobResponse;
   let requestSender: IngestionRequestSender;
 
-  beforeEach(() => {
-    const [app] = getApp({
-      override: [...getTestContainerConfig()],
+  beforeAll(async () => {
+    await initConfig(true);
+  });
+
+  beforeEach(async () => {
+    const [app] = await getApp({
+      override: [...(await getTestContainerConfig())],
     });
     jobResponse = {
       id: faker.string.uuid(),
@@ -59,6 +65,7 @@ describe('Ingestion', () => {
   afterEach(() => {
     resetContainer();
     jest.restoreAllMocks();
+
     nock.cleanAll();
   });
 
@@ -92,7 +99,7 @@ describe('Ingestion', () => {
           .reply(httpStatusCodes.NOT_FOUND);
         const expectedResponseBody: ResponseId = {
           jobId: jobResponse.id,
-          taskId: jobResponse.taskIds[0],
+          taskId: jobResponse.taskIds[0]!,
         };
 
         const response = await requestSender.ingestNewLayer(layerRequest);
@@ -132,7 +139,7 @@ describe('Ingestion', () => {
           .reply(httpStatusCodes.NOT_FOUND);
         const expectedResponseBody: ResponseId = {
           jobId: jobResponse.id,
-          taskId: jobResponse.taskIds[0],
+          taskId: jobResponse.taskIds[0]!,
         };
 
         const response = await requestSender.ingestNewLayer(layerRequest);
@@ -792,7 +799,7 @@ describe('Ingestion', () => {
           .reply(httpStatusCodes.OK);
         const expectedResponseBody: ResponseId = {
           jobId: jobResponse.id,
-          taskId: jobResponse.taskIds[0],
+          taskId: jobResponse.taskIds[0]!,
         };
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
@@ -830,7 +837,7 @@ describe('Ingestion', () => {
           .reply(httpStatusCodes.OK);
         const expectedResponseBody: ResponseId = {
           jobId: jobResponse.id,
-          taskId: jobResponse.taskIds[0],
+          taskId: jobResponse.taskIds[0]!,
         };
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
@@ -870,7 +877,7 @@ describe('Ingestion', () => {
           .reply(httpStatusCodes.OK);
         const expectedResponseBody: ResponseId = {
           jobId: jobResponse.id,
-          taskId: jobResponse.taskIds[0],
+          taskId: jobResponse.taskIds[0]!,
         };
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
@@ -912,7 +919,7 @@ describe('Ingestion', () => {
           .reply(httpStatusCodes.OK);
         const expectedResponseBody: ResponseId = {
           jobId: jobResponse.id,
-          taskId: jobResponse.taskIds[0],
+          taskId: jobResponse.taskIds[0]!,
         };
 
         const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
@@ -1671,7 +1678,51 @@ describe('Ingestion', () => {
         nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NO_CONTENT);
         nock(jobManagerURL).put(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.OK);
         nock(jobManagerURL).put(`/jobs/${jobId}`).reply(httpStatusCodes.OK);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+        nock(jobManagerURL)
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+          .put(`/jobs/${jobId}/tasks/${taskId}`, requestBodyForTaskRessting as any)
+          .reply(httpStatusCodes.OK);
+        nock(jobManagerURL).put(`/jobs/${jobId}`, requestBodyForJobRessting).reply(httpStatusCodes.OK);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+      });
+
+      it('should return 200 status code when polygon parts manager returns 404 (entity already cleaned up)', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.FAILED });
+        // Simulate old state with fewer checksums (3 items) - new files were added
+        const oldChecksums = validInputFiles.checksums.slice(0, 3);
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: false,
+            checksums: oldChecksums,
+          },
+        };
+        const requestBodyForTaskRessting = {
+          parameters: { isValid: false, checksums: validInputFiles.checksums },
+          status: OperationStatus.PENDING,
+          attempts: 0,
+          percentage: 0,
+          reason: '',
+        };
+        const requestBodyForJobRessting = { status: OperationStatus.PENDING, reason: '' };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.NOT_FOUND);
+        nock(jobManagerURL).put(`/jobs/${jobId}/tasks/${taskId}`).reply(httpStatusCodes.OK);
+        nock(jobManagerURL).put(`/jobs/${jobId}`).reply(httpStatusCodes.OK);
+
         nock(jobManagerURL)
           // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
           .put(`/jobs/${jobId}/tasks/${taskId}`, requestBodyForTaskRessting as any)
@@ -2107,6 +2158,33 @@ describe('Ingestion', () => {
         expect(response.body).toHaveProperty('message');
         expect((response.body as { message: string }).message).toContain('nonexistent-file.gpkg');
       });
+
+      it('should return 500 INTERNAL_SERVER_ERROR status code when polygon parts manager fails to delete validation entity', async () => {
+        const jobId = faker.string.uuid();
+        const taskId = faker.string.uuid();
+        const productId = rasterLayerMetadataGenerators.productId();
+        const productType = rasterLayerMetadataGenerators.productType();
+        const retryJob = createRetryJob({ jobId, productId, productType, status: OperationStatus.FAILED });
+        const validationTask = {
+          id: taskId,
+          jobId,
+          type: configMock.get<string>('jobManager.validationTaskType'),
+          status: OperationStatus.COMPLETED,
+          parameters: {
+            isValid: false,
+            checksums: validInputFiles.checksums,
+          },
+        };
+
+        nock(jobManagerURL).get(`/jobs/${jobId}`).query({ shouldReturnTasks: false }).reply(httpStatusCodes.OK, retryJob);
+        nock(jobManagerURL).get(`/jobs/${jobId}/tasks`).reply(httpStatusCodes.OK, [validationTask]);
+        nock(polygonPartsManagerURL).delete('/polygonParts/validate').query({ productType, productId }).reply(httpStatusCodes.INTERNAL_SERVER_ERROR);
+
+        const response = await requestSender.retryIngestion(jobId);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.INTERNAL_SERVER_ERROR);
+      });
     });
   });
 
@@ -2520,7 +2598,7 @@ describe('Ingestion', () => {
 
         // Simulating different checksums
         const modifiedChecksums = [...validInputFiles.checksums];
-        modifiedChecksums[0] = { ...modifiedChecksums[0], checksum: 'different-checksum' };
+        modifiedChecksums[0] = { ...modifiedChecksums[0], checksum: 'different-checksum' } as (typeof modifiedChecksums)[number];
 
         const validationTask = {
           id: taskId,

@@ -1,8 +1,10 @@
+/* eslint-disable import-x/no-named-as-default-member */
 import { faker } from '@faker-js/faker';
 import httpStatusCodes from 'http-status-codes';
 import unset from 'lodash.unset';
 import nock from 'nock';
 import { getApp } from '../../../src/app';
+import { initConfig } from '../../../src/common/config';
 import type { GpkgInputFiles } from '../../../src/utils/validation/schemasValidator';
 import { getGpkgsFilesLocalPath, rasterLayerInputFilesGenerators } from '../../mocks/mockFactory';
 import { validInputFiles } from '../../mocks/static/exampleData';
@@ -13,9 +15,13 @@ import { InfoRequestSender } from './helpers/infoRequestSender';
 describe('Info', function () {
   let requestSender: InfoRequestSender;
 
-  beforeEach(function () {
-    const [app] = getApp({
-      override: [...getTestContainerConfig()],
+  beforeAll(async () => {
+    await initConfig(true);
+  });
+
+  beforeEach(async function () {
+    const [app] = await getApp({
+      override: [...(await getTestContainerConfig())],
     });
 
     requestSender = new InfoRequestSender(app);
@@ -24,6 +30,7 @@ describe('Info', function () {
   afterEach(function () {
     resetContainer();
     jest.restoreAllMocks();
+
     nock.cleanAll();
   });
 

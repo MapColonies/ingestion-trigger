@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { ingestionBaseJobParamsSchema } from '@map-colonies/raster-shared';
-import z from 'zod';
+import { z } from 'zod';
 
 export interface SourcesValidationResponse {
   isValid: boolean;

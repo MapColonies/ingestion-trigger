@@ -1,11 +1,11 @@
-import { Logger } from '@map-colonies/js-logger';
-import { context, SpanKind, trace, Tracer } from '@opentelemetry/api';
+import type { Logger } from '@map-colonies/js-logger';
+import { context, SpanKind, trace, type Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
 import { createSpanMetadata } from '../../common/tracing';
 import { GdalUtilities } from '../../utils/gdal/gdalUtilities';
 import { LogContext } from '../../common/interfaces';
-import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, SchemasValidator } from '../../utils/validation/schemasValidator';
+import { INGESTION_SCHEMAS_VALIDATOR_SYMBOL, type SchemasValidator } from '../../utils/validation/schemasValidator';
 import { GdalInfoError } from '../../ingestion/errors/ingestionErrors';
 import { InfoDataWithFile } from '../../ingestion/schemas/infoDataSchema';
 

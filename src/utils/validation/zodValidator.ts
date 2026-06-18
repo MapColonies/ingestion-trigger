@@ -1,5 +1,5 @@
 import { BadRequestError } from '@map-colonies/error-types';
-import { Logger } from '@map-colonies/js-logger';
+import type { Logger } from '@map-colonies/js-logger';
 import { inject, injectable } from 'tsyringe';
 import { ZodError, z } from 'zod';
 import { SERVICES } from '../../common/constants';
@@ -13,8 +13,8 @@ export class ZodValidator {
     const result = await schema.safeParseAsync(data);
     if (!result.success) {
       const schemaName: string = schema.description ?? 'Unknown Schema';
-      const error = result.error.formErrors;
-      this.logger.error({ message: `Validation failed for ${schemaName}`, error });
+      const err = result.error.formErrors;
+      this.logger.error({ message: `Validation failed for ${schemaName}`, err });
       throw new BadRequestError(this.formatStrError(result.error));
     }
     const validData = result.data as z.infer<T>;

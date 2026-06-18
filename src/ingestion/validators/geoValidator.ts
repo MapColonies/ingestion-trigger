@@ -1,15 +1,16 @@
-import { Logger } from '@map-colonies/js-logger';
+import type { Logger } from '@map-colonies/js-logger';
 import { withSpanV4 } from '@map-colonies/telemetry';
-import { Tracer, trace } from '@opentelemetry/api';
+import { trace, type Tracer } from '@opentelemetry/api';
+// eslint-disable-next-line import-x/no-named-as-default
 import booleanContains from '@turf/boolean-contains';
-import { IConfig } from 'config';
-import { Geometry, Polygon } from 'geojson';
+import type { Geometry, Polygon } from 'geojson';
 import { inject, injectable } from 'tsyringe';
+import type { ConfigType } from '../../common/config';
 import { SERVICES } from '../../common/constants';
 import { LogContext } from '../../common/interfaces';
 import { combineExtentPolygons, extentBuffer, extractPolygons } from '../../utils/geometry';
 import { UnsupportedEntityError, ValidationError } from '../errors/ingestionErrors';
-import { InfoDataWithFile } from '../schemas/infoDataSchema';
+import type { InfoDataWithFile } from '../schemas/infoDataSchema';
 import type { ProductFeatureGeometry } from '../schemas/productFeatureSchema';
 
 @injectable()
@@ -18,14 +19,14 @@ export class GeoValidator {
   private readonly extentBufferInMeters: number;
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer
   ) {
     this.logContext = {
       fileName: __filename,
       class: GeoValidator.name,
     };
-    this.extentBufferInMeters = this.config.get<number>('validationValuesByInfo.extentBufferInMeters');
+    this.extentBufferInMeters = this.config.get('validationValuesByInfo.extentBufferInMeters') as unknown as number;
   }
 
   @withSpanV4

@@ -3,7 +3,8 @@ import { withSpanAsyncV4 } from '@map-colonies/telemetry';
 import { SpanStatusCode, type Tracer, trace } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import type { IConfig, LogContext } from '../../common/interfaces';
+import type { ConfigType } from '../../common/config';
+import type { LogContext } from '../../common/interfaces';
 import { FileNotFoundError, GdalInfoError } from '../../ingestion/errors/ingestionErrors';
 import type { GpkgInputFiles } from '../../utils/validation/schemasValidator';
 import { SourceValidator } from '../../ingestion/validators/sourceValidator';
@@ -18,7 +19,7 @@ export class ValidateManager {
 
   public constructor(
     @inject(SERVICES.LOGGER) private readonly logger: Logger,
-    @inject(SERVICES.CONFIG) private readonly config: IConfig,
+    @inject(SERVICES.CONFIG) private readonly config: ConfigType,
     @inject(SERVICES.TRACER) public readonly tracer: Tracer,
     private readonly sourceValidator: SourceValidator
   ) {
@@ -26,7 +27,7 @@ export class ValidateManager {
       fileName: __filename,
       class: ValidateManager.name,
     };
-    this.sourceMount = config.get<string>('storageExplorer.layerSourceDir');
+    this.sourceMount = config.get('storageExplorer.layerSourceDir') as unknown as string;
   }
 
   @withSpanAsyncV4
@@ -98,7 +99,7 @@ export class ValidateManager {
       this.logger.error({
         msg: errorMessage,
         logContext: logCtx,
-        error,
+        err: error,
         metadata: { gpkgFilesPath },
       });
       activeSpan?.recordException(error instanceof Error ? error : errorMessage);
@@ -128,7 +129,7 @@ export class ValidateManager {
       this.logger.error({
         msg: errorMessage,
         logContext: logCtx,
-        error,
+        err: error,
         metadata: { shapefilePath },
       });
       activeSpan?.recordException(error instanceof Error ? error : errorMessage);

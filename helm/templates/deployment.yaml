@@ -1,7 +1,6 @@
 {{- $releaseName := .Release.Name -}}
 {{- $chartName := include "ingestion-trigger.name" . -}}
 {{- $deploymentName := include "deployment.fullname" . }}
-{{- $metrics := (include "common.metrics.merged" .) | fromYaml }}
 {{- $configmapName := include "configmap.fullname" . }}
 {{- $cloudProviderFlavor := include "ingestion-trigger.cloudProviderFlavor" . -}}
 {{- $cloudProviderDockerRegistryUrl := include "ingestion-trigger.cloudProviderDockerRegistryUrl" . -}}
@@ -66,6 +65,10 @@ spec:
               subPath: {{ quote .Values.global.ca.key }}
             {{- end }}
           env:
+            - name: K8S_POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
             - name: SERVER_PORT
               value: {{ .Values.env.targetPort | quote }}
             {{- if .Values.global.ca.secretName }}

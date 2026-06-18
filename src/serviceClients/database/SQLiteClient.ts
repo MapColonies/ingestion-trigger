@@ -1,10 +1,10 @@
-import { Logger } from '@map-colonies/js-logger';
+import type { Logger } from '@map-colonies/js-logger';
 import { withSpanV4 } from '@map-colonies/telemetry';
-import { SpanStatusCode, trace, Tracer } from '@opentelemetry/api';
-import Database, { Database as SQLiteDB, SqliteError } from 'better-sqlite3';
+import { SpanStatusCode, trace, type Tracer } from '@opentelemetry/api';
+import betterSqlite3, { SqliteError, type Database as SQLiteDB } from 'better-sqlite3';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../../common/constants';
-import { Grid, IMatrixValues, matrixRatioToGrid, TileSize } from '../../ingestion/interfaces';
+import { Grid, matrixRatioToGrid, type IMatrixValues, type TileSize } from '../../ingestion/interfaces';
 import { LogContext } from '../../common/interfaces';
 import { GpkgError } from './errors';
 
@@ -28,7 +28,7 @@ export class SQLiteClient {
   @withSpanV4
   public getDB(fileMustExistFlag: boolean): SQLiteDB {
     try {
-      return new Database(this.fullPath, { fileMustExist: fileMustExistFlag });
+      return new betterSqlite3(this.fullPath, { fileMustExist: fileMustExistFlag });
     } catch (err) {
       const message = `Failed to open database file: ${this.fullPath} with SQLiteDB`;
       const logCtx = { ...this.logContext, function: this.getDB.name };
@@ -84,7 +84,7 @@ export class SQLiteClient {
         throw new Error('Invalid GPKG: All tile_width and tile_height must be the same pixel size');
       }
 
-      const tileSizes: TileSize = { width: queryResult[0].tile_width, height: queryResult[0].tile_height };
+      const tileSizes: TileSize = { width: queryResult[0]!.tile_width, height: queryResult[0]!.tile_height };
       return tileSizes;
     } catch (error) {
       const customMessage = 'Error when getting tile width and height';
@@ -162,7 +162,7 @@ export class SQLiteClient {
       if (tableNames.length !== 1) {
         this.handleError(undefined, `Invalid GPKG: should have single table name`, logCtx);
       }
-      const tableName = tableNames[0].table_name;
+      const tableName = tableNames[0]!.table_name;
       return tableName;
     } catch (error) {
       this.handleError(error, `Error when getting table name`, logCtx, { query });

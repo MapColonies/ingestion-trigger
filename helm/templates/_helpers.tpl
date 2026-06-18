@@ -102,3 +102,4 @@ Returns the cloud provider image pull secret name from global if exists or from 
     {{- .Values.cloudProvider.imagePullSecretName -}}
 {{- end -}}
 {{- end -}}
+

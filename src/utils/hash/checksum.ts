@@ -62,6 +62,7 @@ export class Checksum {
         } catch (err) {
           this.logger.error({ msg: 'error processing checksum for a chunk', err, logContext: logCtx });
           stream.destroy();
+          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
           reject(err);
         }
       });
@@ -74,6 +75,7 @@ export class Checksum {
         } catch (err) {
           this.logger.error({ msg: 'error processing checksum result', err, logContext: logCtx });
           stream.destroy();
+          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
           reject(err);
         }
       });
