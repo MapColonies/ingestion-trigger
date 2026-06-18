@@ -4,6 +4,10 @@ global:
   environment: ''
   domain: "RASTER"
   serviceUrls: {}
+  openTelemetryOptions:
+    enabled: false
+    url: ''
+    resourceAttributes: {}
   jobDefinitions: {}
   storage:
     fs:
@@ -126,6 +130,10 @@ env:
   protocol: TCP
   logLevel: info
   logPrettyPrintEnabled: false
+  openTelemetryOptions:
+    enabled: false
+    url: ''
+    resourceAttributes: {}
   responseCompressionEnabled: true
   requestPayloadLimit: 1mb
   tracing:
