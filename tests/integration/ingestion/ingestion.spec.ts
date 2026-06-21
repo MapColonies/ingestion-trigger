@@ -148,6 +148,47 @@ describe('Ingestion', () => {
         expect(response.status).toBe(httpStatusCodes.OK);
         expect(response.body).toStrictEqual(expectedResponseBody);
       });
+
+      it('should return 200 status code when metadata contains keywords', async () => {
+        const layerRequest = createNewLayerRequest({
+          inputFiles: validInputFiles.inputFiles,
+          metadata: { keywords: faker.lorem.words({ min: 1, max: 5 }) },
+        });
+        const newLayerName = getMapServingLayerName(layerRequest.metadata.productId, layerRequest.metadata.productType);
+        const findJobsParams = createFindJobsParams({
+          resourceId: layerRequest.metadata.productId,
+          productType: layerRequest.metadata.productType,
+        });
+        const newJobRequest = createNewJobRequest({
+          ingestionNewLayer: layerRequest,
+          checksums: validInputFiles.checksums,
+        });
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL)
+          .post('/jobs', matches(JSON.parse(JSON.stringify(newJobRequest))))
+          .reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL)
+          .post('/records/find', {
+            metadata: {
+              productId: layerRequest.metadata.productId,
+              productType: layerRequest.metadata.productType,
+            },
+          })
+          .reply(httpStatusCodes.OK, []);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(newLayerName)}`)
+          .reply(httpStatusCodes.NOT_FOUND);
+        const expectedResponseBody: ResponseId = {
+          jobId: jobResponse.id,
+          taskId: jobResponse.taskIds[0]!,
+        };
+
+        const response = await requestSender.ingestNewLayer(layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toStrictEqual(expectedResponseBody);
+      });
     });
 
     describe('Bad Path', () => {
@@ -526,6 +567,24 @@ describe('Ingestion', () => {
           ),
         },
         {
+          testCase: 'keywords in metadata in req body is not a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { keywords: false } }
+          ),
+        },
+        {
+          testCase: 'keywords in metadata in req body is an array instead of a string',
+          badRequest: merge(
+            createNewLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { keywords: ['aerial', 'satellite'] } }
+          ),
+        },
+        {
           testCase: 'ingestionResolution in req body is not set',
           badRequest: createNewLayerRequest({
             inputFiles: validInputFiles.inputFiles,
@@ -847,6 +906,45 @@ describe('Ingestion', () => {
         expect(response.body).toStrictEqual(expectedResponseBody);
       });
 
+      it('should return 200 status code with update request when metadata contains keywords', async () => {
+        const layerRequest = createUpdateLayerRequest({
+          inputFiles: validInputFiles.inputFiles,
+          callbackUrls: undefined,
+          metadata: { keywords: faker.lorem.words({ min: 1, max: 5 }) },
+        });
+        const updatedLayer = createCatalogLayerResponse();
+        const updatedLayerMetadata = updatedLayer.metadata;
+        const updateLayerName = getMapServingLayerName(updatedLayerMetadata.productId, updatedLayerMetadata.productType);
+        const findJobsParams = createFindJobsParams({
+          resourceId: updatedLayerMetadata.productId,
+          productType: updatedLayerMetadata.productType,
+        });
+        const updateJobRequest = createUpdateJobRequest({
+          ingestionUpdateLayer: layerRequest,
+          rasterLayerMetadata: updatedLayerMetadata,
+          checksums: validInputFiles.checksums,
+        });
+
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL)
+          .post('/jobs', matches(JSON.parse(JSON.stringify(updateJobRequest))))
+          .reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: updatedLayerMetadata.id }).reply(httpStatusCodes.OK, [updatedLayer]);
+        nock(mapProxyApiServiceUrl)
+          .get(`/layer/${encodeURIComponent(updateLayerName)}`)
+          .reply(httpStatusCodes.OK);
+        const expectedResponseBody: ResponseId = {
+          jobId: jobResponse.id,
+          taskId: jobResponse.taskIds[0]!,
+        };
+
+        const response = await requestSender.updateLayer(updatedLayerMetadata.id, layerRequest);
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toStrictEqual(expectedResponseBody);
+      });
+
       it('should return 200 status code with swap update request when product shapefile is polygon', async () => {
         const layerRequest = createUpdateLayerRequest({ inputFiles: validInputFiles.inputFiles });
         const catalogLayerResponse = createCatalogLayerResponse({
@@ -1090,6 +1188,24 @@ describe('Ingestion', () => {
             inputFiles: validInputFiles.inputFiles,
             metadata: { classification: '00' },
           }),
+        },
+        {
+          testCase: 'keywords in metadata in req body is not a string',
+          badRequest: merge(
+            createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { keywords: false } }
+          ),
+        },
+        {
+          testCase: 'keywords in metadata in req body is an array instead of a string',
+          badRequest: merge(
+            createUpdateLayerRequest({
+              inputFiles: validInputFiles.inputFiles,
+            }),
+            { metadata: { keywords: ['aerial', 'satellite'] } }
+          ),
         },
         {
           testCase: 'ingestionResolution in req body is not set',

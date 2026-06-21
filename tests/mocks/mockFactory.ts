@@ -509,7 +509,7 @@ export const createUpdateJobRequest = (
   const {
     ingestionResolution,
     inputFiles,
-    metadata: { classification },
+    metadata,
     callbackUrls,
   } = ingestionUpdateLayer;
   const { displayPath, id, productId, productType, productVersion, productName, tileOutputFormat } = rasterLayerMetadata;
@@ -524,9 +524,7 @@ export const createUpdateJobRequest = (
     status: OperationStatus.PENDING,
     parameters: {
       ingestionResolution,
-      metadata: {
-        classification,
-      },
+      metadata,
       inputFiles: {
         gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => relative(sourceMount, join(sourceMount, gpkgFilePath))),
         metadataShapefilePath: relative(sourceMount, join(sourceMount, inputFiles.metadataShapefilePath)),
