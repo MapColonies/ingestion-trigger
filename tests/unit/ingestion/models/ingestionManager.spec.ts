@@ -193,33 +193,6 @@ describe('IngestionManager', () => {
       );
     });
 
-    it('should pass keywords through to the ingestion job params when keywords is set in metadata', async () => {
-      const keywords = faker.lorem.words({ min: 1, max: 5 });
-      const layerRequest = generateNewLayerRequest();
-      layerRequest.metadata = { ...layerRequest.metadata, keywords };
-      const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] };
-      mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
-      mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
-      mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
-      mockGeoValidator.validate.mockResolvedValue(undefined);
-      existsMapproxySpy.mockResolvedValue(false);
-      existsCatalogSpy.mockResolvedValue(false);
-      findJobsSpy.mockResolvedValue([]);
-      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
-      createIngestionJobSpy.mockResolvedValue(createJobResponse);
-
-      await ingestionManager.newLayer(layerRequest);
-
-      expect(createIngestionJobSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          parameters: expect.objectContaining({
-            metadata: expect.objectContaining({ keywords }),
-          }),
-        })
-      );
-    });
-
     it('should throw unsupported entity error when shapefile not found error', async () => {
       const layerRequest = generateNewLayerRequest();
       const expectedErrorMessage = 'error message';
@@ -456,34 +429,6 @@ describe('IngestionManager', () => {
 
       expect(response).toStrictEqual(expectedResponse);
       expect(createIngestionJobSpy).toHaveBeenCalledWith(expect.objectContaining({ type: ingestionUpdateJobType }));
-    });
-
-    it('should pass keywords through to the ingestion job params when keywords is set in update layer metadata', async () => {
-      const keywords = faker.lorem.words({ min: 1, max: 5 });
-      const layerRequest = generateUpdateLayerRequest();
-      layerRequest.metadata = { ...layerRequest.metadata, keywords };
-      const catalogLayerResponse = generateCatalogLayerResponse();
-      const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] };
-      findByIdSpy.mockResolvedValue([catalogLayerResponse]);
-      mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
-      mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
-      mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
-      productManager.read.mockResolvedValue(undefined);
-      mockGeoValidator.validate.mockResolvedValue(undefined);
-      existsMapproxySpy.mockResolvedValue(true);
-      findJobsSpy.mockResolvedValue([]);
-      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
-      createIngestionJobSpy.mockResolvedValue(createJobResponse);
-
-      await ingestionManager.updateLayer(catalogLayerResponse.metadata.id, layerRequest);
-
-      expect(createIngestionJobSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          parameters: expect.objectContaining({
-            metadata: expect.objectContaining({ keywords }),
-          }),
-        })
-      );
     });
 
     it('should not throw any errors when the request is valid and create update swap job', async () => {

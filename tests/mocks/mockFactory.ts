@@ -506,12 +506,7 @@ export const createUpdateJobRequest = (
   const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
   const updateJobAction = isSwapUpdate ? swapUpdateJobType : updateJobType;
 
-  const {
-    ingestionResolution,
-    inputFiles,
-    metadata,
-    callbackUrls,
-  } = ingestionUpdateLayer;
+  const { ingestionResolution, inputFiles, metadata, callbackUrls } = ingestionUpdateLayer;
   const { displayPath, id, productId, productType, productVersion, productName, tileOutputFormat } = rasterLayerMetadata;
 
   return {
