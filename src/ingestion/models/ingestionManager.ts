@@ -637,8 +637,13 @@ export class IngestionManager {
     const relativeChecksums = this.convertChecksumsToRelativePaths(checksums);
     const taskParameters: IngestionValidationTaskParams = { checksums: relativeChecksums };
 
+    const keywords = isSwapUpdate
+      ? updateLayer.metadata.keywords
+      : this.mergeKeywords(rasterLayerMetadata.keywords, updateLayer.metadata.keywords);
+
     const updateLayerRelative = {
       ...updateLayer,
+      metadata: { ...updateLayer.metadata, keywords },
       ...{
         inputFiles: {
           metadataShapefilePath: updateLayer.inputFiles.metadataShapefilePath.relative,
@@ -669,6 +674,16 @@ export class IngestionManager {
       tasks: [{ type: this.validationTaskType, parameters: taskParameters }],
     };
     return createJobRequest;
+  }
+
+  private mergeKeywords(existing: string | undefined, incoming: string | undefined): string | undefined {
+    const toTokens = (value: string | undefined): string[] =>
+      (value ?? '')
+        .split(',')
+        .map((keyword) => keyword.trim())
+        .filter((keyword) => keyword.length > 0);
+    const merged = [...new Set([...toTokens(existing), ...toTokens(incoming)])];
+    return merged.length > 0 ? merged.join(',') : undefined;
   }
 
   @withSpanAsyncV4

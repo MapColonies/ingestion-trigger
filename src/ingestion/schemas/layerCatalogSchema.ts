@@ -91,6 +91,7 @@ export const rasterLayerCatalogSchema = z
             message: 'Product bounding box must be of the shape min_x,min_y,max_x,max_y',
           })
           .optional(),
+        keywords: z.string().optional(),
         displayPath: z.string().uuid(),
         transparency: z.nativeEnum(Transparency),
         tileMimeFormat: tilesMimeFormatSchema,

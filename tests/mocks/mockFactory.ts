@@ -272,6 +272,7 @@ export const rasterLayerMetadataGenerators: RasterLayerMetadataPropertiesGenerat
   description: (): string => generateHebrewAlphanumeric({ min: 0, max: 100 }),
   producerName: (): string => generateHebrewAlphanumeric({ min: 0, max: 100 }),
   productSubType: (): string => generateHebrewAlphanumeric({ min: 0, max: 100 }),
+  keywords: (): string => faker.lorem.words({ min: 1, max: 5 }).split(' ').join(','),
   scale: (): number => faker.number.int({ min: INGESTION_VALIDATIONS.scale.min, max: INGESTION_VALIDATIONS.scale.max }),
   srs: (): '4326' => '4326',
   srsName: (): 'WGS84GEO' => 'WGS84GEO',
