@@ -482,6 +482,7 @@ describe('IngestionManager', () => {
       expect(createIngestionJobSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           type: ingestionUpdateJobType,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           parameters: expect.objectContaining({ metadata: expect.objectContaining({ keywords: 'forest,urban,coast' }) }),
         })
       );
@@ -517,6 +518,7 @@ describe('IngestionManager', () => {
       expect(createIngestionJobSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           type: ingestionSwapUpdateJobType,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           parameters: expect.objectContaining({ metadata: expect.objectContaining({ keywords: 'urban,coast' }) }),
         })
       );
