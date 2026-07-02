@@ -637,9 +637,7 @@ export class IngestionManager {
     const relativeChecksums = this.convertChecksumsToRelativePaths(checksums);
     const taskParameters: IngestionValidationTaskParams = { checksums: relativeChecksums };
 
-    const keywords = isSwapUpdate
-      ? updateLayer.metadata.keywords
-      : this.mergeKeywords(rasterLayerMetadata.keywords, updateLayer.metadata.keywords);
+    const keywords = isSwapUpdate ? updateLayer.metadata.keywords : this.mergeKeywords(rasterLayerMetadata.keywords, updateLayer.metadata.keywords);
 
     const updateLayerRelative = {
       ...updateLayer,
