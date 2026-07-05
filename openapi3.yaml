@@ -118,6 +118,62 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+    delete:
+      operationId: deleteLayer
+      tags:
+        - ingestion
+      summary: start a process of deleting an existing layer
+      description: >-
+        Deletes an unpublished layer with no active jobs from the catalog,
+        GeoServer and MapProxy. Requires the id of an approver.
+      parameters:
+        - name: id
+          in: path
+          description: The id of the layer to delete
+          required: true
+          schema:
+            $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/LayerId
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteLayerRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessfulIngestionResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
   /ingestion/{jobId}/retry:
     put:
       operationId: retryIngestion
@@ -404,6 +460,14 @@ components:
         approver:
           type: string
           description: user trying to bypass the errors
+    DeleteLayerRequest:
+      type: object
+      required:
+        - approver
+      properties:
+        approver:
+          type: string
+          description: user approving the layer deletion
     CallbackUrls:
       type: array
       minItems: 1

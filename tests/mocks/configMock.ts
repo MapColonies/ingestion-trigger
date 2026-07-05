@@ -94,14 +94,16 @@ const registerDefaultConfig = (): void => {
       ingestionNewJobType: 'Ingestion_New',
       ingestionUpdateJobType: 'Ingestion_Update',
       ingestionSwapUpdateJobType: 'Ingestion_Swap_Update',
+      ingestionDeleteJobType: 'Delete_Layer',
       validationTaskType: 'validation',
+      deleteTaskType: 'delete',
       supportedIngestionSwapTypes: [
         {
           productType: 'RasterVectorBest',
           productSubType: 'testProductSubType',
         },
       ],
-      forbiddenJobTypesForParallelIngestion: ['Ingestion_New', 'Ingestion_Update'],
+      forbiddenJobTypesForParallelIngestion: ['Ingestion_New', 'Ingestion_Update', 'Delete_Layer'],
     },
   };
 

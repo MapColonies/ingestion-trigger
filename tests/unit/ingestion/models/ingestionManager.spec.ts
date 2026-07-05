@@ -3,6 +3,7 @@ import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/err
 import { jsLogger } from '@map-colonies/js-logger';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { getMapServingLayerName } from '@map-colonies/raster-shared';
+import { RecordStatus } from '@map-colonies/types';
 import { trace } from '@opentelemetry/api';
 import { container } from 'tsyringe';
 import xxhashFactory from 'xxhash-wasm';
@@ -20,6 +21,7 @@ import { ZodValidator } from '../../../../src/utils/validation/zodValidator';
 import { ValidateManager } from '../../../../src/validate/models/validateManager';
 import { clear as clearConfig, configMock, registerDefaultConfig } from '../../../mocks/configMock';
 import {
+  createCatalogLayerResponse,
   generateCatalogLayerResponse,
   generateChecksum,
   generateMockJob,
@@ -520,6 +522,110 @@ describe('IngestionManager', () => {
 
       await expect(promise).rejects.toThrow(new ConflictError(expectedErrorMessage));
       expect(createIngestionJobSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteLayer', () => {
+    let ingestionDeleteJobType: string;
+    let deleteTaskType: string;
+
+    beforeEach(() => {
+      ingestionDeleteJobType = configMock.get<string>('jobManager.ingestionDeleteJobType');
+      deleteTaskType = configMock.get<string>('jobManager.deleteTaskType');
+    });
+
+    it('should not throw any errors when the request is valid and create delete layer job', async () => {
+      const approver = faker.person.fullName();
+      const catalogLayerResponse = createCatalogLayerResponse({ metadata: { productStatus: RecordStatus.UNPUBLISHED } });
+      const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] };
+      findByIdSpy.mockResolvedValue([catalogLayerResponse]);
+      findJobsSpy.mockResolvedValue([]);
+      createIngestionJobSpy.mockResolvedValue(createJobResponse);
+      const expectedResponse = { jobId: createJobResponse.id, taskId: createJobResponse.taskIds[0] };
+
+      const response = await ingestionManager.deleteLayer(catalogLayerResponse.metadata.id, { approver });
+
+      expect(response).toStrictEqual(expectedResponse);
+      expect(createIngestionJobSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: ingestionDeleteJobType,
+          internalId: catalogLayerResponse.metadata.id,
+          resourceId: catalogLayerResponse.metadata.productId,
+          productType: catalogLayerResponse.metadata.productType,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          parameters: expect.objectContaining({ approver }),
+          tasks: [
+            expect.objectContaining({
+              type: deleteTaskType,
+              parameters: { deleteFromCatalog: false, deleteFromGeoserver: false, deleteFromMapproxy: false },
+            }),
+          ],
+        })
+      );
+    });
+
+    it('should throw not found error when there is no layer in catalog', async () => {
+      const approver = faker.person.fullName();
+      const catalogId = faker.string.uuid();
+      const expectedErrorMessage = `there isn't a layer with id of ${catalogId}`;
+      findByIdSpy.mockResolvedValue([]);
+
+      const promise = ingestionManager.deleteLayer(catalogId, { approver });
+
+      await expect(promise).rejects.toThrow(new NotFoundError(expectedErrorMessage));
+      expect(createIngestionJobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should throw conflict error when there is more than one layer in catalog', async () => {
+      const approver = faker.person.fullName();
+      const catalogLayerResponse = createCatalogLayerResponse({ metadata: { productStatus: RecordStatus.UNPUBLISHED } });
+      const expectedErrorMessage = `found more than one layer with id of ${catalogLayerResponse.metadata.id}, please check the catalog layers`;
+      findByIdSpy.mockResolvedValue([catalogLayerResponse, catalogLayerResponse]);
+
+      const promise = ingestionManager.deleteLayer(catalogLayerResponse.metadata.id, { approver });
+
+      await expect(promise).rejects.toThrow(new ConflictError(expectedErrorMessage));
+      expect(createIngestionJobSpy).not.toHaveBeenCalled();
+    });
+
+    it.each([[RecordStatus.PUBLISHED], [RecordStatus.BEING_DELETED]])(
+      'should throw conflict error when the layer productStatus is %s',
+      async (productStatus) => {
+        const approver = faker.person.fullName();
+        const catalogLayerResponse = createCatalogLayerResponse({ metadata: { productStatus } });
+        const expectedErrorMessage = `layer with id of ${catalogLayerResponse.metadata.id} cannot be deleted because it is not unpublished`;
+        findByIdSpy.mockResolvedValue([catalogLayerResponse]);
+
+        const promise = ingestionManager.deleteLayer(catalogLayerResponse.metadata.id, { approver });
+
+        await expect(promise).rejects.toThrow(new ConflictError(expectedErrorMessage));
+        expect(createIngestionJobSpy).not.toHaveBeenCalled();
+      }
+    );
+
+    it('should throw conflict error when there is a conflicting job running', async () => {
+      const approver = faker.person.fullName();
+      const catalogLayerResponse = createCatalogLayerResponse({ metadata: { productStatus: RecordStatus.UNPUBLISHED } });
+      const expectedErrorMessage = `ProductId: ${catalogLayerResponse.metadata.productId} productType: ${catalogLayerResponse.metadata.productType}, there is at least one conflicting job already running for that layer`;
+      findByIdSpy.mockResolvedValue([catalogLayerResponse]);
+      findJobsSpy.mockResolvedValue([{ status: OperationStatus.IN_PROGRESS }]);
+
+      const promise = ingestionManager.deleteLayer(catalogLayerResponse.metadata.id, { approver });
+
+      await expect(promise).rejects.toThrow(new ConflictError(expectedErrorMessage));
+      expect(createIngestionJobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should throw an error when job manager create delete layer job call throws an error', async () => {
+      const approver = faker.person.fullName();
+      const catalogLayerResponse = createCatalogLayerResponse({ metadata: { productStatus: RecordStatus.UNPUBLISHED } });
+      findByIdSpy.mockResolvedValue([catalogLayerResponse]);
+      findJobsSpy.mockResolvedValue([]);
+      createIngestionJobSpy.mockRejectedValue(new Error());
+
+      const promise = ingestionManager.deleteLayer(catalogLayerResponse.metadata.id, { approver });
+
+      await expect(promise).rejects.toThrow(new Error());
     });
   });
 

@@ -34,6 +34,20 @@ export interface IBypassValidationErrorsRequestBody {
   approver: string;
 }
 
+export interface IDeleteLayerRequestBody {
+  approver: string;
+}
+
+export interface IngestionDeleteJobParams {
+  approver: string;
+}
+
+export interface IngestionDeleteTaskParams {
+  deleteFromCatalog: boolean;
+  deleteFromGeoserver: boolean;
+  deleteFromMapproxy: boolean;
+}
+
 export enum IngestionOperation {
   RETRY = 'retry',
   ABORT = 'abort',

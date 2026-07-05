@@ -8,6 +8,7 @@ const ingestionRouterFactory: FactoryFunction<Router> = (dependencyContainer) =>
 
   router.post('/', controller.newLayer.bind(controller));
   router.put('/:id', controller.updateLayer.bind(controller));
+  router.delete('/:id', controller.deleteLayer.bind(controller));
   router.put('/:jobId/retry', controller.retryIngestion.bind(controller));
   router.put('/:jobId/abort', controller.abortIngestion.bind(controller));
   router.post('/:jobId/bypass-validation-errors', controller.bypassValidationErrors.bind(controller));

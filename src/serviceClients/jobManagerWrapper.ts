@@ -12,6 +12,7 @@ import { trace, type Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
 import type { ConfigType } from '../common/config';
+import type { IngestionDeleteJobParams, IngestionDeleteTaskParams } from '../ingestion/interfaces';
 
 @injectable()
 export class JobManagerWrapper extends JobManagerClient {
@@ -31,7 +32,10 @@ export class JobManagerWrapper extends JobManagerClient {
 
   @withSpanAsyncV4
   public async createIngestionJob(
-    payload: ICreateJobBody<IngestionNewJobParams | IngestionUpdateJobParams | IngestionSwapUpdateJobParams, IngestionValidationTaskParams>
+    payload: ICreateJobBody<
+      IngestionNewJobParams | IngestionUpdateJobParams | IngestionSwapUpdateJobParams | IngestionDeleteJobParams,
+      IngestionValidationTaskParams | IngestionDeleteTaskParams
+    >
   ): Promise<ICreateJobResponse> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('jobManagerWrapper.createJobWrapper');

@@ -25,6 +25,7 @@ import type { BBox, Polygon } from 'geojson';
 import merge from 'lodash.merge';
 import { randexp } from 'randexp';
 import { trace } from '@opentelemetry/api';
+import type { IngestionDeleteJobParams, IngestionDeleteTaskParams } from '../../src/ingestion/interfaces';
 import type { RasterLayersCatalog } from '../../src/ingestion/schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../../src/ingestion/schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../../src/ingestion/schemas/updateLayerSchema';
@@ -548,6 +549,37 @@ export const createUpdateJobRequest = (
             return { ...checksum, fileName: checksum.fileName };
           }),
         },
+      },
+    ],
+  };
+};
+
+export const createDeleteJobRequest = ({
+  rasterLayerMetadata,
+  approver,
+}: {
+  rasterLayerMetadata: RasterLayerMetadata;
+  approver: string;
+}): ICreateJobBody<IngestionDeleteJobParams, IngestionDeleteTaskParams> => {
+  const domain = configMock.get<string>('jobManager.jobDomain');
+  const deleteJobType = configMock.get<string>('jobManager.ingestionDeleteJobType');
+  const deleteTaskType = configMock.get<string>('jobManager.deleteTaskType');
+  const { id, productId, productType, productVersion, productName } = rasterLayerMetadata;
+
+  return {
+    resourceId: productId,
+    version: productVersion,
+    internalId: id,
+    type: deleteJobType,
+    productName,
+    productType,
+    status: OperationStatus.PENDING,
+    parameters: { approver },
+    domain,
+    tasks: [
+      {
+        type: deleteTaskType,
+        parameters: { deleteFromCatalog: false, deleteFromGeoserver: false, deleteFromMapproxy: false },
       },
     ],
   };
