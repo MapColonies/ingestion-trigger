@@ -2,6 +2,8 @@ import type { Logger } from '@map-colonies/js-logger';
 import { JobManagerClient, type ICreateJobBody, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { IHttpRetryConfig } from '@map-colonies/mc-utils';
 import type {
+  DeleteLayerJobParams,
+  DeleteTaskParams,
   IngestionNewJobParams,
   IngestionSwapUpdateJobParams,
   IngestionUpdateJobParams,
@@ -12,7 +14,6 @@ import { trace, type Tracer } from '@opentelemetry/api';
 import { inject, injectable } from 'tsyringe';
 import { SERVICES } from '../common/constants';
 import type { ConfigType } from '../common/config';
-import type { IngestionDeleteJobParams, IngestionDeleteTaskParams } from '../ingestion/interfaces';
 
 @injectable()
 export class JobManagerWrapper extends JobManagerClient {
@@ -33,8 +34,8 @@ export class JobManagerWrapper extends JobManagerClient {
   @withSpanAsyncV4
   public async createIngestionJob(
     payload: ICreateJobBody<
-      IngestionNewJobParams | IngestionUpdateJobParams | IngestionSwapUpdateJobParams | IngestionDeleteJobParams,
-      IngestionValidationTaskParams | IngestionDeleteTaskParams
+      IngestionNewJobParams | IngestionUpdateJobParams | IngestionSwapUpdateJobParams | DeleteLayerJobParams,
+      IngestionValidationTaskParams | DeleteTaskParams
     >
   ): Promise<ICreateJobResponse> {
     const activeSpan = trace.getActiveSpan();

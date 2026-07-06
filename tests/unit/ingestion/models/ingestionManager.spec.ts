@@ -557,7 +557,7 @@ describe('IngestionManager', () => {
           tasks: [
             expect.objectContaining({
               type: deleteTaskType,
-              parameters: { deleteFromCatalog: false, deleteFromGeoserver: false, deleteFromMapproxy: false },
+              parameters: { deleteFromCatalog: false, deleteFromGeoserver: false, deleteFromMapproxy: false, deletePolygonParts: false },
             }),
           ],
         })

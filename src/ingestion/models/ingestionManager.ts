@@ -17,6 +17,8 @@ import {
   rasterProductTypeSchema,
   resourceIdSchema,
   type Checksum as IChecksum,
+  type DeleteLayerJobParams,
+  type DeleteTaskParams,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
@@ -45,14 +47,7 @@ import { isKeyOf } from '../../utils/typeGuards';
 import { ZodValidator } from '../../utils/validation/zodValidator';
 import { ValidateManager } from '../../validate/models/validateManager';
 import { ChecksumError, throwInvalidJobStatusError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import type {
-  IBypassValidationErrorsRequestBody,
-  IDeleteLayerRequestBody,
-  IngestionBaseJobParams,
-  IngestionDeleteJobParams,
-  IngestionDeleteTaskParams,
-  ResponseId,
-} from '../interfaces';
+import type { IBypassValidationErrorsRequestBody, IDeleteLayerRequestBody, IngestionBaseJobParams, ResponseId } from '../interfaces';
 import { IngestionOperation } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
@@ -722,12 +717,13 @@ export class IngestionManager {
   private deleteLayerJobPayload(
     rasterLayerMetadata: RasterLayerMetadata,
     approver: string
-  ): ICreateJobBody<IngestionDeleteJobParams, IngestionDeleteTaskParams> {
+  ): ICreateJobBody<DeleteLayerJobParams, DeleteTaskParams> {
     const { id, productId, productType, productVersion, productName } = rasterLayerMetadata;
-    const taskParameters: IngestionDeleteTaskParams = {
+    const taskParameters: DeleteTaskParams = {
       deleteFromCatalog: false,
       deleteFromGeoserver: false,
       deleteFromMapproxy: false,
+      deletePolygonParts: false,
     };
 
     return {
@@ -743,7 +739,6 @@ export class IngestionManager {
       tasks: [{ type: this.deleteTaskType, parameters: taskParameters }],
     };
   }
-
 
   @withSpanAsyncV4
   private async getChecksum(shapefilePath: string): Promise<IChecksum[]> {
