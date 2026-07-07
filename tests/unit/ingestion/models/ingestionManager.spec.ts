@@ -460,7 +460,7 @@ describe('IngestionManager', () => {
       expect(createIngestionJobSpy).toHaveBeenCalledWith(expect.objectContaining({ type: ingestionSwapUpdateJobType }));
     });
 
-    it('should concatenate new keywords onto the existing ones, deduplicated, on a regular update', async () => {
+    it('should concatenate new keywords into the existing ones, deduplicated, on a regular update', async () => {
       const catalogLayerResponse = generateCatalogLayerResponse();
       catalogLayerResponse.metadata.keywords = 'forest,urban';
       const layerRequest = generateUpdateLayerRequest();
