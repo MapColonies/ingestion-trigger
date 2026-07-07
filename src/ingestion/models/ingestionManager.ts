@@ -714,10 +714,7 @@ export class IngestionManager {
   }
 
   @withSpanV4
-  private deleteLayerJobPayload(
-    rasterLayerMetadata: RasterLayerMetadata,
-    approver: string
-  ): ICreateJobBody<DeleteLayerJobParams, DeleteTaskParams> {
+  private deleteLayerJobPayload(rasterLayerMetadata: RasterLayerMetadata, approver: string): ICreateJobBody<DeleteLayerJobParams, DeleteTaskParams> {
     const { id, productId, productType, productVersion, productName } = rasterLayerMetadata;
     const taskParameters: DeleteTaskParams = {
       deleteFromCatalog: false,
