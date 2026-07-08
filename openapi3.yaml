@@ -459,6 +459,8 @@ components:
           $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Description
         classification:
           $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Classification
+        keywords:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Keywords
     IngestionNewLayerRequest:
       type: object
       required:
@@ -487,6 +489,8 @@ components:
       properties:
         classification:
           $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Classification
+        keywords:
+          $ref: ./Schema/core/layerMetadata.yaml#/components/schemas/Keywords
     IngestionUpdateLayerRequest:
       type: object
       required:

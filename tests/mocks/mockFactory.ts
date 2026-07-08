@@ -272,6 +272,7 @@ export const rasterLayerMetadataGenerators: RasterLayerMetadataPropertiesGenerat
   description: (): string => generateHebrewAlphanumeric({ min: 0, max: 100 }),
   producerName: (): string => generateHebrewAlphanumeric({ min: 0, max: 100 }),
   productSubType: (): string => generateHebrewAlphanumeric({ min: 0, max: 100 }),
+  keywords: (): string => faker.lorem.words({ min: 1, max: 5 }).split(' ').join(','),
   scale: (): number => faker.number.int({ min: INGESTION_VALIDATIONS.scale.min, max: INGESTION_VALIDATIONS.scale.max }),
   srs: (): '4326' => '4326',
   srsName: (): 'WGS84GEO' => 'WGS84GEO',
@@ -506,12 +507,7 @@ export const createUpdateJobRequest = (
   const sourceMount = configMock.get<string>('storageExplorer.layerSourceDir');
   const updateJobAction = isSwapUpdate ? swapUpdateJobType : updateJobType;
 
-  const {
-    ingestionResolution,
-    inputFiles,
-    metadata: { classification },
-    callbackUrls,
-  } = ingestionUpdateLayer;
+  const { ingestionResolution, inputFiles, metadata, callbackUrls } = ingestionUpdateLayer;
   const { displayPath, id, productId, productType, productVersion, productName, tileOutputFormat } = rasterLayerMetadata;
 
   return {
@@ -524,9 +520,7 @@ export const createUpdateJobRequest = (
     status: OperationStatus.PENDING,
     parameters: {
       ingestionResolution,
-      metadata: {
-        classification,
-      },
+      metadata,
       inputFiles: {
         gpkgFilesPath: inputFiles.gpkgFilesPath.map((gpkgFilePath) => relative(sourceMount, join(sourceMount, gpkgFilePath))),
         metadataShapefilePath: relative(sourceMount, join(sourceMount, inputFiles.metadataShapefilePath)),

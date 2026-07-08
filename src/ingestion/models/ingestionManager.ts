@@ -38,6 +38,7 @@ import { JobTrackerClient } from '../../serviceClients/jobTrackerClient';
 import { MapProxyClient } from '../../serviceClients/mapProxyClient';
 import { PolygonPartsManagerClient } from '../../serviceClients/polygonPartsManagerClient';
 import { Checksum } from '../../utils/hash/checksum';
+import { mergeKeywords } from '../../utils/keywords';
 import { getAbsolutePathInputFiles } from '../../utils/paths';
 import { getShapefileFiles } from '../../utils/shapefile';
 import { isKeyOf } from '../../utils/typeGuards';
@@ -637,8 +638,11 @@ export class IngestionManager {
     const relativeChecksums = this.convertChecksumsToRelativePaths(checksums);
     const taskParameters: IngestionValidationTaskParams = { checksums: relativeChecksums };
 
+    const keywords = isSwapUpdate ? updateLayer.metadata.keywords : mergeKeywords(rasterLayerMetadata.keywords, updateLayer.metadata.keywords);
+
     const updateLayerRelative = {
       ...updateLayer,
+      metadata: { ...updateLayer.metadata, keywords },
       ...{
         inputFiles: {
           metadataShapefilePath: updateLayer.inputFiles.metadataShapefilePath.relative,

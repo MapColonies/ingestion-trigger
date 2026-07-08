@@ -460,6 +460,70 @@ describe('IngestionManager', () => {
       expect(createIngestionJobSpy).toHaveBeenCalledWith(expect.objectContaining({ type: ingestionSwapUpdateJobType }));
     });
 
+    it('should concatenate new keywords into the existing ones, deduplicated, on a regular update', async () => {
+      const catalogLayerResponse = generateCatalogLayerResponse();
+      catalogLayerResponse.metadata.keywords = 'forest,urban';
+      const layerRequest = generateUpdateLayerRequest();
+      layerRequest.metadata.keywords = 'urban,coast';
+      const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] };
+      findByIdSpy.mockResolvedValue([catalogLayerResponse]);
+      mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
+      mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
+      mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
+      productManager.read.mockResolvedValue(undefined);
+      mockGeoValidator.validate.mockResolvedValue(undefined);
+      existsMapproxySpy.mockResolvedValue(true);
+      findJobsSpy.mockResolvedValue([]);
+      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
+      createIngestionJobSpy.mockResolvedValue(createJobResponse);
+
+      await ingestionManager.updateLayer(catalogLayerResponse.metadata.id, layerRequest);
+
+      expect(createIngestionJobSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: ingestionUpdateJobType,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          parameters: expect.objectContaining({ metadata: expect.objectContaining({ keywords: 'forest,urban,coast' }) }),
+        })
+      );
+    });
+
+    it('should overwrite keywords with the new value on a swap update', async () => {
+      const baseCatalogLayerResponse = generateCatalogLayerResponse();
+      const catalogLayerResponse = {
+        ...baseCatalogLayerResponse,
+        metadata: {
+          ...baseCatalogLayerResponse.metadata,
+          productType: ingestionSwapUpdateProductType,
+          productSubType: ingestionSwapUpdateProductSubType,
+          keywords: 'forest,urban',
+        },
+      };
+      const layerRequest = generateUpdateLayerRequest();
+      layerRequest.metadata.keywords = 'urban,coast';
+      const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] };
+      findByIdSpy.mockResolvedValue([catalogLayerResponse]);
+      mockValidateManager.validateShapefiles.mockResolvedValue(undefined);
+      mockValidateManager.validateGpkgsSources.mockResolvedValue(undefined);
+      mockInfoManager.getGpkgsInformation.mockResolvedValue(undefined);
+      productManager.read.mockResolvedValue(undefined);
+      mockGeoValidator.validate.mockResolvedValue(undefined);
+      existsMapproxySpy.mockResolvedValue(true);
+      findJobsSpy.mockResolvedValue([]);
+      calcualteChecksumSpy.mockResolvedValue(generateChecksum());
+      createIngestionJobSpy.mockResolvedValue(createJobResponse);
+
+      await ingestionManager.updateLayer(catalogLayerResponse.metadata.id, layerRequest);
+
+      expect(createIngestionJobSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: ingestionSwapUpdateJobType,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          parameters: expect.objectContaining({ metadata: expect.objectContaining({ keywords: 'urban,coast' }) }),
+        })
+      );
+    });
+
     it('should throw not found error when there is no layer in catalog', async () => {
       const layerRequest = generateUpdateLayerRequest();
       const catalogLayerResponse = generateCatalogLayerResponse();
