@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.4.0](https://github.com/MapColonies/ingestion-trigger/compare/v4.3.0...v4.4.0) (2026-07-08)
+
+
+### Features
+
+* add delete layer endpoint (MAPCO-118) ([#97](https://github.com/MapColonies/ingestion-trigger/issues/97)) ([fe170af](https://github.com/MapColonies/ingestion-trigger/commit/fe170af757b730604904d855459c098d27940ecc))
+* add keywords field to ingestion layer metadata (MAPCO-8284) ([#96](https://github.com/MapColonies/ingestion-trigger/issues/96)) ([1853c23](https://github.com/MapColonies/ingestion-trigger/commit/1853c23ce3c1619aa1af6306c2794ca860b7aef4))
+
 ## [4.3.0](https://github.com/MapColonies/ingestion-trigger/compare/v4.2.2...v4.3.0) (2026-06-18)
 
 
