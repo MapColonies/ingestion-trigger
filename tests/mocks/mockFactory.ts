@@ -12,6 +12,8 @@ import {
   Transparency,
   type IngestionValidationTaskParams,
   type CallbackUrlsTargetArray,
+  type DeleteLayerJobParams,
+  type DeleteTaskParams,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
   type InputFiles,
@@ -542,6 +544,37 @@ export const createUpdateJobRequest = (
             return { ...checksum, fileName: checksum.fileName };
           }),
         },
+      },
+    ],
+  };
+};
+
+export const createDeleteJobRequest = ({
+  rasterLayerMetadata,
+  approver,
+}: {
+  rasterLayerMetadata: RasterLayerMetadata;
+  approver: string;
+}): ICreateJobBody<DeleteLayerJobParams, DeleteTaskParams> => {
+  const domain = configMock.get<string>('jobManager.jobDomain');
+  const deleteJobType = configMock.get<string>('jobManager.ingestionDeleteJobType');
+  const deleteTaskType = configMock.get<string>('jobManager.deleteTaskType');
+  const { id, productId, productType, productVersion, productName } = rasterLayerMetadata;
+
+  return {
+    resourceId: productId,
+    version: productVersion,
+    internalId: id,
+    type: deleteJobType,
+    productName,
+    productType,
+    status: OperationStatus.PENDING,
+    parameters: { approver },
+    domain,
+    tasks: [
+      {
+        type: deleteTaskType,
+        parameters: { deleteFromCatalog: false, deleteFromGeoserver: false, deleteFromMapproxy: false, deletePolygonParts: false },
       },
     ],
   };

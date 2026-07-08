@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { faker } from '@faker-js/faker';
 import { IJobResponse, OperationStatus, ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { CORE_VALIDATIONS, getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
+import { RecordStatus } from '@map-colonies/types';
 import { SqliteError } from 'better-sqlite3';
 import httpStatusCodes from 'http-status-codes';
 import { matches, merge, set, unset } from 'lodash';
@@ -18,6 +19,7 @@ import { Checksum } from '../../../src/utils/hash/checksum';
 import { configMock } from '../../mocks/configMock';
 import {
   createCatalogLayerResponse,
+  createDeleteJobRequest,
   createFindJobsParams,
   createNewJobRequest,
   createNewLayerRequest,
@@ -2772,6 +2774,128 @@ describe('Ingestion', () => {
 
         expect(response).toSatisfyApiSpec();
         expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+      });
+    });
+  });
+
+  describe('DELETE /ingestion/:catalogId', () => {
+    describe('Happy Path', () => {
+      it('should return 200 status code with jobId and taskId when layer is unpublished and has no active jobs', async () => {
+        const approver = faker.person.fullName();
+        const catalogLayerResponse = createCatalogLayerResponse({ metadata: { productStatus: RecordStatus.UNPUBLISHED } });
+        const catalogLayerMetadata = catalogLayerResponse.metadata;
+        const findJobsParams = createFindJobsParams({
+          resourceId: catalogLayerMetadata.productId,
+          productType: catalogLayerMetadata.productType,
+        });
+        const deleteJobRequest = createDeleteJobRequest({ rasterLayerMetadata: catalogLayerMetadata, approver });
+
+        nock(catalogServiceURL).post('/records/find', { id: catalogLayerMetadata.id }).reply(httpStatusCodes.OK, [catalogLayerResponse]);
+        nock(jobManagerURL).post('/jobs/find', matches(findJobsParams)).reply(httpStatusCodes.OK, []);
+        nock(jobManagerURL)
+          .post('/jobs', matches(JSON.parse(JSON.stringify(deleteJobRequest))))
+          .reply(httpStatusCodes.OK, jobResponse);
+        const expectedResponseBody: ResponseId = {
+          jobId: jobResponse.id,
+          taskId: jobResponse.taskIds[0]!,
+        };
+
+        const response = await requestSender.deleteLayer(catalogLayerMetadata.id, { approver });
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.OK);
+        expect(response.body).toStrictEqual(expectedResponseBody);
+      });
+    });
+
+    describe('Bad Path', () => {
+      it('should return 400 status code when catalogId in req params is not uuid v4', async () => {
+        const approver = faker.person.fullName();
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+
+        const response = await requestSender.deleteLayer('not uuid', { approver });
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 400 status code when approver is missing from the request body', async () => {
+        const catalogLayerResponse = createCatalogLayerResponse({ metadata: { productStatus: RecordStatus.UNPUBLISHED } });
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+
+        const response = await requestSender.deleteLayer(catalogLayerResponse.metadata.id, {} as unknown as { approver: string });
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.BAD_REQUEST);
+        expect(scope.isDone()).toBe(false);
+      });
+    });
+
+    describe('Sad Path', () => {
+      it('should return 404 status code when there is no such layer in the catalog', async () => {
+        const approver = faker.person.fullName();
+        const catalogId = faker.string.uuid();
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: catalogId }).reply(httpStatusCodes.OK, []);
+
+        const response = await requestSender.deleteLayer(catalogId, { approver });
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.NOT_FOUND);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it('should return 409 status code when there is more than one layer in the catalog', async () => {
+        const approver = faker.person.fullName();
+        const catalogLayerResponse = createCatalogLayerResponse({ metadata: { productStatus: RecordStatus.UNPUBLISHED } });
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL)
+          .post('/records/find', { id: catalogLayerResponse.metadata.id })
+          .reply(httpStatusCodes.OK, [catalogLayerResponse, catalogLayerResponse]);
+
+        const response = await requestSender.deleteLayer(catalogLayerResponse.metadata.id, { approver });
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+        expect(scope.isDone()).toBe(false);
+      });
+
+      it.each([[RecordStatus.PUBLISHED], [RecordStatus.BEING_DELETED]])(
+        'should return 409 status code when the layer productStatus is %s',
+        async (productStatus) => {
+          const approver = faker.person.fullName();
+          const catalogLayerResponse = createCatalogLayerResponse({ metadata: { productStatus } });
+          const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+          nock(catalogServiceURL).post('/records/find', { id: catalogLayerResponse.metadata.id }).reply(httpStatusCodes.OK, [catalogLayerResponse]);
+
+          const response = await requestSender.deleteLayer(catalogLayerResponse.metadata.id, { approver });
+
+          expect(response).toSatisfyApiSpec();
+          expect(response.status).toBe(httpStatusCodes.CONFLICT);
+          expect(scope.isDone()).toBe(false);
+        }
+      );
+
+      it('should return 409 status code when there are conflicting jobs', async () => {
+        const approver = faker.person.fullName();
+        const catalogLayerResponse = createCatalogLayerResponse({ metadata: { productStatus: RecordStatus.UNPUBLISHED } });
+        const catalogLayerMetadata = catalogLayerResponse.metadata;
+        const findJobsParams = createFindJobsParams({
+          resourceId: catalogLayerMetadata.productId,
+          productType: catalogLayerMetadata.productType,
+        });
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: catalogLayerMetadata.id }).reply(httpStatusCodes.OK, [catalogLayerResponse]);
+        nock(jobManagerURL)
+          .post('/jobs/find', matches(findJobsParams))
+          .reply(httpStatusCodes.OK, [{ status: OperationStatus.IN_PROGRESS }]);
+
+        const response = await requestSender.deleteLayer(catalogLayerMetadata.id, { approver });
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+        expect(scope.isDone()).toBe(false);
       });
     });
   });

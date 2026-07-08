@@ -13,6 +13,7 @@ import type {
   ResponseId,
   IBypassValidationErrorsRequestBody,
   IBypassValidationErrorsParams,
+  IDeleteLayerRequestBody,
 } from '../interfaces';
 import { IngestionManager } from '../models/ingestionManager';
 
@@ -21,6 +22,7 @@ type RetryIngestionHandler = RequestHandler<IRetryRequestParams, void, unknown>;
 type AbortIngestionHandler = RequestHandler<IAbortRequestParams, void, unknown>;
 type UpdateLayerHandler = RequestHandler<IRecordRequestParams, ResponseId, unknown>;
 type BypassValidationErrorsHandler = RequestHandler<IBypassValidationErrorsParams, void, IBypassValidationErrorsRequestBody>;
+type DeleteLayerHandler = RequestHandler<IRecordRequestParams, ResponseId, IDeleteLayerRequestBody>;
 
 @injectable()
 export class IngestionController {
@@ -111,6 +113,21 @@ export class IngestionController {
       }
       if (error instanceof UnsupportedEntityError) {
         (error as HttpError).status = StatusCodes.UNPROCESSABLE_ENTITY; //422
+      }
+      next(error);
+    }
+  };
+
+  public deleteLayer: DeleteLayerHandler = async (req, res, next) => {
+    try {
+      const response = await this.ingestionManager.deleteLayer(req.params.id, req.body);
+
+      res.status(StatusCodes.OK).send(response);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        (error as HttpError).status = StatusCodes.NOT_FOUND; //404
+      } else if (error instanceof ConflictError) {
+        (error as HttpError).status = StatusCodes.CONFLICT; //409
       }
       next(error);
     }

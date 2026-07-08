@@ -1,5 +1,5 @@
 import { type Response, agent } from 'supertest';
-import type { IBypassValidationErrorsRequestBody } from '../../../../src/ingestion/interfaces';
+import type { IBypassValidationErrorsRequestBody, IDeleteLayerRequestBody } from '../../../../src/ingestion/interfaces';
 import type { IngestionNewLayer } from '../../../../src/ingestion/schemas/newLayerSchema';
 import type { IngestionUpdateLayer } from '../../../../src/ingestion/schemas/updateLayerSchema';
 
@@ -24,5 +24,9 @@ export class IngestionRequestSender {
 
   public async bypassValidationErrors(jobId: string, body: IBypassValidationErrorsRequestBody): Promise<Response> {
     return agent(this.app).post(`/ingestion/${jobId}/bypass-validation-errors`).set('Content-Type', 'application/json').send(body);
+  }
+
+  public async deleteLayer(catalogId: string, body: IDeleteLayerRequestBody): Promise<Response> {
+    return agent(this.app).delete(`/ingestion/${catalogId}`).set('Content-Type', 'application/json').send(body);
   }
 }

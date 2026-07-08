@@ -2,6 +2,8 @@ import type { Logger } from '@map-colonies/js-logger';
 import { JobManagerClient, type ICreateJobBody, type ICreateJobResponse } from '@map-colonies/mc-priority-queue';
 import { IHttpRetryConfig } from '@map-colonies/mc-utils';
 import type {
+  DeleteLayerJobParams,
+  DeleteTaskParams,
   IngestionNewJobParams,
   IngestionSwapUpdateJobParams,
   IngestionUpdateJobParams,
@@ -31,7 +33,10 @@ export class JobManagerWrapper extends JobManagerClient {
 
   @withSpanAsyncV4
   public async createIngestionJob(
-    payload: ICreateJobBody<IngestionNewJobParams | IngestionUpdateJobParams | IngestionSwapUpdateJobParams, IngestionValidationTaskParams>
+    payload: ICreateJobBody<
+      IngestionNewJobParams | IngestionUpdateJobParams | IngestionSwapUpdateJobParams | DeleteLayerJobParams,
+      IngestionValidationTaskParams | DeleteTaskParams
+    >
   ): Promise<ICreateJobResponse> {
     const activeSpan = trace.getActiveSpan();
     activeSpan?.updateName('jobManagerWrapper.createJobWrapper');

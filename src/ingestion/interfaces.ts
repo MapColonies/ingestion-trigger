@@ -34,6 +34,10 @@ export interface IBypassValidationErrorsRequestBody {
   approver: string;
 }
 
+export interface IDeleteLayerRequestBody {
+  approver: string;
+}
+
 export enum IngestionOperation {
   RETRY = 'retry',
   ABORT = 'abort',

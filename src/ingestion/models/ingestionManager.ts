@@ -17,6 +17,8 @@ import {
   rasterProductTypeSchema,
   resourceIdSchema,
   type Checksum as IChecksum,
+  type DeleteLayerJobParams,
+  type DeleteTaskParams,
   type IngestionNewJobParams,
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
@@ -25,6 +27,7 @@ import {
   type RasterProductTypes,
 } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
+import { RecordStatus } from '@map-colonies/types';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import type { Tracer } from '@opentelemetry/api';
 import { container, inject, injectable } from 'tsyringe';
@@ -45,7 +48,7 @@ import { isKeyOf } from '../../utils/typeGuards';
 import { ZodValidator } from '../../utils/validation/zodValidator';
 import { ValidateManager } from '../../validate/models/validateManager';
 import { ChecksumError, throwInvalidJobStatusError, UnsupportedEntityError } from '../errors/ingestionErrors';
-import type { IBypassValidationErrorsRequestBody, IngestionBaseJobParams, ResponseId } from '../interfaces';
+import type { IBypassValidationErrorsRequestBody, IDeleteLayerRequestBody, IngestionBaseJobParams, ResponseId } from '../interfaces';
 import { IngestionOperation } from '../interfaces';
 import type { RasterLayerMetadata } from '../schemas/layerCatalogSchema';
 import type { IngestionNewLayer } from '../schemas/newLayerSchema';
@@ -73,8 +76,10 @@ export class IngestionManager {
   private readonly supportedIngestionSwapTypes: ISupportedIngestionSwapTypes[];
   private readonly updateJobType: string;
   private readonly swapUpdateJobType: string;
+  private readonly deleteJobType: string;
   private readonly validationTaskType: string;
   private readonly finalizeTaskType: string;
+  private readonly deleteTaskType: string;
   private readonly sourceMount: string;
   private readonly jobTrackerServiceUrl: string;
 
@@ -104,8 +109,10 @@ export class IngestionManager {
     this.supportedIngestionSwapTypes = config.get('jobManager.supportedIngestionSwapTypes') as unknown as ISupportedIngestionSwapTypes[];
     this.updateJobType = config.get('jobManager.ingestionUpdateJobType') as unknown as string;
     this.swapUpdateJobType = config.get('jobManager.ingestionSwapUpdateJobType') as unknown as string;
+    this.deleteJobType = config.get('jobManager.ingestionDeleteJobType') as unknown as string;
     this.validationTaskType = config.get('jobManager.validationTaskType') as unknown as string;
     this.finalizeTaskType = config.get('jobManager.finalizeTaskType') as unknown as string;
+    this.deleteTaskType = config.get('jobManager.deleteTaskType') as unknown as string;
     this.sourceMount = config.get('storageExplorer.layerSourceDir') as unknown as string;
     this.jobTrackerServiceUrl = config.get('services.jobTrackerServiceURL') as unknown as string;
   }
@@ -200,6 +207,31 @@ export class IngestionManager {
       taskId,
     });
     activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.updateLayer.success', { triggerSuccess: true, jobId, taskId });
+
+    return { jobId, taskId };
+  }
+
+  @withSpanAsyncV4
+  public async deleteLayer(catalogId: string, body: IDeleteLayerRequestBody): Promise<ResponseId> {
+    const logCtx: LogContext = { ...this.logContext, function: this.deleteLayer.name };
+    const activeSpan = trace.getActiveSpan();
+    activeSpan?.updateName('ingestionManager.deleteLayer');
+
+    const rasterLayerMetadata = await this.getLayerMetadata(catalogId);
+    this.validateLayerIsUnpublished(rasterLayerMetadata);
+    await this.validateNoParallelJobs(rasterLayerMetadata.productId, rasterLayerMetadata.productType);
+
+    const createJobRequest = this.deleteLayerJobPayload(rasterLayerMetadata, body.approver);
+    const { id: jobId, taskIds } = await this.jobManagerWrapper.createIngestionJob(createJobRequest);
+    const taskId = taskIds[0] as string;
+
+    this.logger.info({
+      msg: `delete layer job and task created successfully`,
+      logContext: logCtx,
+      jobId,
+      taskId,
+    });
+    activeSpan?.setStatus({ code: SpanStatusCode.OK }).addEvent('ingestionManager.deleteLayer.success', { deleteSuccess: true, jobId, taskId });
 
     return { jobId, taskId };
   }
@@ -673,6 +705,40 @@ export class IngestionManager {
       tasks: [{ type: this.validationTaskType, parameters: taskParameters }],
     };
     return createJobRequest;
+  }
+
+  @withSpanV4
+  private validateLayerIsUnpublished(rasterLayerMetadata: RasterLayerMetadata): void {
+    if (rasterLayerMetadata.productStatus !== RecordStatus.UNPUBLISHED) {
+      const message = `layer with id of ${rasterLayerMetadata.id} cannot be deleted because it is not unpublished`;
+      const error = new ConflictError(message);
+      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
+      throw error;
+    }
+  }
+
+  @withSpanV4
+  private deleteLayerJobPayload(rasterLayerMetadata: RasterLayerMetadata, approver: string): ICreateJobBody<DeleteLayerJobParams, DeleteTaskParams> {
+    const { id, productId, productType, productVersion, productName } = rasterLayerMetadata;
+    const taskParameters: DeleteTaskParams = {
+      deleteFromCatalog: false,
+      deleteFromGeoserver: false,
+      deleteFromMapproxy: false,
+      deletePolygonParts: false,
+    };
+
+    return {
+      resourceId: productId,
+      version: productVersion,
+      internalId: id,
+      type: this.deleteJobType,
+      productName,
+      productType,
+      status: OperationStatus.PENDING,
+      parameters: { approver },
+      domain: this.jobDomain,
+      tasks: [{ type: this.deleteTaskType, parameters: taskParameters }],
+    };
   }
 
   @withSpanAsyncV4
