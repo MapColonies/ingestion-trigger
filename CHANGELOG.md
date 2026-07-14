@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.4.1](https://github.com/MapColonies/ingestion-trigger/compare/v4.4.0...v4.4.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* expose delete job/task type as env vars (MAPCO-11103) ([#99](https://github.com/MapColonies/ingestion-trigger/issues/99)) ([d06ec42](https://github.com/MapColonies/ingestion-trigger/commit/d06ec42c95234d31a5b7eec7f748816d22cc56c6))
+
 ## [4.4.0](https://github.com/MapColonies/ingestion-trigger/compare/v4.3.0...v4.4.0) (2026-07-08)
 
 
