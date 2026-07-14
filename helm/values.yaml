@@ -55,7 +55,7 @@ jobDefinitions:
       type: ""
     swapUpdate:
       type: ""
-    delete:
+    deleteLayer:
       type: ""
   tasks:
     validation:

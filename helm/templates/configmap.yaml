@@ -36,7 +36,7 @@ data:
   INGESTION_NEW_JOB_TYPE: {{ $jobDefinitions.jobs.new.type | quote }}
   INGESTION_UPDATE_JOB_TYPE: {{ $jobDefinitions.jobs.update.type | quote }}
   INGESTION_SWAP_UPDATE_JOB_TYPE: {{ $jobDefinitions.jobs.swapUpdate.type | quote }}
-  INGESTION_DELETE_JOB_TYPE: {{ $jobDefinitions.jobs.delete.type | quote }}
+  INGESTION_DELETE_JOB_TYPE: {{ $jobDefinitions.jobs.deleteLayer.type | quote }}
   VALIDATION_TASK_TYPE: {{ $jobDefinitions.tasks.validation.type | quote }}
   FINALIZE_TASK_TYPE: {{ $jobDefinitions.tasks.finalize.type | quote }}
   DELETE_TASK_TYPE: {{ $jobDefinitions.tasks.delete.type | quote }}
