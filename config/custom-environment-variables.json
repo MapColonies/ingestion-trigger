@@ -96,6 +96,8 @@
     "finalizeTaskType": "FINALIZE_TASK_TYPE",
     "ingestionUpdateJobType": "INGESTION_UPDATE_JOB_TYPE",
     "ingestionSwapUpdateJobType": "INGESTION_SWAP_UPDATE_JOB_TYPE",
+    "ingestionDeleteJobType": "INGESTION_DELETE_JOB_TYPE",
+    "deleteTaskType": "DELETE_TASK_TYPE",
     "supportedIngestionSwapTypes": {
       "__name": "SUPPORTED_INGESTION_SWAP_TYPES",
       "__format": "json"

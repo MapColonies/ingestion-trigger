@@ -55,10 +55,14 @@ jobDefinitions:
       type: ""
     swapUpdate:
       type: ""
+    delete:
+      type: ""
   tasks:
     validation:
       type: ""
     finalize:
+      type: ""
+    delete:
       type: ""
 
 storage:
