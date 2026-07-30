@@ -27,6 +27,7 @@ import {
   createUpdateLayerRequest,
   generateCallbackUrl,
   generateMockJob,
+  getForbiddenLayerForDeletion,
   rasterLayerInputFilesGenerators,
   rasterLayerMetadataGenerators,
 } from '../../mocks/mockFactory';
@@ -2876,6 +2877,20 @@ describe('Ingestion', () => {
           expect(scope.isDone()).toBe(false);
         }
       );
+
+      it('should return 409 status code when the layer is configured as forbidden for deletion', async () => {
+        const approver = faker.person.fullName();
+        const { productId, productType } = getForbiddenLayerForDeletion();
+        const catalogLayerResponse = createCatalogLayerResponse({ metadata: { productId, productType, productStatus: RecordStatus.UNPUBLISHED } });
+        const scope = nock(jobManagerURL).post('/jobs').reply(httpStatusCodes.OK, jobResponse);
+        nock(catalogServiceURL).post('/records/find', { id: catalogLayerResponse.metadata.id }).reply(httpStatusCodes.OK, [catalogLayerResponse]);
+
+        const response = await requestSender.deleteLayer(catalogLayerResponse.metadata.id, { approver });
+
+        expect(response).toSatisfyApiSpec();
+        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+        expect(scope.isDone()).toBe(false);
+      });
 
       it('should return 409 status code when there are conflicting jobs', async () => {
         const approver = faker.person.fullName();
