@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.5.0](https://github.com/MapColonies/ingestion-trigger/compare/v4.4.1...v4.5.0) (2026-07-30)
+
+
+### Features
+
+* add forbidden layers configuration for deletion (MAPCO-11281) ([#101](https://github.com/MapColonies/ingestion-trigger/issues/101)) ([e5a184f](https://github.com/MapColonies/ingestion-trigger/commit/e5a184f72fe6df49b3f303eee1958cdbd339cdd1))
+
 ## [4.4.1](https://github.com/MapColonies/ingestion-trigger/compare/v4.4.0...v4.4.1) (2026-07-14)
 
 
