@@ -107,6 +107,12 @@
       "__format": "json"
     }
   },
+  "deleteLayer": {
+    "forbiddenLayers": {
+      "__name": "FORBIDDEN_LAYERS_FOR_DELETION",
+      "__format": "json"
+    }
+  },
   "httpRetry": {
     "attempts": {
       "__name": "HTTP_RETRY_ATTEMPTS",

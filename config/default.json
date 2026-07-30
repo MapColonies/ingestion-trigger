@@ -72,6 +72,9 @@
     ],
     "forbiddenJobTypesForParallelIngestion": ["Ingestion_New", "Ingestion_Update", "Ingestion_Swap_Update", "Delete_Layer"]
   },
+  "deleteLayer": {
+    "forbiddenLayers": []
+  },
   "httpRetry": {
     "attempts": 5,
     "delay": "exponential",

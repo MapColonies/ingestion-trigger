@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
-import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@map-colonies/error-types';
 import { jsLogger } from '@map-colonies/js-logger';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
-import { getMapServingLayerName } from '@map-colonies/raster-shared';
+import { getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
 import { RecordStatus } from '@map-colonies/types';
 import { trace } from '@opentelemetry/api';
 import { container } from 'tsyringe';
@@ -27,6 +27,7 @@ import {
   generateMockJob,
   generateNewLayerRequest,
   generateUpdateLayerRequest,
+  getForbiddenLayerForDeletion,
 } from '../../../mocks/mockFactory';
 import { ChecksumProcessor } from '../../../../src/utils/hash/interfaces';
 import { CHECKSUM_PROCESSOR } from '../../../../src/utils/hash/constants';
@@ -678,6 +679,51 @@ describe('IngestionManager', () => {
 
       await expect(promise).rejects.toThrow(new ConflictError(expectedErrorMessage));
       expect(createIngestionJobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should throw forbidden error when the layer is configured as forbidden for deletion', async () => {
+      const approver = faker.person.fullName();
+      const { forbiddenLayerName, productId, productType } = getForbiddenLayerForDeletion();
+      const catalogLayerResponse = createCatalogLayerResponse({ metadata: { productId, productType, productStatus: RecordStatus.UNPUBLISHED } });
+      const expectedErrorMessage = `Layer: ${forbiddenLayerName}, is configured as a forbidden layer for deletion and therefore cannot be deleted`;
+      findByIdSpy.mockResolvedValue([catalogLayerResponse]);
+
+      const promise = ingestionManager.deleteLayer(catalogLayerResponse.metadata.id, { approver });
+
+      await expect(promise).rejects.toThrow(new ForbiddenError(expectedErrorMessage));
+      expect(createIngestionJobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should create delete layer job when only the productId matches a forbidden layer', async () => {
+      const approver = faker.person.fullName();
+      const { productId } = getForbiddenLayerForDeletion();
+      const catalogLayerResponse = createCatalogLayerResponse({
+        metadata: { productId, productType: RasterProductTypes.RASTER_MAP, productStatus: RecordStatus.UNPUBLISHED },
+      });
+      const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] };
+      findByIdSpy.mockResolvedValue([catalogLayerResponse]);
+      findJobsSpy.mockResolvedValue([]);
+      createIngestionJobSpy.mockResolvedValue(createJobResponse);
+
+      const response = await ingestionManager.deleteLayer(catalogLayerResponse.metadata.id, { approver });
+
+      expect(response).toStrictEqual({ jobId: createJobResponse.id, taskId: createJobResponse.taskIds[0] });
+    });
+
+    it('should create delete layer job when only the productType matches a forbidden layer', async () => {
+      const approver = faker.person.fullName();
+      const { productType } = getForbiddenLayerForDeletion();
+      const catalogLayerResponse = createCatalogLayerResponse({
+        metadata: { productType, productStatus: RecordStatus.UNPUBLISHED },
+      });
+      const createJobResponse: ICreateJobResponse = { id: faker.string.uuid(), taskIds: [faker.string.uuid()] };
+      findByIdSpy.mockResolvedValue([catalogLayerResponse]);
+      findJobsSpy.mockResolvedValue([]);
+      createIngestionJobSpy.mockResolvedValue(createJobResponse);
+
+      const response = await ingestionManager.deleteLayer(catalogLayerResponse.metadata.id, { approver });
+
+      expect(response).toStrictEqual({ jobId: createJobResponse.id, taskId: createJobResponse.taskIds[0] });
     });
 
     it('should throw an error when job manager create delete layer job call throws an error', async () => {

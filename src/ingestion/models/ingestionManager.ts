@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { relative } from 'node:path';
-import { ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { ConflictError, ForbiddenError, NotFoundError } from '@map-colonies/error-types';
 import type { Logger } from '@map-colonies/js-logger';
 import {
   type IFindJobsByCriteriaBody,
@@ -24,6 +24,7 @@ import {
   type IngestionUpdateJobParams,
   type IngestionValidationTaskParams,
   type InputFiles,
+  type LayerName,
   type RasterProductTypes,
 } from '@map-colonies/raster-shared';
 import { withSpanAsyncV4, withSpanV4 } from '@map-colonies/telemetry';
@@ -80,6 +81,7 @@ export class IngestionManager {
   private readonly validationTaskType: string;
   private readonly finalizeTaskType: string;
   private readonly deleteTaskType: string;
+  private readonly forbiddenLayersForDeletion: LayerName[];
   private readonly sourceMount: string;
   private readonly jobTrackerServiceUrl: string;
 
@@ -113,6 +115,7 @@ export class IngestionManager {
     this.validationTaskType = config.get('jobManager.validationTaskType') as unknown as string;
     this.finalizeTaskType = config.get('jobManager.finalizeTaskType') as unknown as string;
     this.deleteTaskType = config.get('jobManager.deleteTaskType') as unknown as string;
+    this.forbiddenLayersForDeletion = config.get('deleteLayer.forbiddenLayers') as unknown as LayerName[];
     this.sourceMount = config.get('storageExplorer.layerSourceDir') as unknown as string;
     this.jobTrackerServiceUrl = config.get('services.jobTrackerServiceURL') as unknown as string;
   }
@@ -218,6 +221,7 @@ export class IngestionManager {
     activeSpan?.updateName('ingestionManager.deleteLayer');
 
     const rasterLayerMetadata = await this.getLayerMetadata(catalogId);
+    this.validateLayerIsNotForbiddenForDeletion(rasterLayerMetadata);
     this.validateLayerIsUnpublished(rasterLayerMetadata);
     await this.validateNoParallelJobs(rasterLayerMetadata.productId, rasterLayerMetadata.productType);
 
@@ -705,6 +709,21 @@ export class IngestionManager {
       tasks: [{ type: this.validationTaskType, parameters: taskParameters }],
     };
     return createJobRequest;
+  }
+
+  @withSpanV4
+  private validateLayerIsNotForbiddenForDeletion(rasterLayerMetadata: RasterLayerMetadata): void {
+    const logCtx: LogContext = { ...this.logContext, function: this.validateLayerIsNotForbiddenForDeletion.name };
+    const { productId, productType } = rasterLayerMetadata;
+    const layerName = getMapServingLayerName(productId, productType);
+
+    if (this.forbiddenLayersForDeletion.includes(layerName)) {
+      const message = `Layer: ${layerName}, is configured as a forbidden layer for deletion and therefore cannot be deleted`;
+      this.logger.error({ msg: message, logContext: logCtx, layerName });
+      const error = new ForbiddenError(message);
+      trace.getActiveSpan()?.setAttribute('exception.type', error.status);
+      throw error;
+    }
   }
 
   @withSpanV4

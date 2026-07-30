@@ -17,6 +17,7 @@ import {
   type IngestionSwapUpdateJobParams,
   type IngestionUpdateJobParams,
   type InputFiles,
+  type LayerName,
   type NewRasterLayerMetadata,
   type UpdateRasterLayerMetadata,
   JobTypes,
@@ -480,6 +481,15 @@ export const createCatalogLayerResponse = (rasterLayerCatalog?: DeepPartial<Rast
   const override = structuredClone(rasterLayerCatalog);
   const mergedRasterLayerCatalog = merge(generateCatalogLayerResponse(), override);
   return mergedRasterLayerCatalog;
+};
+
+/**
+ * Returns the first configured forbidden layer for deletion, split into its productId and productType parts
+ */
+export const getForbiddenLayerForDeletion = (): { forbiddenLayerName: LayerName; productId: string; productType: RasterProductTypes } => {
+  const forbiddenLayerName = configMock.get<LayerName[]>('deleteLayer.forbiddenLayers')[0]!;
+  const [productId, productType] = forbiddenLayerName.split('-') as [string, RasterProductTypes];
+  return { forbiddenLayerName, productId, productType };
 };
 
 export const createFindJobsParams = (findJobsParams: IFindJobsByCriteriaBody): IFindJobsByCriteriaBody => {

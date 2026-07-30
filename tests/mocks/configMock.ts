@@ -105,6 +105,9 @@ const registerDefaultConfig = (): void => {
       ],
       forbiddenJobTypesForParallelIngestion: ['Ingestion_New', 'Ingestion_Update', 'Delete_Layer'],
     },
+    deleteLayer: {
+      forbiddenLayers: ['VIVID_IHUD-Orthophoto'],
+    },
   };
 
   setConfigValues(config);
