@@ -2878,7 +2878,7 @@ describe('Ingestion', () => {
         }
       );
 
-      it('should return 409 status code when the layer is configured as forbidden for deletion', async () => {
+      it('should return 403 status code when the layer is configured as forbidden for deletion', async () => {
         const approver = faker.person.fullName();
         const { productId, productType } = getForbiddenLayerForDeletion();
         const catalogLayerResponse = createCatalogLayerResponse({ metadata: { productId, productType, productStatus: RecordStatus.UNPUBLISHED } });
@@ -2888,7 +2888,7 @@ describe('Ingestion', () => {
         const response = await requestSender.deleteLayer(catalogLayerResponse.metadata.id, { approver });
 
         expect(response).toSatisfyApiSpec();
-        expect(response.status).toBe(httpStatusCodes.CONFLICT);
+        expect(response.status).toBe(httpStatusCodes.FORBIDDEN);
         expect(scope.isDone()).toBe(false);
       });
 

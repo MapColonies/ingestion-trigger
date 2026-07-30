@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@map-colonies/error-types';
 import { jsLogger } from '@map-colonies/js-logger';
 import { ICreateJobResponse, OperationStatus } from '@map-colonies/mc-priority-queue';
 import { getMapServingLayerName, RasterProductTypes } from '@map-colonies/raster-shared';
@@ -681,7 +681,7 @@ describe('IngestionManager', () => {
       expect(createIngestionJobSpy).not.toHaveBeenCalled();
     });
 
-    it('should throw conflict error when the layer is configured as forbidden for deletion', async () => {
+    it('should throw forbidden error when the layer is configured as forbidden for deletion', async () => {
       const approver = faker.person.fullName();
       const { forbiddenLayerName, productId, productType } = getForbiddenLayerForDeletion();
       const catalogLayerResponse = createCatalogLayerResponse({ metadata: { productId, productType, productStatus: RecordStatus.UNPUBLISHED } });
@@ -690,7 +690,7 @@ describe('IngestionManager', () => {
 
       const promise = ingestionManager.deleteLayer(catalogLayerResponse.metadata.id, { approver });
 
-      await expect(promise).rejects.toThrow(new ConflictError(expectedErrorMessage));
+      await expect(promise).rejects.toThrow(new ForbiddenError(expectedErrorMessage));
       expect(createIngestionJobSpy).not.toHaveBeenCalled();
     });
 

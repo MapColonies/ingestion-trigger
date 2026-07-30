@@ -1,4 +1,4 @@
-import { BadRequestError, ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@map-colonies/error-types';
 import type { RequestHandler } from 'express';
 import { HttpError } from 'express-openapi-validator/dist/framework/types';
 import { StatusCodes } from 'http-status-codes';
@@ -124,7 +124,9 @@ export class IngestionController {
 
       res.status(StatusCodes.OK).send(response);
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ForbiddenError) {
+        (error as HttpError).status = StatusCodes.FORBIDDEN; //403
+      } else if (error instanceof NotFoundError) {
         (error as HttpError).status = StatusCodes.NOT_FOUND; //404
       } else if (error instanceof ConflictError) {
         (error as HttpError).status = StatusCodes.CONFLICT; //409

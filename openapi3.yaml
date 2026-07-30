@@ -153,6 +153,13 @@ paths:
               schema:
                 $ref: >-
                   ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  ./Schema/ingestionTrigger/responses/ingestionTriggerResponses.yaml#/components/schemas/errorMessage
         '404':
           description: Not Found
           content:

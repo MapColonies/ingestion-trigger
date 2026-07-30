@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { relative } from 'node:path';
-import { ConflictError, NotFoundError } from '@map-colonies/error-types';
+import { ConflictError, ForbiddenError, NotFoundError } from '@map-colonies/error-types';
 import type { Logger } from '@map-colonies/js-logger';
 import {
   type IFindJobsByCriteriaBody,
@@ -720,7 +720,7 @@ export class IngestionManager {
     if (this.forbiddenLayersForDeletion.includes(layerName)) {
       const message = `Layer: ${layerName}, is configured as a forbidden layer for deletion and therefore cannot be deleted`;
       this.logger.error({ msg: message, logContext: logCtx, layerName });
-      const error = new ConflictError(message);
+      const error = new ForbiddenError(message);
       trace.getActiveSpan()?.setAttribute('exception.type', error.status);
       throw error;
     }
