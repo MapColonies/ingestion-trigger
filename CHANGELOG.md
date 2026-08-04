@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.5.1](https://github.com/MapColonies/ingestion-trigger/compare/v4.5.0...v4.5.1) (2026-08-04)
+
+
+### Miscellaneous Chores
+
+* force alignment to rc track ([39359a5](https://github.com/MapColonies/ingestion-trigger/commit/39359a5fbe542ac34194f03e532d8364e51a3fe9))
+
 ## [4.5.0](https://github.com/MapColonies/ingestion-trigger/compare/v4.4.1...v4.5.0) (2026-07-30)
 
 
