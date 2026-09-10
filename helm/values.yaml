@@ -1,13 +1,12 @@
 global:
   cloudProvider: {}
-  tracing: {}
+  telemetry:
+    tracing: {}
+    logger:
+      opentelemetryOptions: {}
   environment: ''
   domain: "RASTER"
   serviceUrls: {}
-  openTelemetryOptions:
-    enabled: false
-    url: ''
-    resourceAttributes: {}
   jobDefinitions: {}
   storage:
     fs:
@@ -77,10 +76,6 @@ cloudProvider:
   imagePullSecretName: 'my-registry-secret'
   flavor: openshift
 
-tracing:
-  enabled: false
-  url: ''
-
 configManagement:
   offlineMode: true
   name: 'ingestion-trigger'
@@ -128,21 +123,29 @@ caSecretName: ''
 caPath: '/usr/local/share/ca-certificates'
 caKey: 'ca.crt'
 
-env:
+server:
   port: 8080
   targetPort: 8080
   protocol: TCP
-  logLevel: info
-  logPrettyPrintEnabled: false
-  openTelemetryOptions:
-    enabled: false
-    url: ''
-    resourceAttributes: {}
   responseCompressionEnabled: true
   requestPayloadLimit: 1mb
+
+telemetry:
+  logger:
+    level: info
+    prettyPrint: false
+    opentelemetryOptions:
+      enabled: true
+      url: http://localhost:4317
+      # Rendered as OTEL_RESOURCE_ATTRIBUTES in "key=value,key=value" format
+      # resourceAttributes:
+      #   service.namespace: namespace
+      #   deployment.environment: dev
   tracing:
-    enabled: false
-    url: ''
+    enabled: true
+    url: http://localhost:55681/v1/traces
+
+env:
   storageExplorer:
     layerSourceDir: '/layerSources'
     displayNameDir: "\\layerSources"
