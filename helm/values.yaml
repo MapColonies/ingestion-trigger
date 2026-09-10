@@ -39,7 +39,7 @@ revisionHistoryLimit: 5 # Amount of revisions we keep
 initialDelaySeconds: 60
 nodePort: 30030 #for minikube deployment only
 resetOnConfigChange: true
-imagePullPolicy: Always
+imagePullPolicy: IfNotPresent
 
 serviceUrls:
   mapproxyApi: ""
@@ -82,7 +82,7 @@ tracing:
   url: ''
 
 configManagement:
-  offlineMode: false
+  offlineMode: true
   name: 'ingestion-trigger'
   version: 'latest'
   serverUrl: 'http://localhost:8080/api'
