@@ -1,7 +1,9 @@
 {{- $chartName := include "ingestion-trigger.name" . -}}
 {{- $configmapName := include "configmap.fullname" . }}
-{{- $tracing := (include "common.tracing.merged" .) | fromYaml }}
-{{- $openTelemetryOptions := (include "common.openTelemetryOptions.merged" .) | fromYaml }}
+{{- $server := .Values.server -}}
+{{- $telemetry := .Values.telemetry -}}
+{{- $tracingUrl := include "ingestion-trigger.tracingUrl" . -}}
+{{- $opentelemetryLoggingUrl := include "ingestion-trigger.opentelemetryLoggingUrl" . -}}
 {{- $serviceUrls := (include "common.serviceUrls.merged" .) | fromYaml }}
 {{- $jobDefinitions := (include "common.jobDefinitions.merged" .) | fromYaml }}
 {{- $storage := (include "common.storage.merged" .) | fromYaml }}
@@ -12,10 +14,27 @@ kind: ConfigMap
 metadata:
   name: {{ $configmapName  }}
 data:
-  REQUEST_PAYLOAD_LIMIT: {{ .Values.env.requestPayloadLimit | quote }}
-  RESPONSE_COMPRESSION_ENABLED: {{ .Values.env.responseCompressionEnabled | quote }}
-  LOG_LEVEL: {{ .Values.env.logLevel | quote }}
-  LOG_PRETTY_PRINT_ENABLED: {{ .Values.env.logPrettyPrintEnabled | quote }}
+  {{- with $server }}
+  REQUEST_PAYLOAD_LIMIT: {{ .requestPayloadLimit | quote }}
+  RESPONSE_COMPRESSION_ENABLED: {{ .responseCompressionEnabled | quote }}
+  {{- end }}
+  {{- with $telemetry }}
+  LOG_LEVEL: {{ .logger.level | quote }}
+  LOG_PRETTY_PRINT_ENABLED: {{ .logger.prettyPrint | quote }}
+  {{- with .logger.opentelemetryOptions }}
+  OPENTELEMETRY_LOGGING_ENABLED: {{ .enabled | quote }}
+  {{- if .enabled }}
+  OTLP_LOGGER_ENDPOINT_URL: {{ $opentelemetryLoggingUrl | quote }}
+  {{- if .resourceAttributes }}
+  OTEL_RESOURCE_ATTRIBUTES: {{ include "ingestion-trigger.otelResourceAttributes" .resourceAttributes | quote }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  TELEMETRY_TRACING_ENABLED: {{ .tracing.enabled | quote }}
+  {{- if .tracing.enabled }}
+  TELEMETRY_TRACING_URL: {{ $tracingUrl | quote }}
+  {{- end }}
+  {{- end }}
   JOB_DOMAIN: {{ .Values.global.domain | quote }}
   PRODUCT_READER_MAX_VERTICES_PER_CHUNK: {{ .Values.env.productReader.maxVerticesPerChunk | quote }}
   JOB_MANAGER_URL: {{ $serviceUrls.jobManager | quote }}
@@ -46,19 +65,6 @@ data:
   TILE_SIZE: {{ .Values.env.validationValuesByInfo.tileSize | quote}}
   RESOLUTION_FIXED_POINT_TOLERANCE: {{ .Values.env.validationValuesByInfo.resolutionFixedPointTolerance | quote }}
   EXTENT_BUFFER_IN_METERS: {{ .Values.env.validationValuesByInfo.extentBufferInMeters | quote }}
-  TELEMETRY_TRACING_ENABLED: {{ $tracing.enabled | quote }}
-  {{ if $tracing.enabled }}
-  TELEMETRY_TRACING_URL: {{ $tracing.url }}
-  {{ end }}
-  {{- with $openTelemetryOptions }}
-  OPENTELEMETRY_LOGGING_ENABLED: {{ .enabled | quote }}
-  {{ if .enabled }}
-  OPENTELEMETRY_LOGGING_URL: {{ .url | quote }}
-  {{ if .resourceAttributes }}
-  OPENTELEMETRY_RESOURCE_ATTRIBUTES: {{ .resourceAttributes | toJson | quote }}
-  {{ end }}
-  {{ end }}
-  {{- end }}
   {{- with .Values.configManagement }}
   CONFIG_SERVER_URL: {{ .serverUrl | quote }}
   CONFIG_NAME: {{ .name | quote }}
